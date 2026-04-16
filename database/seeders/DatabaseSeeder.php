@@ -7,6 +7,7 @@ use App\Models\Customer;
 use App\Models\Invoice;
 use App\Models\NotificationLog;
 use App\Models\Payment;
+use App\Models\Plan;
 use App\Models\Room;
 use App\Models\Tenant;
 use App\Models\User;
@@ -20,7 +21,12 @@ class DatabaseSeeder extends Seeder
 
     public function run(): void
     {
+        $this->call(PlanSeeder::class);
+
+        $plan = Plan::query()->where('slug', 'pro')->first();
+
         $tenant = Tenant::create([
+            'plan_id' => $plan?->id,
             'name' => 'MesukDom Demo Residence',
             'domain' => 'demo.local',
             'plan' => 'pro',

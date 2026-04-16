@@ -11,8 +11,13 @@
         <div class="container">
             <h1 class="display-4">MesukDom Dormitory SaaS</h1>
             <p class="lead">ระบบบริหารหอพักแบบ Multi-Tenant พร้อมห้องพัก ผู้เช่า สัญญา บิล การชำระเงิน และ LINE OA แจ้งเตือน</p>
-            <a href="{{ route('app.dashboard') }}" class="btn btn-primary btn-lg mr-2">Open Dashboard</a>
-            <a href="{{ route('admin.dashboard') }}" class="btn btn-outline-secondary btn-lg">Platform Admin</a>
+            <a href="{{ route('pricing') }}" class="btn btn-primary btn-lg mr-2">ดูราคา</a>
+            @auth
+                <a href="{{ route('app.dashboard') }}" class="btn btn-outline-primary btn-lg mr-2">Open Dashboard</a>
+            @else
+                <a href="{{ route('register') }}" class="btn btn-outline-primary btn-lg mr-2">สมัครใช้งาน</a>
+                <a href="{{ route('login') }}" class="btn btn-outline-secondary btn-lg">เข้าสู่ระบบ</a>
+            @endauth
         </div>
     </div>
 

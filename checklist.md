@@ -51,8 +51,56 @@
 - มีข้อมูลตัวอย่างในระบบแล้ว สามารถเปิดดู flow ต่าง ๆ ได้ทันที
 
 ## งานที่สามารถทำต่อได้
-- [ ] เพิ่มระบบ Authentication และ Role Permission แบบสมบูรณ์
-- [ ] เพิ่มการอัปโหลดสลิปจริงและจัดการไฟล์
-- [ ] เพิ่ม PDF invoice / receipt
-- [ ] เชื่อมต่อ LINE Messaging API จริงด้วย token ของโปรเจกต์
-- [ ] เพิ่ม scheduler สำหรับสร้างบิลอัตโนมัติและส่ง reminder รายเดือน
+
+### 1) Landing Page (Public Site)
+- [ ] เพิ่มหน้า Pricing Plan
+- [ ] เพิ่ม flow สมัครใช้งาน SaaS (Owner สมัคร)
+- [ ] สมัครแล้วสร้าง Tenant ใหม่ + สร้าง Admin User ของ Tenant อัตโนมัติ
+- [ ] เพิ่มหน้า Login
+- [ ] เพิ่ม Forgot Password
+- [ ] เพิ่ม Email Verification
+
+### 2) Authentication / Authorization / Roles
+- [ ] เพิ่มระบบ Authentication (เช่น Laravel Breeze/Jetstream หรือ custom) ให้ครบ flow
+- [ ] เพิ่ม Role Permission ตามที่ระบุ (Super Admin / Support Admin / Owner / Staff)
+- [ ] เพิ่ม Policy Authorization สำหรับโมดูลหลัก
+- [ ] ผูกการเลือก tenant กับ user login (แทน query/session แบบ demo)
+
+### 3) Multi-Tenant แบบใช้งานจริง
+- [ ] Tenant resolve จาก domain/subdomain (ใช้ field `tenants.domain`)
+- [ ] ป้องกันการข้าม tenant ให้ครบทุก entry point (รวมถึง webhook, resident portal)
+- [ ] เพิ่ม Tenant Suspension ตามสถานะ/หมด trial
+
+### 4) SaaS Subscription
+- [ ] เพิ่ม Subscription Plan management
+- [ ] เพิ่ม Trial Period enforcement ตาม `trial_ends_at`
+- [ ] เพิ่ม Usage Limit
+- [ ] เพิ่ม Billing Cycle / Subscription Billing
+
+### 5) Billing & Invoice
+- [ ] Generate ใบแจ้งหนี้ PDF
+- [ ] Generate ใบเสร็จรับเงิน (Receipt) PDF
+- [ ] ปรับ flow สถานะ invoice ให้ครบ (Draft/Sent/Paid/Overdue) + กติกาเปลี่ยนสถานะอัตโนมัติ
+
+### 6) Payments
+- [ ] เพิ่มการอัปโหลดสลิปจริง (file upload) + จัดเก็บไฟล์ (storage + validation)
+- [ ] เพิ่ม Online Payment Gateway integration จริง
+- [ ] เพิ่มหน้า/flow อนุมัติหรือปฏิเสธสลิป (ถ้าต้องการให้ staff ตรวจ)
+
+### 7) Notification System
+- [ ] แยก Notification เป็น service/queue job (ไม่ส่งใน request โดยตรง)
+- [ ] เพิ่ม channel Email/SMS ตามเอกสาร (ปัจจุบันเน้น LINE)
+- [ ] ทำ Notification Logs/Monitoring ให้ละเอียดขึ้น (เช่น response code, retry)
+- [ ] เชื่อมต่อ LINE Messaging API ด้วย token จริงของโปรเจกต์ + ตรวจ signature webhook
+
+### 8) Background Jobs / Scheduler
+- [ ] สร้าง job: Generate Monthly Invoice
+- [ ] สร้าง job: Send Reminder Notification
+- [ ] สร้าง job: Expire Contract Check
+- [ ] สร้าง job: Subscription Billing
+- [ ] ตั้งค่า scheduler ให้รันตามเวลา (พร้อม queue worker/supervisor)
+
+### 9) Security
+- [ ] CSRF/Rate limiting สำหรับ endpoint ที่เสี่ยง (เช่น webhook)
+- [ ] Signed URL สำหรับ invoice payment link (ให้ครบ flow)
+- [ ] Audit/logging ที่จำเป็นสำหรับ SaaS (admin actions, payment actions)

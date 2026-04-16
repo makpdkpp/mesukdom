@@ -2,6 +2,8 @@
 
 namespace Tests\Feature;
 
+use App\Models\Tenant;
+use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -11,7 +13,21 @@ class DormitoryFlowTest extends TestCase
 
     public function test_dashboard_page_can_be_opened(): void
     {
-        $response = $this->get('/app/dashboard');
+        $tenant = Tenant::create([
+            'name' => 'Demo Dorm',
+            'domain' => 'demo.local',
+            'plan' => 'trial',
+            'status' => 'active',
+        ]);
+
+        $user = User::factory()->create([
+            'tenant_id' => $tenant->id,
+            'role' => 'owner',
+        ]);
+
+        $response = $this->actingAs($user)
+            ->withSession(['tenant_id' => $tenant->id])
+            ->get('/app/dashboard');
 
         $response->assertOk();
         $response->assertSee('Dormitory Dashboard');
@@ -20,18 +36,23 @@ class DormitoryFlowTest extends TestCase
 
     public function test_rooms_page_only_shows_active_tenant_rooms(): void
     {
-        $tenantA = \App\Models\Tenant::create([
+        $tenantA = Tenant::create([
             'name' => 'A Dorm',
             'domain' => 'a.local',
             'plan' => 'pro',
             'status' => 'active',
         ]);
 
-        $tenantB = \App\Models\Tenant::create([
+        $tenantB = Tenant::create([
             'name' => 'B Dorm',
             'domain' => 'b.local',
             'plan' => 'basic',
             'status' => 'active',
+        ]);
+
+        $user = User::factory()->create([
+            'tenant_id' => $tenantA->id,
+            'role' => 'owner',
         ]);
 
         \App\Models\Room::create([
@@ -52,7 +73,9 @@ class DormitoryFlowTest extends TestCase
             'status' => 'vacant',
         ]);
 
-        $response = $this->withSession(['tenant_id' => $tenantA->id])->get('/app/rooms');
+        $response = $this->actingAs($user)
+            ->withSession(['tenant_id' => $tenantA->id])
+            ->get('/app/rooms');
 
         $response->assertOk();
         $response->assertSee('A-101');

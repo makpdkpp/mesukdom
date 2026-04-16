@@ -18,7 +18,8 @@ class SetCurrentTenant
             return $next($request);
         }
 
-        $tenantId = $request->integer('tenant') ?: (int) $request->session()->get('tenant_id');
+        $tenantId = $request->user()?->tenant_id
+            ?: ($request->integer('tenant') ?: (int) $request->session()->get('tenant_id'));
 
         $tenant = $tenantId
             ? Tenant::query()->find($tenantId)

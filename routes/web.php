@@ -2,11 +2,16 @@
 
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\LineWebhookController;
+use App\Http\Controllers\PricingController;
 use Illuminate\Support\Facades\Route;
 
 Route::view('/', 'landing')->name('landing');
 
-Route::prefix('app')->group(function (): void {
+Route::get('/pricing', [PricingController::class, 'index'])->name('pricing');
+
+Route::redirect('/dashboard', '/app/dashboard')->middleware(['auth', 'verified'])->name('dashboard');
+
+Route::middleware(['auth', 'verified'])->prefix('app')->group(function (): void {
     Route::get('/dashboard', [DashboardController::class, 'dashboard'])->name('app.dashboard');
 
     Route::get('/rooms', [DashboardController::class, 'rooms'])->name('app.rooms');
