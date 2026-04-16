@@ -4,6 +4,18 @@
             <x-authentication-card-logo />
         </x-slot>
 
+        <x-slot name="eyebrow">
+            Recovery Flow
+        </x-slot>
+
+        <x-slot name="title">
+            ขอรีเซ็ตรหัสผ่าน
+        </x-slot>
+
+        <x-slot name="description">
+            ใส่อีเมลที่ใช้เข้าสู่ระบบ แล้วระบบจะส่งลิงก์สำหรับตั้งรหัสผ่านใหม่กลับไปยังอีเมลของคุณ
+        </x-slot>
+
         <div class="mb-4 text-sm text-gray-600">
             {{ __('Forgot your password? No problem. Just let us know your email address and we will email you a password reset link that will allow you to choose a new one.') }}
         </div>
@@ -28,6 +40,10 @@
                 <x-button>
                     {{ __('Email Password Reset Link') }}
                 </x-button>
+            </div>
+
+            <div class="mt-6 text-sm text-slate-500">
+                จำรหัสผ่านได้แล้ว? <a href="{{ route('login') }}" class="font-semibold text-slate-700 underline decoration-amber-400 decoration-2 underline-offset-4">กลับไปหน้า Login</a>
             </div>
         </form>
     </x-authentication-card>

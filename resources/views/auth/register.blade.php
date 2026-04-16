@@ -4,6 +4,26 @@
             <x-authentication-card-logo />
         </x-slot>
 
+        <x-slot name="eyebrow">
+            Create Tenant
+        </x-slot>
+
+        <x-slot name="title">
+            สมัครใช้งานและเปิด tenant ใหม่
+        </x-slot>
+
+        <x-slot name="description">
+            กรอกข้อมูลเจ้าของหอ ชื่อหอพัก และแพ็กเกจที่ต้องการ ระบบจะสร้าง owner account และ tenant ให้ในขั้นตอนเดียว
+        </x-slot>
+
+        <x-slot name="asideTitle">
+            Owner onboarding พร้อม plan selection
+        </x-slot>
+
+        <x-slot name="asideDescription">
+            เลือกแพ็กเกจจาก pricing แล้วส่งต่อมายังหน้าสมัครได้ทันที เพื่อให้ระบบสร้าง tenant context และผูก owner role ให้โดยอัตโนมัติ
+        </x-slot>
+
         <x-validation-errors class="mb-4" />
 
         <form method="POST" action="{{ route('register') }}">
@@ -62,7 +82,7 @@
                 </div>
             @endif
 
-            <div class="flex items-center justify-end mt-4">
+            <div class="mt-6 flex items-center justify-between gap-4">
                 <a class="underline text-sm text-gray-600 hover:text-gray-900 rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500" href="{{ route('login') }}">
                     {{ __('Already registered?') }}
                 </a>

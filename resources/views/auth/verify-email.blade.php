@@ -4,6 +4,18 @@
             <x-authentication-card-logo />
         </x-slot>
 
+        <x-slot name="eyebrow">
+            Verify Email
+        </x-slot>
+
+        <x-slot name="title">
+            ยืนยันอีเมลก่อนเข้าใช้งานต่อ
+        </x-slot>
+
+        <x-slot name="description">
+            ระบบต้องยืนยันว่าอีเมลนี้เป็นของคุณก่อน เพื่อเปิดสิทธิ์เข้า tenant portal และป้องกันการใช้งานผิดบัญชี
+        </x-slot>
+
         <div class="mb-4 text-sm text-gray-600">
             {{ __('Before continuing, could you verify your email address by clicking on the link we just emailed to you? If you didn\'t receive the email, we will gladly send you another.') }}
         </div>

@@ -68,4 +68,26 @@ class User extends Authenticatable implements MustVerifyEmail
             'password' => 'hashed',
         ];
     }
+
+    public function hasRole(string $role): bool
+    {
+        return $this->role === $role;
+    }
+
+    public function hasAnyRole(array|string $roles): bool
+    {
+        $roles = is_array($roles) ? $roles : [$roles];
+
+        return in_array($this->role, $roles, true);
+    }
+
+    public function canAccessTenantPortal(): bool
+    {
+        return $this->hasAnyRole(['owner', 'staff']);
+    }
+
+    public function canAccessAdminPortal(): bool
+    {
+        return $this->hasAnyRole(['super_admin', 'support_admin']);
+    }
 }

@@ -4,6 +4,18 @@
             <x-authentication-card-logo />
         </x-slot>
 
+        <x-slot name="eyebrow">
+            Secure Confirmation
+        </x-slot>
+
+        <x-slot name="title">
+            ยืนยันรหัสผ่านอีกครั้ง
+        </x-slot>
+
+        <x-slot name="description">
+            หน้าบางส่วนของระบบต้องยืนยันตัวตนซ้ำ เพื่อป้องกันการเปลี่ยนข้อมูลสำคัญโดยไม่ได้รับอนุญาต
+        </x-slot>
+
         <div class="mb-4 text-sm text-gray-600">
             {{ __('This is a secure area of the application. Please confirm your password before continuing.') }}
         </div>

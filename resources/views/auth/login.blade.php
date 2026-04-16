@@ -4,6 +4,26 @@
             <x-authentication-card-logo />
         </x-slot>
 
+        <x-slot name="eyebrow">
+            Sign In
+        </x-slot>
+
+        <x-slot name="title">
+            เข้าสู่ระบบเพื่อจัดการหอพักของคุณ
+        </x-slot>
+
+        <x-slot name="description">
+            สำหรับ owner, staff หรือทีม support ที่ได้รับสิทธิ์ ใช้อีเมลเดิมเพื่อเข้าสู่ dashboard และระบบจัดการ tenant ของคุณ
+        </x-slot>
+
+        <x-slot name="asideTitle">
+            จาก landing page เข้าสู่ portal ได้ทันที
+        </x-slot>
+
+        <x-slot name="asideDescription">
+            หน้านี้เป็นส่วนหนึ่งของ onboarding flow เดียวกับ pricing, register, forgot password และ email verification
+        </x-slot>
+
         <x-validation-errors class="mb-4" />
 
         @session('status')
@@ -32,7 +52,7 @@
                 </label>
             </div>
 
-            <div class="flex items-center justify-end mt-4">
+            <div class="mt-6 flex items-center justify-between gap-4">
                 @if (Route::has('password.request'))
                     <a class="underline text-sm text-gray-600 hover:text-gray-900 rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500" href="{{ route('password.request') }}">
                         {{ __('Forgot your password?') }}
@@ -42,6 +62,10 @@
                 <x-button class="ms-4">
                     {{ __('Log in') }}
                 </x-button>
+            </div>
+
+            <div class="mt-6 text-sm text-slate-500">
+                ยังไม่มีบัญชี? <a href="{{ route('register') }}" class="font-semibold text-slate-700 underline decoration-amber-400 decoration-2 underline-offset-4">สมัครใช้งาน MesukDom</a>
             </div>
         </form>
     </x-authentication-card>

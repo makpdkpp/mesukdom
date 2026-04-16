@@ -3,6 +3,8 @@
 namespace Tests\Feature;
 
 use App\Models\Plan;
+use App\Models\Tenant;
+use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Fortify\Features;
 use Laravel\Jetstream\Jetstream;
@@ -59,6 +61,15 @@ class RegistrationTest extends TestCase
         ]);
 
         $this->assertAuthenticated();
+        $tenant = Tenant::query()->where('name', 'Test Dorm')->first();
+
+        $this->assertNotNull($tenant);
+        $this->assertDatabaseHas('users', [
+            'tenant_id' => $tenant->id,
+            'email' => 'test@example.com',
+            'role' => 'owner',
+        ]);
+        $this->assertTrue(User::query()->where('tenant_id', $tenant->id)->where('email', 'test@example.com')->exists());
         $response->assertRedirect('/app/dashboard');
     }
 }

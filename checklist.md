@@ -11,6 +11,9 @@
 
 ### 1) โครงสร้างระบบหลัก
 - [x] สร้างหน้า Landing Page สำหรับแนะนำระบบ
+- [x] ปรับ public site ให้มี marketing sections, CTA และ layout กลางสำหรับหน้า Landing/Pricing
+- [x] ปรับ auth pages ให้ใช้ visual language เดียวกับ public site
+- [x] เพิ่ม social proof / testimonial section สำหรับ public demo
 - [x] ตั้งค่าเลย์เอาต์ฝั่ง Dashboard แนว AdminLTE
 - [x] เพิ่ม routing หลักของระบบทั้ง public, tenant portal และ admin portal
 
@@ -42,7 +45,7 @@
 
 ## การตรวจสอบและทดสอบ
 - [x] ทดสอบด้วยชุด Feature Tests และ Unit Tests
-- [x] ผลการทดสอบผ่านทั้งหมด 5 tests
+- [x] ผลการทดสอบล่าสุดผ่าน 37 tests และมี 4 tests ถูก skip ตาม feature flag/API support
 - [x] ยืนยันว่า dashboard เปิดใช้งานได้จริงด้วยสถานะ 200
 - [x] เปิด dev server และเข้าใช้งานระบบได้
 
@@ -53,18 +56,23 @@
 ## งานที่สามารถทำต่อได้
 
 ### 1) Landing Page (Public Site)
-- [ ] เพิ่มหน้า Pricing Plan
-- [ ] เพิ่ม flow สมัครใช้งาน SaaS (Owner สมัคร)
-- [ ] สมัครแล้วสร้าง Tenant ใหม่ + สร้าง Admin User ของ Tenant อัตโนมัติ
-- [ ] เพิ่มหน้า Login
-- [ ] เพิ่ม Forgot Password
-- [ ] เพิ่ม Email Verification
+- [x] เพิ่มหน้า Pricing Plan
+- [x] เพิ่ม flow สมัครใช้งาน SaaS (Owner สมัคร)
+- [x] สมัครแล้วสร้าง Tenant ใหม่ + สร้าง Admin User ของ Tenant อัตโนมัติ
+- [x] เพิ่มหน้า Login
+- [x] เพิ่ม Forgot Password
+- [x] เพิ่ม Email Verification
 
 ### 2) Authentication / Authorization / Roles
 - [ ] เพิ่มระบบ Authentication (เช่น Laravel Breeze/Jetstream หรือ custom) ให้ครบ flow
 - [ ] เพิ่ม Role Permission ตามที่ระบุ (Super Admin / Support Admin / Owner / Staff)
 - [ ] เพิ่ม Policy Authorization สำหรับโมดูลหลัก
 - [ ] ผูกการเลือก tenant กับ user login (แทน query/session แบบ demo)
+
+### ความคืบหน้าเพิ่มเติมล่าสุด
+- [x] เพิ่ม role-based route guard เบื้องต้นสำหรับ tenant portal (`owner`, `staff`) และ admin portal (`super_admin`, `support_admin`)
+- [x] เพิ่ม Gate สำหรับ `accessAdminPortal` และ `accessTenantPortal`
+- [x] เพิ่มชุดทดสอบ authorization ของ admin/tenant portal
 
 ### 3) Multi-Tenant แบบใช้งานจริง
 - [ ] Tenant resolve จาก domain/subdomain (ใช้ field `tenants.domain`)

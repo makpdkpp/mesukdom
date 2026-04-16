@@ -3,15 +3,27 @@
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\LineWebhookController;
 use App\Http\Controllers\PricingController;
+use App\Models\Plan;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Facades\Schema;
 
-Route::view('/', 'landing')->name('landing');
+Route::get('/', function () {
+    return view('landing', [
+        'plans' => Schema::hasTable('plans')
+            ? Plan::query()
+                ->where('is_active', true)
+                ->orderBy('sort_order')
+                ->get()
+            : new Collection(),
+    ]);
+})->name('landing');
 
 Route::get('/pricing', [PricingController::class, 'index'])->name('pricing');
 
 Route::redirect('/dashboard', '/app/dashboard')->middleware(['auth', 'verified'])->name('dashboard');
 
-Route::middleware(['auth', 'verified'])->prefix('app')->group(function (): void {
+Route::middleware(['auth', 'verified', 'role:owner,staff'])->prefix('app')->group(function (): void {
     Route::get('/dashboard', [DashboardController::class, 'dashboard'])->name('app.dashboard');
 
     Route::get('/rooms', [DashboardController::class, 'rooms'])->name('app.rooms');
@@ -31,6 +43,8 @@ Route::middleware(['auth', 'verified'])->prefix('app')->group(function (): void 
     Route::post('/payments', [DashboardController::class, 'storePayment'])->name('app.payments.store');
 });
 
-Route::get('/admin', [DashboardController::class, 'admin'])->name('admin.dashboard');
+Route::get('/admin', [DashboardController::class, 'admin'])
+    ->middleware(['auth', 'verified', 'role:super_admin,support_admin'])
+    ->name('admin.dashboard');
 Route::get('/resident/invoices/{invoice:public_id}', [DashboardController::class, 'residentInvoice'])->name('resident.invoice');
 Route::post('/line/webhook', LineWebhookController::class)->name('line.webhook');
