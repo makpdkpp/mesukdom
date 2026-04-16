@@ -215,7 +215,7 @@ Trigger:
 Access ผ่าน:
 
 * Email Link
-* LINE OA
+* LINE OA ดูต่อที่ domlineoa.md
 * SMS Link
 
 ### Features

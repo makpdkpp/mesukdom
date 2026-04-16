@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Models\Tenant;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -40,5 +41,67 @@ class AuthenticationTest extends TestCase
         ]);
 
         $this->assertGuest();
+    }
+
+    public function test_super_admin_users_are_redirected_to_admin_dashboard_after_login(): void
+    {
+        $user = User::factory()->create([
+            'role' => 'super_admin',
+            'email_verified_at' => now(),
+        ]);
+
+        $response = $this->post('/login', [
+            'email' => $user->email,
+            'password' => 'password',
+        ]);
+
+        $this->assertAuthenticated();
+        $response->assertRedirect('/admin');
+    }
+
+    public function test_owner_users_are_redirected_to_tenant_dashboard_after_login(): void
+    {
+        $tenant = Tenant::create([
+            'name' => 'Redirect Dorm',
+            'domain' => 'redirect.local',
+            'plan' => 'trial',
+            'status' => 'active',
+        ]);
+
+        $user = User::factory()->create([
+            'tenant_id' => $tenant->id,
+            'role' => 'owner',
+            'email_verified_at' => now(),
+        ]);
+
+        $response = $this->post('/login', [
+            'email' => $user->email,
+            'password' => 'password',
+        ]);
+
+        $this->assertAuthenticated();
+        $response->assertRedirect('/app/dashboard');
+    }
+
+    public function test_tenant_dashboard_uses_authenticated_users_tenant_context(): void
+    {
+        $tenant = Tenant::create([
+            'name' => 'Context Dorm',
+            'domain' => 'context.local',
+            'plan' => 'trial',
+            'status' => 'active',
+        ]);
+
+        $user = User::factory()->create([
+            'tenant_id' => $tenant->id,
+            'role' => 'owner',
+            'email_verified_at' => now(),
+        ]);
+
+        $response = $this->actingAs($user)->get('/app/dashboard');
+
+        $response->assertOk();
+        $response->assertSeeText('Room Status for '.$tenant->name);
+        $response->assertSessionHas('tenant_id', $tenant->id);
     }
 }

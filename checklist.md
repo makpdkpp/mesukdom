@@ -45,7 +45,7 @@
 
 ## การตรวจสอบและทดสอบ
 - [x] ทดสอบด้วยชุด Feature Tests และ Unit Tests
-- [x] ผลการทดสอบล่าสุดผ่าน 37 tests และมี 4 tests ถูก skip ตาม feature flag/API support
+- [x] ผลการทดสอบล่าสุดผ่าน 39 tests และมี 4 tests ถูก skip ตาม feature flag/API support
 - [x] ยืนยันว่า dashboard เปิดใช้งานได้จริงด้วยสถานะ 200
 - [x] เปิด dev server และเข้าใช้งานระบบได้
 
@@ -64,15 +64,33 @@
 - [x] เพิ่ม Email Verification
 
 ### 2) Authentication / Authorization / Roles
-- [ ] เพิ่มระบบ Authentication (เช่น Laravel Breeze/Jetstream หรือ custom) ให้ครบ flow
-- [ ] เพิ่ม Role Permission ตามที่ระบุ (Super Admin / Support Admin / Owner / Staff)
+- [x] เพิ่มระบบ Authentication (Laravel Fortify / Jetstream) ครบ flow สำหรับ register, login, forgot password และ email verification
+- [x] เพิ่ม Role Permission เบื้องต้นตามที่ระบุ (Super Admin / Support Admin / Owner / Staff) สำหรับ route access หลัก
 - [ ] เพิ่ม Policy Authorization สำหรับโมดูลหลัก
-- [ ] ผูกการเลือก tenant กับ user login (แทน query/session แบบ demo)
+- [x] ผูกการเลือก tenant กับ user login สำหรับ tenant portal หลักผ่าน `SetCurrentTenant`
 
 ### ความคืบหน้าเพิ่มเติมล่าสุด
 - [x] เพิ่ม role-based route guard เบื้องต้นสำหรับ tenant portal (`owner`, `staff`) และ admin portal (`super_admin`, `support_admin`)
 - [x] เพิ่ม Gate สำหรับ `accessAdminPortal` และ `accessTenantPortal`
 - [x] เพิ่มชุดทดสอบ authorization ของ admin/tenant portal
+- [x] เพิ่ม custom login redirect ให้ `super_admin` และ `support_admin` เข้า `/admin` หลัง login
+- [x] เพิ่มชุดทดสอบ hardening สำหรับ guest redirect, email verification requirement และ tenant context หลัง login
+- [x] ปิด Room Management ให้ครบ CRUD ตามแผน: เพิ่ม route/action สำหรับแก้ไขและลบห้อง พร้อมทดสอบ tenant isolation ระหว่างหอ
+- [x] ขยาย Resident Management ให้แก้ไข/ลบผู้เช่าได้ พร้อมแสดง rental history จาก contracts และเพิ่ม test กันแก้ไขข้าม tenant
+- [x] ขยาย Rental Contract ให้แก้ไข/ลบสัญญาได้ พร้อม sync สถานะห้องตาม contract status และเพิ่ม test tenant isolation ระหว่างหอ
+- [x] ย้ายหน้า Invoices และ Payments มาใช้ AdminLTE layout และเพิ่ม validation แบบ tenant-safe สำหรับการออกบิล บันทึกชำระเงิน และส่ง reminder
+- [x] เพิ่มกราฟ Revenue Trend บน tenant dashboard จาก approved payments 6 เดือนล่าสุด พร้อม test ว่าไม่ดึงข้อมูลข้าม tenant
+- [x] เพิ่ม auto status transition ของ invoice: `sent` ที่เกินกำหนดชำระกลายเป็น `overdue` อัตโนมัติ และ `approved payment` ปิดสถานะเป็น `paid`
+- [x] เพิ่มการดาวน์โหลดใบแจ้งหนี้ PDF สำหรับ tenant portal พร้อม test ว่าโหลดได้เฉพาะ invoice ของ tenant ปัจจุบัน
+- [x] เพิ่มการดาวน์โหลดใบเสร็จรับเงิน PDF สำหรับ approved payments พร้อม test tenant isolation
+- [x] เพิ่ม Upload Slip สำหรับ Payment Method 'slip' เก็บไฟล์ใน private storage ตาม tenant พร้อม view slip endpoint และ test tenant isolation
+- [x] เพิ่ม Approve/Reject workflow สำหรับ pending payments พร้อม sync invoice status อัตโนมัติและ test tenant isolation
+- [x] เพิ่ม End User portal: ผู้เช่า upload slip เพื่อแจ้งชำระเงินเองจากหน้า invoice link โดยไม่ต้อง login พร้อม test
+- [x] เพิ่ม Notification System: auto-email แจ้งผู้เช่าเมื่อ payment approved/rejected ผ่าน Laravel Mail + log ใน NotificationLog พร้อม test
+- [x] เพิ่มเลขใบเสร็จมาตรฐาน REC-YYYY-NNNN และผู้เช่าดาวน์โหลดใบเสร็จได้เองจาก resident portal พร้อม test
+- [x] เพิ่ม Tenant Suspension: admin สามารถ suspend/unsuspend tenant ได้จาก admin portal, tenant ที่ถูก suspend ไม่สามารถเข้า portal ได้, resident portal ก็ถูก block พร้อม test
+- [x] เพิ่ม Signed URL สำหรับ resident invoice portal: resident invoice view และ receipt download ต้องใช้ signed URL ที่ระบบสร้างให้, unsigned URL ถูก block ด้วย 403 พร้อม test
+- [x] เพิ่ม Background Jobs / Scheduler: สร้าง Artisan command 3 ตัว (invoices:generate-monthly, invoices:send-reminders, contracts:expire) พร้อม scheduler ใน console.php และ test ครบทุก case
 
 ### 3) Multi-Tenant แบบใช้งานจริง
 - [ ] Tenant resolve จาก domain/subdomain (ใช้ field `tenants.domain`)

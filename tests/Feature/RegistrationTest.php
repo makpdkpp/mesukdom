@@ -64,6 +64,10 @@ class RegistrationTest extends TestCase
         $tenant = Tenant::query()->where('name', 'Test Dorm')->first();
 
         $this->assertNotNull($tenant);
+        $this->assertSame($plan->id, $tenant->plan_id);
+        $this->assertSame('trial', $tenant->plan);
+        $this->assertSame('active', $tenant->status);
+        $this->assertNotNull($tenant->trial_ends_at);
         $this->assertDatabaseHas('users', [
             'tenant_id' => $tenant->id,
             'email' => 'test@example.com',

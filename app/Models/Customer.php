@@ -20,8 +20,16 @@ class Customer extends Model
         'email',
         'line_id',
         'line_user_id',
+        'line_linked_at',
         'id_card',
     ];
+
+    protected function casts(): array
+    {
+        return [
+            'line_linked_at' => 'datetime',
+        ];
+    }
 
     public function room(): BelongsTo
     {
@@ -36,5 +44,15 @@ class Customer extends Model
     public function invoices(): HasMany
     {
         return $this->hasMany(Invoice::class);
+    }
+
+    public function documents(): HasMany
+    {
+        return $this->hasMany(CustomerDocument::class);
+    }
+
+    public function lineLinks(): HasMany
+    {
+        return $this->hasMany(CustomerLineLink::class)->latest('id');
     }
 }

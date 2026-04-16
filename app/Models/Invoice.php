@@ -7,6 +7,8 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\URL;
 use Illuminate\Support\Str;
 
 class Invoice extends Model
@@ -55,9 +57,19 @@ class Invoice extends Model
         });
     }
 
+    public function signedResidentUrl(): string
+    {
+        return URL::signedRoute('resident.invoice', ['invoice' => $this->public_id]);
+    }
+
     public function contract(): BelongsTo
     {
         return $this->belongsTo(Contract::class);
+    }
+
+    public function tenant(): BelongsTo
+    {
+        return $this->belongsTo(Tenant::class);
     }
 
     public function customer(): BelongsTo
@@ -73,5 +85,31 @@ class Invoice extends Model
     public function payments(): HasMany
     {
         return $this->hasMany(Payment::class);
+    }
+
+    public function shouldBeOverdue(): bool
+    {
+        return $this->status === 'sent'
+            && $this->due_date !== null
+            && $this->due_date->lt(Carbon::today());
+    }
+
+    public function markAsOverdueIfNecessary(): bool
+    {
+        if (! $this->shouldBeOverdue()) {
+            return false;
+        }
+
+        $this->update(['status' => 'overdue']);
+
+        return true;
+    }
+
+    public static function markDueInvoicesAsOverdue(): int
+    {
+        return static::query()
+            ->where('status', 'sent')
+            ->whereDate('due_date', '<', Carbon::today())
+            ->update(['status' => 'overdue']);
     }
 }

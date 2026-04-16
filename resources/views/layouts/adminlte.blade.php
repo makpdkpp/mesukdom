@@ -45,6 +45,7 @@
                     <li class="nav-item"><a href="{{ route('app.contracts') }}" class="nav-link"><i class="nav-icon fas fa-file-signature"></i><p>Contracts</p></a></li>
                     <li class="nav-item"><a href="{{ route('app.invoices') }}" class="nav-link"><i class="nav-icon fas fa-file-invoice-dollar"></i><p>Invoices</p></a></li>
                     <li class="nav-item"><a href="{{ route('app.payments') }}" class="nav-link"><i class="nav-icon fas fa-money-check-alt"></i><p>Payments</p></a></li>
+                    <li class="nav-item"><a href="{{ route('app.settings') }}" class="nav-link"><i class="nav-icon fas fa-cog"></i><p>Settings</p></a></li>
                     @can('accessAdminPortal')
                         <li class="nav-item"><a href="{{ route('admin.dashboard') }}" class="nav-link"><i class="nav-icon fas fa-cogs"></i><p>Platform Admin</p></a></li>
                     @endcan

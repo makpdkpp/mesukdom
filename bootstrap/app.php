@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Middleware\CheckTenantActive;
 use App\Http\Middleware\EnsureUserHasRole;
 use App\Http\Middleware\SetCurrentTenant;
 use Illuminate\Foundation\Application;
@@ -18,6 +19,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'auth' => \Illuminate\Auth\Middleware\Authenticate::class,
             'verified' => \Illuminate\Auth\Middleware\EnsureEmailIsVerified::class,
             'role' => EnsureUserHasRole::class,
+            'tenant.active' => CheckTenantActive::class,
         ]);
 
         $middleware->web(append: [

@@ -37,14 +37,68 @@
             <h5 class="mt-4">Payment History</h5>
             <ul class="list-group">
                 @forelse($invoice->payments as $payment)
-                    <li class="list-group-item d-flex justify-content-between">
-                        <span>{{ ucfirst($payment->method) }} • {{ ucfirst($payment->status) }}</span>
-                        <span>{{ number_format((float) $payment->amount, 2) }} THB</span>
+                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                        <span>{{ ucfirst($payment->method) }} &bull; {{ ucfirst($payment->status) }}</span>
+                        <span class="d-flex align-items-center gap-2">
+                            {{ number_format((float) $payment->amount, 2) }} THB
+                            @if($payment->status === 'approved')
+                                &nbsp;
+                                <a href="{{ \Illuminate\Support\Facades\URL::signedRoute('resident.invoice.receipt', [$invoice->public_id, $payment->id]) }}" class="btn btn-sm btn-outline-success ml-2">Download Receipt</a>
+                            @endif
+                        </span>
                     </li>
                 @empty
                     <li class="list-group-item text-muted">No payment records yet</li>
                 @endforelse
             </ul>
+
+            @if(!in_array($invoice->status, ['paid', 'cancelled']))
+            {{-- PromptPay QR Section --}}
+            @if($invoice->tenant?->promptpay_number && isset($promptpayQr))
+            <div class="card mt-4 border-primary">
+                <div class="card-header bg-primary text-white"><strong>PromptPay QR Code</strong></div>
+                <div class="card-body text-center">
+                    <p class="mb-2">สแกน QR เพื่อชำระเงิน {{ number_format((float) $invoice->total_amount, 2) }} THB</p>
+                    <img src="data:image/svg+xml;base64,{{ base64_encode($promptpayQr) }}"
+                         alt="PromptPay QR" width="240" height="240" class="border rounded p-2 mb-2">
+                    <p class="text-muted small mb-0">หลังชำระเงิน กรุณาแนบสลิปด้านล่าง</p>
+                </div>
+            </div>
+            @endif
+
+            <div class="card mt-4 border-success">
+                <div class="card-header bg-success text-white"><strong>Submit Payment Slip</strong></div>
+                <div class="card-body">
+                    @if(session('status'))
+                        <div class="alert alert-success">{{ session('status') }}</div>
+                    @endif
+                    @if(session('error'))
+                        <div class="alert alert-danger">{{ session('error') }}</div>
+                    @endif
+                    <form method="POST" action="{{ route('resident.invoice.pay-slip', $invoice->public_id) }}" enctype="multipart/form-data">
+                        @csrf
+                        <div class="form-group">
+                            <label>Amount Paid (THB)</label>
+                            <input name="amount" type="number" step="0.01" class="form-control @error('amount') is-invalid @enderror" value="{{ old('amount', $invoice->total_amount) }}" required>
+                            @error('amount') <div class="invalid-feedback">{{ $message }}</div> @enderror
+                        </div>
+                        <div class="form-group">
+                            <label>Payment Date</label>
+                            <input name="payment_date" type="date" class="form-control @error('payment_date') is-invalid @enderror" value="{{ old('payment_date', now()->toDateString()) }}" required>
+                            @error('payment_date') <div class="invalid-feedback">{{ $message }}</div> @enderror
+                        </div>
+                        <div class="form-group">
+                            <label>Payment Slip <span class="text-muted">(jpg/png/pdf, max 5 MB)</span></label>
+                            <input name="slip" type="file" class="form-control-file @error('slip') is-invalid @enderror" accept=".jpg,.jpeg,.png,.pdf" required>
+                            @error('slip') <div class="invalid-feedback">{{ $message }}</div> @enderror
+                        </div>
+                        <button type="submit" class="btn btn-success">Submit Slip</button>
+                    </form>
+                </div>
+            </div>
+            @else
+            <div class="alert alert-success mt-4">This invoice has been settled. Thank you! You can download your receipt from the payment history above.</div>
+            @endif
         </div>
     </div>
 </div>

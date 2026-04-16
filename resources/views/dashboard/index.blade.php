@@ -42,6 +42,27 @@
 
 <div class="row">
     <div class="col-md-8">
+        <div class="card card-outline card-info">
+            <div class="card-header">
+                <h3 class="card-title">Revenue Trend</h3>
+            </div>
+            <div class="card-body">
+                <p class="text-muted mb-4">Approved payments from the last 6 months for {{ $tenant->name ?? 'your dormitory' }}</p>
+                <div class="d-flex align-items-end justify-content-between" style="gap: 0.75rem; min-height: 240px;">
+                    @foreach($revenueTrend as $point)
+                        @php($barHeight = max(12, (int) round(($point['total'] / $revenueTrendMax) * 160)))
+                        <div class="d-flex flex-column align-items-center flex-fill text-center">
+                            <div class="small font-weight-bold text-info mb-2">{{ number_format((float) $point['total'], 0) }}</div>
+                            <svg viewBox="0 0 48 170" width="100%" height="170" aria-label="{{ $point['label'] }} revenue {{ number_format((float) $point['total'], 0) }}">
+                                <rect x="6" y="{{ 170 - $barHeight }}" width="36" height="{{ $barHeight }}" rx="8" fill="#17a2b8"></rect>
+                            </svg>
+                            <div class="small text-muted mt-2">{{ $point['label'] }}</div>
+                        </div>
+                    @endforeach
+                </div>
+            </div>
+        </div>
+
         <div class="card">
             <div class="card-header"><h3 class="card-title">Dormitory Dashboard</h3></div>
             <div class="card-body">

@@ -17,6 +17,9 @@ class PublicSiteTest extends TestCase
         $response->assertOk();
         $response->assertSee('MesukDom');
         $response->assertSee('จัดการหอพักครบตั้งแต่ห้องว่างจนถึงบิลค้างชำระ');
+        $response->assertSee(route('pricing'), false);
+        $response->assertSee(route('register'), false);
+        $response->assertSee(route('login'), false);
     }
 
     public function test_pricing_page_displays_active_plans(): void

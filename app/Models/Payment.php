@@ -20,7 +20,23 @@ class Payment extends Model
         'status',
         'slip_path',
         'notes',
+        'receipt_no',
     ];
+
+    public static function generateReceiptNo(int $tenantId): string
+    {
+        $year = now()->year;
+        $last = self::withoutGlobalScopes()
+            ->where('tenant_id', $tenantId)
+            ->whereNotNull('receipt_no')
+            ->where('receipt_no', 'like', "REC-{$year}-%")
+            ->orderByDesc('receipt_no')
+            ->value('receipt_no');
+
+        $seq = $last ? ((int) substr($last, -4)) + 1 : 1;
+
+        return sprintf('REC-%s-%04d', $year, $seq);
+    }
 
     protected function casts(): array
     {

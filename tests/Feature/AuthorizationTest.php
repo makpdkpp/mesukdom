@@ -11,6 +11,13 @@ class AuthorizationTest extends TestCase
 {
     use RefreshDatabase;
 
+    public function test_guest_is_redirected_from_tenant_dashboard(): void
+    {
+        $response = $this->get('/app/dashboard');
+
+        $response->assertRedirect('/login');
+    }
+
     public function test_guest_is_redirected_from_admin_dashboard(): void
     {
         $response = $this->get('/admin');
@@ -58,5 +65,24 @@ class AuthorizationTest extends TestCase
         $response = $this->actingAs($admin)->get('/app/dashboard');
 
         $response->assertForbidden();
+    }
+
+    public function test_unverified_owner_is_redirected_to_email_verification_before_tenant_dashboard(): void
+    {
+        $tenant = Tenant::create([
+            'name' => 'Unverified Dorm',
+            'domain' => 'unverified.local',
+            'plan' => 'trial',
+            'status' => 'active',
+        ]);
+
+        $owner = User::factory()->unverified()->create([
+            'tenant_id' => $tenant->id,
+            'role' => 'owner',
+        ]);
+
+        $response = $this->actingAs($owner)->get('/app/dashboard');
+
+        $response->assertRedirect('/email/verify');
     }
 }
