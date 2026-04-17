@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Middleware\CheckTenantActive;
+use App\Http\Middleware\EnsureTenantCanWrite;
 use App\Http\Middleware\EnsureUserHasRole;
 use App\Http\Middleware\SetCurrentTenant;
 use Illuminate\Foundation\Application;
@@ -31,6 +32,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'verified' => \Illuminate\Auth\Middleware\EnsureEmailIsVerified::class,
             'role' => EnsureUserHasRole::class,
             'tenant.active' => CheckTenantActive::class,
+            'tenant.write' => EnsureTenantCanWrite::class,
         ]);
 
         $middleware->web(append: [
@@ -39,6 +41,7 @@ return Application::configure(basePath: dirname(__DIR__))
 
         $middleware->validateCsrfTokens(except: [
             'line/webhook',
+            'stripe/webhook',
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

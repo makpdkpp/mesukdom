@@ -51,7 +51,7 @@
                         <li class="nav-item"><a href="{{ route('app.contracts') }}" class="nav-link"><i class="nav-icon fas fa-file-signature"></i><p>Contracts</p></a></li>
                         <li class="nav-item"><a href="{{ route('app.invoices') }}" class="nav-link"><i class="nav-icon fas fa-file-invoice-dollar"></i><p>Invoices</p></a></li>
                         <li class="nav-item"><a href="{{ route('app.payments') }}" class="nav-link"><i class="nav-icon fas fa-money-check-alt"></i><p>Payments</p></a></li>
-                        <li class="nav-item"><a href="{{ route('app.broadcasts') }}" class="nav-link"><i class="nav-icon fas fa-bullhorn"></i><p>Broadcasts</p></a></li>
+                        <li class="nav-item"><a href="{{ route('app.billing') }}" class="nav-link"><i class="nav-icon fas fa-credit-card"></i><p>Billing</p></a></li>
                         <li class="nav-item"><a href="{{ route('app.line-activity') }}" class="nav-link"><i class="nav-icon fab fa-line"></i><p>LINE Activity</p></a></li>
                         <li class="nav-item"><a href="{{ route('app.settings') }}" class="nav-link"><i class="nav-icon fas fa-cog"></i><p>Settings</p></a></li>
                         @can('accessAdminPortal')

@@ -54,6 +54,11 @@ final class AdminPortalController extends Controller
     {
         $plans = Plan::query()->orderBy('sort_order')->get();
         $tenants = Tenant::query()->with('subscriptionPlan')->orderBy('name')->get();
+        $platformSetting = PlatformSetting::current();
+        $stripeReadiness = $platformSetting->stripeReadinessPayload();
+        $plansMissingStripePrice = $plans
+            ->filter(fn (Plan $plan): bool => filled($plan->getAttribute('is_active')) && blank($plan->stripe_price_id))
+            ->values();
         $usageMap = SlipVerificationUsage::query()
             ->selectRaw('tenant_id, count(*) as total')
             ->where('provider', 'slipok')
@@ -69,7 +74,9 @@ final class AdminPortalController extends Controller
             'notificationLogs' => NotificationLog::query()->latest()->take(12)->get(),
             'tenants' => $tenants,
             'plans' => $plans,
-            'platformSetting' => PlatformSetting::current(),
+            'platformSetting' => $platformSetting,
+            'stripeReadiness' => $stripeReadiness,
+            'plansMissingStripePrice' => $plansMissingStripePrice,
             'slipOkUsageTotal' => SlipVerificationUsage::withoutGlobalScopes()
                 ->where('provider', 'slipok')
                 ->where('usage_month', now()->format('Y-m'))

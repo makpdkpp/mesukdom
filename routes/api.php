@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\LineWebhookController;
+use App\Http\Controllers\StripeWebhookController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
@@ -9,3 +10,5 @@ Route::get('/user', function (Request $request) {
 })->middleware('auth:sanctum');
 
 Route::post('/line/webhook', LineWebhookController::class)->name('api.line.webhook');
+
+Route::post('/stripe/webhook', StripeWebhookController::class)->name('api.stripe.webhook');

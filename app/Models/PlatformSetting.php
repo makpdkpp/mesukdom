@@ -98,6 +98,30 @@ final class PlatformSetting extends Model
             && filled($this->slipok_secret_header_name);
     }
 
+    public function hasStripeCredentials(): bool
+    {
+        if (! $this->stripe_enabled) {
+            return false;
+        }
+
+        return filled($this->stripe_publishable_key)
+            && filled($this->stripe_secret_key)
+            && filled($this->stripe_webhook_secret)
+            && in_array($this->stripe_mode, ['test', 'live'], true);
+    }
+
+    public function stripeReadinessPayload(): array
+    {
+        return [
+            'enabled' => (bool) $this->stripe_enabled,
+            'mode' => (string) ($this->stripe_mode ?? 'test'),
+            'publishable_key_configured' => filled($this->stripe_publishable_key),
+            'secret_key_configured' => filled($this->stripe_secret_key),
+            'webhook_secret_configured' => filled($this->stripe_webhook_secret),
+            'ready' => $this->hasStripeCredentials(),
+        ];
+    }
+
     private function decryptNullableString(mixed $value): ?string
     {
         if ($value === null || $value === '') {

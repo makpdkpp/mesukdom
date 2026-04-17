@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\BroadcastController;
 use App\Http\Controllers\AdminPortalController;
+use App\Http\Controllers\BillingController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\PricingController;
 use App\Http\Controllers\ResidentLineLinkController;
@@ -18,6 +19,14 @@ Route::get('/pricing', [PricingController::class, 'index'])->name('pricing');
 Route::redirect('/dashboard', '/app/dashboard')->middleware(['auth', 'verified'])->name('dashboard');
 
 Route::middleware(['auth', 'verified', 'role:owner,staff', 'tenant.active'])->prefix('app')->group(function (): void {
+    Route::get('/billing', [BillingController::class, 'index'])->name('app.billing');
+    Route::post('/billing/checkout', [BillingController::class, 'checkout'])->name('app.billing.checkout');
+    Route::get('/billing/success', [BillingController::class, 'success'])->name('app.billing.success');
+    Route::get('/billing/cancel', [BillingController::class, 'cancel'])->name('app.billing.cancel');
+    Route::post('/billing/portal', [BillingController::class, 'portal'])->name('app.billing.portal');
+});
+
+Route::middleware(['auth', 'verified', 'role:owner,staff', 'tenant.active', 'tenant.write'])->prefix('app')->group(function (): void {
     Route::get('/dashboard', [DashboardController::class, 'dashboard'])->name('app.dashboard');
 
     Route::get('/rooms', [DashboardController::class, 'rooms'])->name('app.rooms');

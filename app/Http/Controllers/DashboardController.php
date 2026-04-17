@@ -96,6 +96,16 @@ class DashboardController extends Controller
 
     public function storeRoom(Request $request): RedirectResponse
     {
+        $tenant = app(TenantContext::class)->tenant();
+        $plan = $tenant?->resolvedPlan();
+        $roomsLimit = $plan?->roomsLimit() ?? 0;
+
+        if ($roomsLimit > 0 && Room::query()->count() >= $roomsLimit) {
+            return back()
+                ->withInput()
+                ->withErrors(['room_number' => 'Room limit reached for your current package. Please upgrade to add more rooms.']);
+        }
+
         Room::create($this->validateRoom($request));
 
         return back()->with('status', 'Room saved successfully.');

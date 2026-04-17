@@ -51,6 +51,37 @@
             <form method="POST" action="{{ route('admin.stripe.settings.update') }}">
                 @csrf
                 <div class="card-body">
+                    <div class="alert alert-light border mb-3">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <strong>Stripe readiness</strong>
+                            @if(($stripeReadiness['ready'] ?? false) === true)
+                                <span class="badge badge-success">Ready</span>
+                            @elseif(($stripeReadiness['enabled'] ?? false) === true)
+                                <span class="badge badge-warning">Incomplete</span>
+                            @else
+                                <span class="badge badge-secondary">Disabled</span>
+                            @endif
+                        </div>
+                        <div class="mt-2 text-sm text-muted">
+                            Mode: <strong>{{ $stripeReadiness['mode'] ?? 'test' }}</strong> |
+                            Publishable key: <strong>{{ ($stripeReadiness['publishable_key_configured'] ?? false) ? 'OK' : 'Missing' }}</strong> |
+                            Secret key: <strong>{{ ($stripeReadiness['secret_key_configured'] ?? false) ? 'OK' : 'Missing' }}</strong> |
+                            Webhook secret: <strong>{{ ($stripeReadiness['webhook_secret_configured'] ?? false) ? 'OK' : 'Missing' }}</strong>
+                        </div>
+
+                        @if(isset($plansMissingStripePrice) && $plansMissingStripePrice->count() > 0)
+                            <hr>
+                            <div class="text-sm">
+                                <strong>Plans missing Stripe Price ID:</strong>
+                                <div class="mt-1">
+                                    @foreach($plansMissingStripePrice as $plan)
+                                        <span class="badge badge-danger">{{ $plan->name }}</span>
+                                    @endforeach
+                                </div>
+                                <div class="mt-2 text-muted">Set `stripe_price_id` per plan in <a href="{{ route('admin.packages') }}"><strong>Package Management</strong></a>.</div>
+                            </div>
+                        @endif
+                    </div>
                     <div class="form-group form-check">
                         <input type="hidden" name="stripe_enabled" value="0">
                         <input type="checkbox" class="form-check-input" id="stripe_enabled" name="stripe_enabled" value="1" @checked($platformSetting->stripe_enabled)>

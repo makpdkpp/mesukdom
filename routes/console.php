@@ -2,6 +2,7 @@
 
 use App\Console\Commands\ExpireContracts;
 use App\Console\Commands\GenerateMonthlyInvoices;
+use App\Console\Commands\SendTrialExpiryReminders;
 use App\Console\Commands\SendContractExpiryReminders;
 use App\Console\Commands\SendOverdueWarnings;
 use App\Console\Commands\SendPaymentReminders;
@@ -30,3 +31,6 @@ Schedule::command(SendContractExpiryReminders::class, ['--days=7'])->dailyAt('08
 
 // Expire past-due contracts and free up rooms — runs every morning at 07:00
 Schedule::command(ExpireContracts::class)->dailyAt('07:00');
+
+// Notify tenant owners when trial is about to expire (3 days out) — runs every morning at 08:45
+Schedule::command(SendTrialExpiryReminders::class, ['--days=3'])->dailyAt('08:45');

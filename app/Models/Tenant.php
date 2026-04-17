@@ -214,6 +214,14 @@ class Tenant extends Model
         return $this->hasMany(BroadcastMessage::class);
     }
 
+    /**
+     * @return HasMany<SaasInvoice, $this>
+     */
+    public function saasInvoices(): HasMany
+    {
+        return $this->hasMany(SaasInvoice::class);
+    }
+
     public function normalizedLineBasicId(): ?string
     {
         $value = trim((string) $this->line_basic_id);
@@ -234,5 +242,37 @@ class Tenant extends Model
         }
 
         return 'https://line.me/R/ti/p/'.$basicId;
+    }
+
+    public function isSuspended(): bool
+    {
+        return $this->status === 'suspended';
+    }
+
+    public function isTrialExpired(): bool
+    {
+        if ($this->trial_ends_at === null) {
+            return false;
+        }
+
+        return $this->trial_ends_at->endOfDay()->isPast();
+    }
+
+    public function hasActiveSubscription(): bool
+    {
+        return in_array($this->subscription_status, ['active', 'trialing'], true);
+    }
+
+    public function canWrite(): bool
+    {
+        if ($this->isSuspended()) {
+            return false;
+        }
+
+        if ($this->hasActiveSubscription()) {
+            return true;
+        }
+
+        return ! $this->isTrialExpired();
     }
 }
