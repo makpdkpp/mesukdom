@@ -55,4 +55,9 @@ class Customer extends Model
     {
         return $this->hasMany(CustomerLineLink::class)->latest('id');
     }
+
+    public function lineMessages(): HasMany
+    {
+        return $this->hasMany(LineMessage::class)->latest('sent_at');
+    }
 }

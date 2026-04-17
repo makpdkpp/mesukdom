@@ -1,21 +1,14 @@
 <?php
 
+use App\Http\Controllers\BroadcastController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\PricingController;
-use App\Models\Plan;
-use Illuminate\Support\Collection;
+use App\Http\Controllers\ResidentSupportController;
+use App\Support\PublicSiteMetrics;
 use Illuminate\Support\Facades\Route;
-use Illuminate\Support\Facades\Schema;
 
-Route::get('/', function () {
-    return view('landing', [
-        'plans' => Schema::hasTable('plans')
-            ? Plan::query()
-                ->where('is_active', true)
-                ->orderBy('sort_order')
-                ->get()
-            : new Collection(),
-    ]);
+Route::get('/', function (PublicSiteMetrics $metrics) {
+    return view('landing', $metrics->landingPayload());
 })->name('landing');
 
 Route::get('/pricing', [PricingController::class, 'index'])->name('pricing');
@@ -54,6 +47,9 @@ Route::middleware(['auth', 'verified', 'role:owner,staff', 'tenant.active'])->pr
     Route::get('/payments/{payment}/slip', [DashboardController::class, 'viewSlip'])->name('app.payments.slip');
     Route::patch('/payments/{payment}/approve', [DashboardController::class, 'approvePayment'])->name('app.payments.approve');
     Route::patch('/payments/{payment}/reject', [DashboardController::class, 'rejectPayment'])->name('app.payments.reject');
+    
+    Route::get('/broadcasts', [BroadcastController::class, 'index'])->name('app.broadcasts');
+    Route::post('/broadcasts', [BroadcastController::class, 'store'])->name('app.broadcasts.store');
 
     Route::get('/settings', [DashboardController::class, 'settings'])->name('app.settings');
     Route::post('/settings', [DashboardController::class, 'updateSettings'])->name('app.settings.update');
@@ -69,5 +65,7 @@ Route::middleware(['auth', 'verified', 'role:super_admin,support_admin'])->prefi
 Route::middleware('signed')->group(function (): void {
     Route::get('/resident/invoices/{invoice:public_id}', [DashboardController::class, 'residentInvoice'])->name('resident.invoice');
     Route::get('/resident/invoices/{invoice:public_id}/payments/{payment}/receipt', [DashboardController::class, 'residentDownloadReceipt'])->name('resident.invoice.receipt');
+    Route::get('/resident/line/repair/{customer}', [ResidentSupportController::class, 'createRepairRequest'])->name('resident.line.repair.create');
+    Route::post('/resident/line/repair/{customer}', [ResidentSupportController::class, 'storeRepairRequest'])->name('resident.line.repair.store');
 });
 Route::post('/resident/invoices/{invoice:public_id}/pay-slip', [DashboardController::class, 'residentPaySlip'])->name('resident.invoice.pay-slip');

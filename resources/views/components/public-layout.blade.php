@@ -1,3 +1,7 @@
+@props([
+    'authModals' => false,
+])
+
 <!DOCTYPE html>
 <html lang="th">
 <head>
@@ -23,15 +27,19 @@
             --brand-accent-deep: #b45309;
             --brand-teal: #0f766e;
             --brand-rose: #be123c;
+            --brand-gold: #f59e0b;
+            --brand-shadow: rgba(15, 23, 42, 0.14);
         }
 
         body {
             font-family: 'Manrope', sans-serif;
             color: var(--brand-ink);
             background:
+                radial-gradient(circle at center top, rgba(255, 255, 255, 0.88), transparent 26%),
                 radial-gradient(circle at top left, rgba(245, 158, 11, 0.18), transparent 28%),
                 radial-gradient(circle at top right, rgba(15, 118, 110, 0.14), transparent 26%),
-                linear-gradient(180deg, #fffdf8 0%, #fff7ed 55%, #fffaf5 100%);
+                radial-gradient(circle at bottom right, rgba(148, 163, 184, 0.18), transparent 30%),
+                linear-gradient(180deg, #fffcf7 0%, #fff6ea 42%, #f6f7fb 100%);
         }
 
         h1, h2, h3, .font-display {
@@ -51,6 +59,90 @@
                 radial-gradient(circle at top right, rgba(217, 119, 6, 0.12), transparent 35%);
             border: 1px solid rgba(217, 119, 6, 0.12);
             box-shadow: 0 18px 60px rgba(148, 163, 184, 0.16);
+        }
+
+        .premium-panel {
+            background:
+                linear-gradient(160deg, rgba(15, 23, 42, 0.92), rgba(30, 41, 59, 0.88)),
+                radial-gradient(circle at top right, rgba(245, 158, 11, 0.16), transparent 32%);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            box-shadow: 0 28px 100px var(--brand-shadow);
+        }
+
+        .ambient-ring {
+            position: absolute;
+            inset: auto;
+            border-radius: 9999px;
+            border: 1px solid rgba(255, 255, 255, 0.35);
+            opacity: 0.6;
+            pointer-events: none;
+        }
+
+        @media (prefers-reduced-motion: no-preference) {
+            .reveal-up,
+            .reveal-soft {
+                opacity: 0;
+                animation-fill-mode: forwards;
+                animation-duration: 0.86s;
+                animation-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
+                animation-delay: var(--enter-delay, 0s);
+            }
+
+            .reveal-up {
+                animation-name: reveal-up;
+            }
+
+            .reveal-soft {
+                animation-name: reveal-soft;
+            }
+
+            .float-glow {
+                animation: float-glow 8s ease-in-out infinite;
+            }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            .reveal-up,
+            .reveal-soft,
+            .float-glow {
+                animation: none;
+                opacity: 1;
+            }
+        }
+
+        @keyframes reveal-up {
+            from {
+                opacity: 0;
+                transform: translateY(26px) scale(0.985);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+            }
+        }
+
+        @keyframes reveal-soft {
+            from {
+                opacity: 0;
+                transform: translateY(18px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes float-glow {
+            0%,
+            100% {
+                transform: translateY(0);
+            }
+
+            50% {
+                transform: translateY(-8px);
+            }
         }
 
         .signal-dot {
@@ -76,18 +168,23 @@
             </a>
 
             <nav class="hidden items-center gap-6 text-sm font-semibold text-slate-600 md:flex">
-                <a href="{{ route('landing') }}#features" class="transition hover:text-slate-950">Features</a>
-                <a href="{{ route('landing') }}#workflow" class="transition hover:text-slate-950">Workflow</a>
+                <a href="{{ route('landing') }}#preview" class="transition hover:text-slate-950">Preview</a>
+                <a href="{{ route('landing') }}#trust" class="transition hover:text-slate-950">Trust</a>
                 <a href="{{ route('pricing') }}" class="transition hover:text-slate-950">Pricing</a>
-                <a href="{{ route('landing') }}#faq" class="transition hover:text-slate-950">FAQ</a>
+                <a href="{{ route('landing') }}#try" class="transition hover:text-slate-950">Try</a>
             </nav>
 
             <div class="flex items-center gap-3">
                 @auth
                     <a href="{{ route('app.dashboard') }}" class="inline-flex items-center rounded-full border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:border-slate-950 hover:text-slate-950">Dashboard</a>
                 @else
-                    <a href="{{ route('login') }}" class="hidden text-sm font-semibold text-slate-600 transition hover:text-slate-950 sm:inline">Login</a>
-                    <a href="{{ route('register') }}" class="inline-flex items-center rounded-full bg-slate-950 px-4 py-2 text-sm font-semibold text-white shadow-lg shadow-slate-900/15 transition hover:bg-slate-800">เริ่มใช้งาน</a>
+                    @if($authModals)
+                        <button type="button" data-open-auth-modal="login" class="hidden text-sm font-semibold text-slate-600 transition hover:text-slate-950 sm:inline">Login</button>
+                        <button type="button" data-open-auth-modal="signup" class="inline-flex items-center rounded-full bg-slate-950 px-4 py-2 text-sm font-semibold text-white shadow-lg shadow-slate-900/15 transition hover:bg-slate-800">เริ่มใช้งาน</button>
+                    @else
+                        <a href="{{ route('login') }}" class="hidden text-sm font-semibold text-slate-600 transition hover:text-slate-950 sm:inline">Login</a>
+                        <a href="{{ route('register') }}" class="inline-flex items-center rounded-full bg-slate-950 px-4 py-2 text-sm font-semibold text-white shadow-lg shadow-slate-900/15 transition hover:bg-slate-800">เริ่มใช้งาน</a>
+                    @endif
                 @endauth
             </div>
         </div>
@@ -105,11 +202,17 @@
             </div>
             <div class="flex flex-wrap gap-4 text-sm font-semibold text-slate-600">
                 <a href="{{ route('pricing') }}" class="transition hover:text-slate-950">Pricing</a>
-                <a href="{{ route('register') }}" class="transition hover:text-slate-950">Sign up</a>
-                <a href="{{ route('login') }}" class="transition hover:text-slate-950">Login</a>
-                @if (Route::has('password.request'))
-                    <a href="{{ route('password.request') }}" class="transition hover:text-slate-950">Forgot Password</a>
-                @endif
+                <a href="{{ route('landing') }}#preview" class="transition hover:text-slate-950">Preview</a>
+                <a href="{{ route('landing') }}#trust" class="transition hover:text-slate-950">Trust</a>
+                @guest
+                    @if($authModals)
+                        <button type="button" data-open-auth-modal="signup" class="transition hover:text-slate-950">Sign up</button>
+                        <button type="button" data-open-auth-modal="login" class="transition hover:text-slate-950">Login</button>
+                    @else
+                        <a href="{{ route('register') }}" class="transition hover:text-slate-950">Sign up</a>
+                        <a href="{{ route('login') }}" class="transition hover:text-slate-950">Login</a>
+                    @endif
+                @endguest
             </div>
         </div>
     </footer>

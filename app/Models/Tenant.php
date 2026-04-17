@@ -19,6 +19,9 @@ class Tenant extends Model
         'line_channel_id',
         'line_channel_access_token',
         'line_channel_secret',
+        'support_contact_name',
+        'support_contact_phone',
+        'support_line_id',
         'plan',
         'status',
         'trial_ends_at',
@@ -69,5 +72,20 @@ class Tenant extends Model
     public function notificationLogs(): HasMany
     {
         return $this->hasMany(NotificationLog::class);
+    }
+
+    public function lineWebhookLogs(): HasMany
+    {
+        return $this->hasMany(LineWebhookLog::class);
+    }
+
+    public function lineMessages(): HasMany
+    {
+        return $this->hasMany(LineMessage::class);
+    }
+
+    public function broadcasts(): HasMany
+    {
+        return $this->hasMany(BroadcastMessage::class);
     }
 }

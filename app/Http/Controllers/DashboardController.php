@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Jobs\SendLineMessageJob;
 use App\Mail\PaymentNotification;
 use App\Models\Contract;
 use App\Models\Customer;
@@ -19,7 +20,6 @@ use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
-use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Carbon;
@@ -126,13 +126,39 @@ class DashboardController extends Controller
             ->whereNull('used_at')
             ->delete();
 
+        $token = $this->generateCustomerLineLinkToken($customer->tenant_id);
+
         $customer->lineLinks()->create([
             'tenant_id' => $customer->tenant_id,
-            'link_token' => Str::upper(Str::random(10)),
+            'link_token' => $token,
             'expired_at' => now()->addDay(),
         ]);
 
-        return back()->with('status', 'LINE link code generated for '.$customer->name.'.');
+        return back()->with('status_card', [
+            'theme' => 'warning',
+            'title' => 'LINE link code ready',
+            'customer' => $customer->name,
+            'code' => $token,
+            'instruction' => 'LINK '.$token,
+            'expires_at' => now()->addDay()->format('d/m/Y H:i'),
+        ]);
+    }
+
+    private function generateCustomerLineLinkToken(int $tenantId): string
+    {
+        $alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+
+        do {
+            $token = collect(range(1, 6))
+                ->map(fn () => $alphabet[random_int(0, strlen($alphabet) - 1)])
+                ->implode('');
+        } while (CustomerLineLink::query()
+            ->where('tenant_id', $tenantId)
+            ->where('link_token', $token)
+            ->whereNull('used_at')
+            ->exists());
+
+        return $token;
     }
 
     public function uploadCustomerDocument(Request $request, Customer $customer): RedirectResponse
@@ -387,6 +413,9 @@ class DashboardController extends Controller
             'line_channel_id'           => ['nullable', 'string', 'max:100'],
             'line_channel_access_token' => ['nullable', 'string', 'max:500'],
             'line_channel_secret'       => ['nullable', 'string', 'max:255'],
+            'support_contact_name'      => ['nullable', 'string', 'max:255'],
+            'support_contact_phone'     => ['nullable', 'string', 'max:50'],
+            'support_line_id'           => ['nullable', 'string', 'max:100'],
         ]);
 
         $tenant = app(TenantContext::class)->tenant();
@@ -395,6 +424,9 @@ class DashboardController extends Controller
             'line_channel_id'           => $validated['line_channel_id'] ?? null,
             'line_channel_access_token' => $validated['line_channel_access_token'] ?? null,
             'line_channel_secret'       => $validated['line_channel_secret'] ?? null,
+            'support_contact_name'      => $validated['support_contact_name'] ?? null,
+            'support_contact_phone'     => $validated['support_contact_phone'] ?? null,
+            'support_line_id'           => $validated['support_line_id'] ?? null,
         ]);
 
         return back()->with('status', 'Settings updated.');
@@ -551,45 +583,27 @@ class DashboardController extends Controller
             $invoiceUrl
         );
 
-        $status = 'queued';
-        $payload = ['invoice_id' => $invoice->id, 'event' => $event];
-
-        // Use per-tenant LINE OA token, fall back to global config
         $invoiceTenant = $invoice->tenant ?? app(TenantContext::class)->tenant();
-        $lineToken  = $invoiceTenant?->line_channel_access_token
-            ?: config('services.line.channel_access_token');
-        $lineUserId = $invoice->customer?->line_user_id;
 
-        if ($lineToken && $lineUserId) {
-            $response = Http::withToken($lineToken)
-                ->post('https://api.line.me/v2/bot/message/push', [
-                    'to' => $lineUserId,
-                    'messages' => [
-                        [
-                            'type' => 'text',
-                            'text' => $message,
-                        ],
-                    ],
-                ]);
-
-            $status = $response->successful() ? 'sent' : 'failed';
-            $payload['response'] = $response->json() ?: $response->body();
+        if (! $invoiceTenant) {
+            return;
         }
 
-        NotificationLog::create([
-            'tenant_id' => $invoice->tenant_id,
-            'channel' => 'line',
-            'event' => $event,
-            'target' => $invoice->customer?->name,
-            'message' => $message,
-            'status' => $status,
-            'payload' => $payload,
-        ]);
+        SendLineMessageJob::dispatch(
+            $invoiceTenant->id,
+            $event,
+            $invoice->customer?->line_user_id,
+            $message,
+            $invoice->customer?->name,
+            $invoice->customer?->id,
+            ['invoice_id' => $invoice->id]
+        );
     }
 
     protected function validateRoom(Request $request): array
     {
         return $request->validate([
+            'building' => ['required', 'string', 'max:100'],
             'room_number' => ['required', 'string', 'max:50'],
             'floor' => ['required', 'integer', 'min:1'],
             'room_type' => ['required', 'string', 'max:100'],

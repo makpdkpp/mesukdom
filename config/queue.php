@@ -15,6 +15,11 @@ return [
 
     'default' => env('QUEUE_CONNECTION', 'database'),
 
+    'line' => [
+        'connection' => env('LINE_QUEUE_CONNECTION', 'line-redis'),
+        'queue' => env('LINE_QUEUE', 'line'),
+    ],
+
     /*
     |--------------------------------------------------------------------------
     | Queue Connections
@@ -73,6 +78,15 @@ return [
             'after_commit' => false,
         ],
 
+        'line-redis' => [
+            'driver' => 'redis',
+            'connection' => env('LINE_QUEUE_REDIS_CONNECTION', 'line'),
+            'queue' => env('LINE_QUEUE', 'line'),
+            'retry_after' => (int) env('LINE_QUEUE_RETRY_AFTER', 90),
+            'block_for' => env('LINE_QUEUE_BLOCK_FOR') !== null ? (int) env('LINE_QUEUE_BLOCK_FOR') : null,
+            'after_commit' => false,
+        ],
+
         'deferred' => [
             'driver' => 'deferred',
         ],
@@ -84,6 +98,7 @@ return [
         'failover' => [
             'driver' => 'failover',
             'connections' => [
+                'line-redis',
                 'database',
                 'deferred',
             ],

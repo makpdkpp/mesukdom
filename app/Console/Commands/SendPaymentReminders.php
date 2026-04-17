@@ -1,13 +1,14 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Console\Commands;
 
+use App\Jobs\SendLineMessageJob;
 use App\Models\Invoice;
-use App\Models\NotificationLog;
 use App\Models\Tenant;
 use App\Support\TenantContext;
 use Illuminate\Console\Command;
-use Illuminate\Support\Facades\Http;
 
 class SendPaymentReminders extends Command
 {
@@ -59,29 +60,15 @@ class SendPaymentReminders extends Command
             number_format((float) $invoice->total_amount, 2)
         );
 
-        $status = 'queued';
-    $lineToken = $tenant->line_channel_access_token ?: config('services.line.channel_access_token');
-        $lineUserId = $invoice->customer?->line_user_id;
-
-        if ($lineToken && $lineUserId) {
-            $response = Http::withToken($lineToken)
-                ->post('https://api.line.me/v2/bot/message/push', [
-                    'to' => $lineUserId,
-                    'messages' => [['type' => 'text', 'text' => $message]],
-                ]);
-
-            $status = $response->successful() ? 'sent' : 'failed';
-        }
-
-        NotificationLog::create([
-            'tenant_id' => $tenant->id,
-            'channel' => 'line',
-            'event' => 'reminder_sent',
-            'target' => $invoice->customer?->name,
-            'message' => $message,
-            'status' => $status,
-            'payload' => ['invoice_id' => $invoice->id],
-        ]);
+        SendLineMessageJob::dispatch(
+            $tenant->id,
+            'reminder_sent',
+            $invoice->customer?->line_user_id,
+            $message,
+            $invoice->customer?->name,
+            $invoice->customer?->id,
+            ['invoice_id' => $invoice->id]
+        );
 
         $this->line(sprintf(
             '  [%s] Reminder queued for %s (invoice %s)',

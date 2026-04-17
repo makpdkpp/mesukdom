@@ -91,6 +91,34 @@
                         <input type="text" class="form-control" value="{{ route('api.line.webhook') }}" readonly>
                         <small class="form-text text-muted">นำ URL นี้ไปใส่ใน LINE Developers Console -> Messaging API -> Webhook URL</small>
                     </div>
+
+                    <hr>
+
+                    <div class="form-group">
+                        <label>Support Contact Name</label>
+                        <input name="support_contact_name"
+                               type="text"
+                               class="form-control @error('support_contact_name') is-invalid @enderror"
+                               placeholder="ชื่อผู้ดูแล / เจ้าของหอ"
+                               value="{{ old('support_contact_name', $tenant?->support_contact_name) }}">
+                    </div>
+                    <div class="form-group">
+                        <label>Support Phone</label>
+                        <input name="support_contact_phone"
+                               type="text"
+                               class="form-control @error('support_contact_phone') is-invalid @enderror"
+                               placeholder="เบอร์โทรติดต่อ"
+                               value="{{ old('support_contact_phone', $tenant?->support_contact_phone) }}">
+                    </div>
+                    <div class="form-group mb-0">
+                        <label>Support LINE ID</label>
+                        <input name="support_line_id"
+                               type="text"
+                               class="form-control @error('support_line_id') is-invalid @enderror"
+                               placeholder="LINE ID สำหรับติดต่อ"
+                               value="{{ old('support_line_id', $tenant?->support_line_id) }}">
+                        <small class="form-text text-muted">ใช้ตอบกลับเมื่อผู้เช่ากดเมนู ติดต่อเจ้าของ ใน LINE Rich Menu</small>
+                    </div>
                 </div>
             </div>
 

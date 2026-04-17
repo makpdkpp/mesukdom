@@ -13,6 +13,7 @@ class Room extends Model
 
     protected $fillable = [
         'tenant_id',
+        'building',
         'room_number',
         'floor',
         'room_type',
@@ -35,5 +36,10 @@ class Room extends Model
     public function contracts(): HasMany
     {
         return $this->hasMany(Contract::class);
+    }
+
+    public function broadcasts(): HasMany
+    {
+        return $this->hasMany(BroadcastMessage::class);
     }
 }

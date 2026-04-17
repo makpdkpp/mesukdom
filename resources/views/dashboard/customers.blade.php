@@ -40,6 +40,7 @@
                     <tbody>
                     @forelse($customers as $customer)
                         @php($contracts = $customer->contracts->sortByDesc('start_date')->values())
+                        @php($activeLineLink = $customer->lineLinks->first(fn ($link) => is_null($link->used_at) && optional($link->expired_at)->isFuture()))
                         <tr>
                             <td>{{ $customer->name }}</td>
                             <td>{{ $customer->phone }}</td>
@@ -59,6 +60,11 @@
                                     <div class="text-muted small">{{ $customer->line_id ?: $customer->line_user_id }}</div>
                                 @else
                                     <span class="badge badge-secondary">Not linked</span>
+                                    @if($activeLineLink)
+                                        <div class="mt-1">
+                                            <span class="badge badge-warning px-2 py-1" style="font-family:monospace;font-size:13px;letter-spacing:.16em;">{{ $activeLineLink->link_token }}</span>
+                                        </div>
+                                    @endif
                                     @if($customer->line_id)
                                         <div class="text-muted small">{{ $customer->line_id }}</div>
                                     @endif
@@ -129,7 +135,6 @@
                                     </div>
                                 @endif
 
-                                @php($activeLineLink = $customer->lineLinks->first(fn ($link) => is_null($link->used_at) && optional($link->expired_at)->isFuture()))
                                 <div class="px-3 pb-2 border-top">
                                     <div class="d-flex justify-content-between align-items-center flex-wrap">
                                         <div>
@@ -146,10 +151,18 @@
                                         </form>
                                     </div>
                                     @if($activeLineLink)
-                                        <div class="alert alert-light border mb-0 py-2 px-3 small">
-                                            <div><strong>Code:</strong> {{ $activeLineLink->link_token }}</div>
-                                            <div><strong>Expires:</strong> {{ optional($activeLineLink->expired_at)->format('d/m/Y H:i') }}</div>
-                                            <div>ให้ผู้เช่าส่งข้อความไปยัง LINE OA: <strong>LINK {{ $activeLineLink->link_token }}</strong></div>
+                                        <div class="alert alert-warning border mb-0 py-3 px-3">
+                                            <div class="small text-uppercase font-weight-bold text-muted">Link Code</div>
+                                            <div class="d-flex flex-wrap align-items-center mt-2" style="gap:8px;">
+                                                <span class="badge badge-dark px-3 py-2" style="font-family:monospace;font-size:20px;letter-spacing:.24em;">{{ $activeLineLink->link_token }}</span>
+                                                <button
+                                                    type="button"
+                                                    class="btn btn-sm btn-outline-dark"
+                                                    onclick="navigator.clipboard && navigator.clipboard.writeText('LINK {{ $activeLineLink->link_token }}')"
+                                                >Copy Command</button>
+                                            </div>
+                                            <div class="mt-2 small"><strong>Expires:</strong> {{ optional($activeLineLink->expired_at)->format('d/m/Y H:i') }}</div>
+                                            <div class="mt-1 small">ให้ผู้เช่าส่งข้อความไปยัง LINE OA ว่า <strong style="font-family:monospace;letter-spacing:.08em;">LINK {{ $activeLineLink->link_token }}</strong></div>
                                         </div>
                                     @endif
                                 </div>

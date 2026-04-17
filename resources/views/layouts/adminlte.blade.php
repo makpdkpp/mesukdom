@@ -45,6 +45,7 @@
                     <li class="nav-item"><a href="{{ route('app.contracts') }}" class="nav-link"><i class="nav-icon fas fa-file-signature"></i><p>Contracts</p></a></li>
                     <li class="nav-item"><a href="{{ route('app.invoices') }}" class="nav-link"><i class="nav-icon fas fa-file-invoice-dollar"></i><p>Invoices</p></a></li>
                     <li class="nav-item"><a href="{{ route('app.payments') }}" class="nav-link"><i class="nav-icon fas fa-money-check-alt"></i><p>Payments</p></a></li>
+                    <li class="nav-item"><a href="{{ route('app.broadcasts') }}" class="nav-link"><i class="nav-icon fas fa-bullhorn"></i><p>Broadcasts</p></a></li>
                     <li class="nav-item"><a href="{{ route('app.settings') }}" class="nav-link"><i class="nav-icon fas fa-cog"></i><p>Settings</p></a></li>
                     @can('accessAdminPortal')
                         <li class="nav-item"><a href="{{ route('admin.dashboard') }}" class="nav-link"><i class="nav-icon fas fa-cogs"></i><p>Platform Admin</p></a></li>
@@ -70,6 +71,30 @@
 
         <section class="content">
             <div class="container-fluid">
+                @if (session('status_card'))
+                    @php($statusCard = session('status_card'))
+                    <div class="alert alert-{{ $statusCard['theme'] ?? 'success' }} border shadow-sm">
+                        <div class="d-flex flex-wrap align-items-center justify-content-between" style="gap:12px;">
+                            <div>
+                                <div class="text-uppercase small font-weight-bold text-muted">{{ $statusCard['title'] ?? 'Success' }}</div>
+                                <div class="mt-1">
+                                    สร้างโค้ดเชื่อม LINE สำหรับ <strong>{{ $statusCard['customer'] ?? 'resident' }}</strong> เรียบร้อยแล้ว
+                                </div>
+                                @if(!empty($statusCard['expires_at']))
+                                    <div class="small mt-1"><strong>Expires:</strong> {{ $statusCard['expires_at'] }}</div>
+                                @endif
+                            </div>
+                            @if(!empty($statusCard['code']))
+                                <div class="text-md-right">
+                                    <div class="badge badge-dark px-3 py-2" style="font-family:monospace;font-size:20px;letter-spacing:.24em;">{{ $statusCard['code'] }}</div>
+                                    @if(!empty($statusCard['instruction']))
+                                        <div class="small mt-2">Command: <strong style="font-family:monospace;letter-spacing:.08em;">{{ $statusCard['instruction'] }}</strong></div>
+                                    @endif
+                                </div>
+                            @endif
+                        </div>
+                    </div>
+                @endif
                 @if (session('status'))
                     <div class="alert alert-success">{{ session('status') }}</div>
                 @endif

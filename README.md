@@ -56,3 +56,22 @@ If you discover a security vulnerability within Laravel, please send an e-mail t
 ## License
 
 The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+
+## LINE Queue Worker
+
+LINE webhook processing and outbound LINE pushes run on a dedicated queue named `line`.
+
+Default environment settings:
+
+- `LINE_QUEUE_CONNECTION=line-redis`
+- `LINE_QUEUE=line`
+- `LINE_QUEUE_REDIS_CONNECTION=line`
+- `REDIS_LINE_DB=2`
+
+For local development in VS Code, use the workspace task `queue:work line` from [.vscode/tasks.json](.vscode/tasks.json).
+
+Equivalent command:
+
+```powershell
+& 'C:\laragon\bin\php\php-8.3.30-Win32-vs16-x64\php.exe' artisan queue:work line-redis --queue=line --tries=3 --sleep=1
+```

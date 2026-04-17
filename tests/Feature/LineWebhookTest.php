@@ -45,6 +45,18 @@ class LineWebhookTest extends TestCase
             'channel' => 'line',
             'event' => 'follow',
         ]);
+
+        $this->assertDatabaseHas('line_webhook_logs', [
+            'tenant_id' => $tenant->id,
+            'event_type' => 'follow',
+            'line_user_id' => 'U-demo-user',
+        ]);
+
+        $this->assertDatabaseHas('line_messages', [
+            'tenant_id' => $tenant->id,
+            'direction' => 'outbound',
+            'message_type' => 'text',
+        ]);
     }
 
     public function test_line_webhook_rejects_invalid_signature(): void
@@ -155,6 +167,69 @@ class LineWebhookTest extends TestCase
             'tenant_id' => $tenantB->id,
             'event' => 'message',
             'status' => 'linked',
+        ]);
+
+        $this->assertDatabaseHas('line_messages', [
+            'tenant_id' => $tenantB->id,
+            'customer_id' => $customerB->id,
+            'direction' => 'outbound',
+            'message_type' => 'text',
+        ]);
+    }
+
+    public function test_line_webhook_handles_postback_payment_command(): void
+    {
+        Http::fake(['https://api.line.me/*' => Http::response(['ok' => true], 200)]);
+
+        $tenant = Tenant::query()->create([
+            'name' => 'Dorm Postback',
+            'line_channel_secret' => 'tenant-postback-secret',
+            'line_channel_access_token' => 'tenant-postback-token',
+        ]);
+
+        $customer = Customer::query()->create([
+            'tenant_id' => $tenant->id,
+            'name' => 'Resident Postback',
+            'line_user_id' => 'U-postback-user',
+        ]);
+
+        $payload = [
+            'events' => [
+                [
+                    'type' => 'postback',
+                    'replyToken' => 'reply-token-postback',
+                    'source' => [
+                        'userId' => 'U-postback-user',
+                    ],
+                    'postback' => [
+                        'data' => 'action=pay',
+                    ],
+                ],
+            ],
+        ];
+
+        $response = $this->callLineWebhook($payload, $tenant->line_channel_secret);
+
+        $response->assertOk();
+
+        $this->assertDatabaseHas('notification_logs', [
+            'tenant_id' => $tenant->id,
+            'event' => 'postback',
+            'status' => 'replied',
+            'message' => 'Resident requested payment link',
+        ]);
+
+        $this->assertDatabaseHas('line_webhook_logs', [
+            'tenant_id' => $tenant->id,
+            'event_type' => 'postback',
+            'line_user_id' => 'U-postback-user',
+        ]);
+
+        $this->assertDatabaseHas('line_messages', [
+            'tenant_id' => $tenant->id,
+            'customer_id' => $customer->id,
+            'direction' => 'inbound',
+            'message_type' => 'postback',
         ]);
     }
 

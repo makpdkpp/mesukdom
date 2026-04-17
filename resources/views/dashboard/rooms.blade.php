@@ -8,6 +8,7 @@
             <form method="POST" action="{{ route('app.rooms.store') }}">
                 @csrf
                 <div class="card-body">
+                    <div class="form-group"><label>Building</label><input name="building" class="form-control" value="{{ old('building', 'Main') }}" required></div>
                     <div class="form-group"><label>Room Number</label><input name="room_number" class="form-control" value="{{ old('room_number') }}" required></div>
                     <div class="form-group"><label>Floor</label><input name="floor" type="number" min="1" class="form-control" value="{{ old('floor', 1) }}" required></div>
                     <div class="form-group"><label>Room Type</label><input name="room_type" class="form-control" value="{{ old('room_type', 'Standard') }}" required></div>
@@ -34,10 +35,11 @@
             </div>
             <div class="card-body table-responsive p-0">
                 <table class="table table-hover text-nowrap">
-                    <thead><tr><th>Room</th><th>Floor</th><th>Type</th><th>Price</th><th>Status</th><th class="text-right">Actions</th></tr></thead>
+                    <thead><tr><th>Building</th><th>Room</th><th>Floor</th><th>Type</th><th>Price</th><th>Status</th><th class="text-right">Actions</th></tr></thead>
                     <tbody>
                     @forelse($rooms as $room)
                         <tr>
+                            <td>{{ $room->building }}</td>
                             <td>{{ $room->room_number }}</td>
                             <td>{{ $room->floor }}</td>
                             <td>{{ $room->room_type }}</td>
@@ -53,11 +55,15 @@
                             </td>
                         </tr>
                         <tr class="collapse bg-light" id="room-edit-{{ $room->id }}">
-                            <td colspan="6">
+                            <td colspan="7">
                                 <form method="POST" action="{{ route('app.rooms.update', $room) }}" class="p-3">
                                     @csrf
                                     @method('PUT')
                                     <div class="form-row">
+                                        <div class="form-group col-md-2 mb-2">
+                                            <label class="small">Building</label>
+                                            <input name="building" class="form-control form-control-sm" value="{{ $room->building }}" required>
+                                        </div>
                                         <div class="form-group col-md-2 mb-2">
                                             <label class="small">Room</label>
                                             <input name="room_number" class="form-control form-control-sm" value="{{ $room->room_number }}" required>
@@ -66,7 +72,7 @@
                                             <label class="small">Floor</label>
                                             <input name="floor" type="number" min="1" class="form-control form-control-sm" value="{{ $room->floor }}" required>
                                         </div>
-                                        <div class="form-group col-md-3 mb-2">
+                                        <div class="form-group col-md-2 mb-2">
                                             <label class="small">Type</label>
                                             <input name="room_type" class="form-control form-control-sm" value="{{ $room->room_type }}" required>
                                         </div>
@@ -90,7 +96,7 @@
                             </td>
                         </tr>
                     @empty
-                        <tr><td colspan="6" class="text-center text-muted">No rooms found</td></tr>
+                        <tr><td colspan="7" class="text-center text-muted">No rooms found</td></tr>
                     @endforelse
                     </tbody>
                 </table>

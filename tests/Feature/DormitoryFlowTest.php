@@ -118,6 +118,7 @@ class DormitoryFlowTest extends TestCase
         $updateResponse = $this->actingAs($user)
             ->withSession(['tenant_id' => $tenant->id])
             ->put('/app/rooms/'.$room->id, [
+                'building' => 'North Wing',
                 'room_number' => 'C-101A',
                 'floor' => 2,
                 'room_type' => 'Deluxe',
@@ -129,6 +130,7 @@ class DormitoryFlowTest extends TestCase
         $this->assertDatabaseHas('rooms', [
             'id' => $room->id,
             'tenant_id' => $tenant->id,
+            'building' => 'North Wing',
             'room_number' => 'C-101A',
             'floor' => 2,
             'room_type' => 'Deluxe',
@@ -179,6 +181,7 @@ class DormitoryFlowTest extends TestCase
         $response = $this->actingAs($user)
             ->withSession(['tenant_id' => $tenantA->id])
             ->put('/app/rooms/'.$foreignRoom->id, [
+                'building' => 'Hack Tower',
                 'room_number' => 'HACKED',
                 'floor' => 1,
                 'room_type' => 'Standard',
