@@ -42,6 +42,7 @@ final class PublicSiteMetrics
 
         return Plan::query()
             ->where('is_active', true)
+            ->orderByRaw("JSON_EXTRACT(COALESCE(limits, '{}'), '$.recommended') DESC")
             ->orderBy('sort_order')
             ->get();
     }

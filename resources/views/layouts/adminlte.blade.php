@@ -42,6 +42,7 @@
                 <ul class="nav nav-pills nav-sidebar flex-column" data-widget="treeview">
                     @if($isAdminRoute)
                         <li class="nav-item"><a href="{{ route('admin.dashboard') }}" class="nav-link"><i class="nav-icon fas fa-chart-line"></i><p>Dashboard Admin</p></a></li>
+                        <li class="nav-item"><a href="{{ route('admin.packages') }}" class="nav-link"><i class="nav-icon fas fa-boxes"></i><p>Package Management</p></a></li>
                         <li class="nav-item"><a href="{{ route('admin.platform') }}" class="nav-link"><i class="nav-icon fas fa-cogs"></i><p>Platform Admin</p></a></li>
                     @else
                         <li class="nav-item"><a href="{{ route('app.dashboard') }}" class="nav-link"><i class="nav-icon fas fa-chart-pie"></i><p>Dashboard</p></a></li>

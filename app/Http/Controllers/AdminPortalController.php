@@ -15,6 +15,7 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Str;
 use Illuminate\View\View;
 
 final class AdminPortalController extends Controller
@@ -34,7 +35,10 @@ final class AdminPortalController extends Controller
         return view('dashboard.admin-dashboard', [
             'tenantCount' => Tenant::count(),
             'activeUsers' => User::count(),
-            'saasRevenue' => Payment::withoutGlobalScopes()->where('status', 'approved')->sum('amount'),
+            'saasRevenue' => Tenant::query()
+                ->join('plans', 'tenants.plan_id', '=', 'plans.id')
+                ->where('tenants.status', 'active')
+                ->sum('plans.price_monthly'),
             'slipOkUsageTotal' => $slipOkUsageTotal,
             'serverStatus' => 'Online',
             'queueConnection' => $queueConnection,
@@ -74,6 +78,13 @@ final class AdminPortalController extends Controller
         ]);
     }
 
+    public function packages(): View
+    {
+        return view('dashboard.admin-packages', [
+            'plans' => Plan::query()->orderBy('sort_order')->get(),
+        ]);
+    }
+
     public function updateSlipOkSettings(Request $request): RedirectResponse
     {
         $validated = $request->validate([
@@ -94,6 +105,113 @@ final class AdminPortalController extends Controller
         $setting->save();
 
         return back()->with('success', 'Platform SlipOK settings updated.');
+    }
+
+    public function updateStripeSettings(Request $request): RedirectResponse
+    {
+        $validated = $request->validate([
+            'stripe_enabled' => ['nullable', 'boolean'],
+            'stripe_mode' => ['required', 'in:test,live'],
+            'stripe_publishable_key' => ['nullable', 'string', 'max:255'],
+            'stripe_secret_key' => ['nullable', 'string', 'max:255'],
+            'stripe_webhook_secret' => ['nullable', 'string', 'max:255'],
+        ]);
+
+        $setting = PlatformSetting::current();
+
+        $setting->stripe_enabled = (bool) $request->boolean('stripe_enabled');
+        $setting->stripe_mode = (string) ($validated['stripe_mode'] ?? 'test');
+        $setting->stripe_publishable_key = $validated['stripe_publishable_key'] ?? null;
+
+        $secret = $validated['stripe_secret_key'] ?? null;
+        if (filled($secret)) {
+            $setting->stripe_secret_key = $secret;
+        }
+
+        $webhookSecret = $validated['stripe_webhook_secret'] ?? null;
+        if (filled($webhookSecret)) {
+            $setting->stripe_webhook_secret = $webhookSecret;
+        }
+
+        $setting->save();
+
+        return back()->with('success', 'Stripe settings updated.');
+    }
+
+    public function storePackage(Request $request): RedirectResponse
+    {
+        $validated = $request->validate([
+            'name' => ['required', 'string', 'max:100'],
+            'slug' => ['nullable', 'string', 'max:100', 'regex:/^[a-z0-9-]+$/', 'unique:plans,slug'],
+            'price_monthly' => ['required', 'numeric', 'min:0'],
+            'description' => ['nullable', 'string', 'max:1000'],
+            'is_active' => ['nullable', 'boolean'],
+            'sort_order' => ['nullable', 'integer', 'min:0', 'max:9999'],
+            'stripe_price_id' => ['nullable', 'string', 'max:120'],
+            'rooms_limit' => ['required', 'integer', 'min:0', 'max:10000'],
+            'recommended' => ['nullable', 'boolean'],
+            'slipok_enabled' => ['nullable', 'boolean'],
+            'slipok_monthly_limit' => ['required', 'integer', 'min:0', 'max:100000'],
+        ]);
+
+        $slug = $validated['slug'] ?? Str::slug($validated['name']);
+        if ($slug === '') {
+            $slug = 'plan-'.now()->timestamp;
+        }
+
+        Plan::query()->create([
+            'name' => $validated['name'],
+            'slug' => $slug,
+            'price_monthly' => $validated['price_monthly'],
+            'description' => $validated['description'] ?? null,
+            'is_active' => (bool) $request->boolean('is_active'),
+            'sort_order' => (int) ($validated['sort_order'] ?? 0),
+            'stripe_price_id' => $validated['stripe_price_id'] ?? null,
+            'limits' => [
+                'rooms' => (int) $validated['rooms_limit'],
+                'recommended' => (bool) $request->boolean('recommended'),
+                'slipok_enabled' => (bool) $request->boolean('slipok_enabled'),
+                'slipok_monthly_limit' => (int) $validated['slipok_monthly_limit'],
+            ],
+        ]);
+
+        return back()->with('success', 'Package created successfully.');
+    }
+
+    public function updatePackage(Request $request, Plan $plan): RedirectResponse
+    {
+        $validated = $request->validate([
+            'name' => ['required', 'string', 'max:100'],
+            'slug' => ['required', 'string', 'max:100', 'regex:/^[a-z0-9-]+$/', 'unique:plans,slug,'.$plan->id],
+            'price_monthly' => ['required', 'numeric', 'min:0'],
+            'description' => ['nullable', 'string', 'max:1000'],
+            'is_active' => ['nullable', 'boolean'],
+            'sort_order' => ['nullable', 'integer', 'min:0', 'max:9999'],
+            'stripe_price_id' => ['nullable', 'string', 'max:120'],
+            'rooms_limit' => ['required', 'integer', 'min:0', 'max:10000'],
+            'recommended' => ['nullable', 'boolean'],
+            'slipok_enabled' => ['nullable', 'boolean'],
+            'slipok_monthly_limit' => ['required', 'integer', 'min:0', 'max:100000'],
+        ]);
+
+        $limits = (array) ($plan->limits ?? []);
+        $limits['rooms'] = (int) $validated['rooms_limit'];
+        $limits['recommended'] = (bool) $request->boolean('recommended');
+        $limits['slipok_enabled'] = (bool) $request->boolean('slipok_enabled');
+        $limits['slipok_monthly_limit'] = (int) $validated['slipok_monthly_limit'];
+
+        $plan->update([
+            'name' => $validated['name'],
+            'slug' => $validated['slug'],
+            'price_monthly' => $validated['price_monthly'],
+            'description' => $validated['description'] ?? null,
+            'is_active' => (bool) $request->boolean('is_active'),
+            'sort_order' => (int) ($validated['sort_order'] ?? 0),
+            'stripe_price_id' => $validated['stripe_price_id'] ?? null,
+            'limits' => $limits,
+        ]);
+
+        return back()->with('success', "Package '{$plan->name}' updated.");
     }
 
     public function updatePlanSlipOkSettings(Request $request, Plan $plan): RedirectResponse

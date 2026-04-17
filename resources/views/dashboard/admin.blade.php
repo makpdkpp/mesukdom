@@ -46,30 +46,45 @@
         </div>
     </div>
     <div class="col-lg-7">
-        <div class="card card-secondary">
-            <div class="card-header"><h3 class="card-title">Package SlipOK Addon Limits</h3></div>
-            <div class="card-body table-responsive p-0">
-                <table class="table table-hover text-nowrap mb-0">
-                    <thead><tr><th>Plan</th><th>Price</th><th>Addon</th><th>Monthly Limit</th><th></th></tr></thead>
-                    <tbody>
-                    @foreach($plans as $plan)
-                        <tr>
-                            <form method="POST" action="{{ route('admin.plans.slipok.update', $plan) }}">
-                                @csrf @method('PATCH')
-                                <td>{{ $plan->name }}</td>
-                                <td>{{ number_format((float) $plan->price_monthly, 0) }}/mo</td>
-                                <td>
-                                    <input type="hidden" name="slipok_enabled" value="0">
-                                    <input type="checkbox" name="slipok_enabled" value="1" @checked($plan->supportsSlipOk())>
-                                </td>
-                                <td><input type="number" name="slipok_monthly_limit" min="0" class="form-control form-control-sm" value="{{ $plan->slipOkMonthlyLimit() }}"></td>
-                                <td><button class="btn btn-xs btn-outline-primary">Save</button></td>
-                            </form>
-                        </tr>
-                    @endforeach
-                    </tbody>
-                </table>
-            </div>
+        <div class="card card-info">
+            <div class="card-header"><h3 class="card-title">Stripe Subscription Settings</h3></div>
+            <form method="POST" action="{{ route('admin.stripe.settings.update') }}">
+                @csrf
+                <div class="card-body">
+                    <div class="form-group form-check">
+                        <input type="hidden" name="stripe_enabled" value="0">
+                        <input type="checkbox" class="form-check-input" id="stripe_enabled" name="stripe_enabled" value="1" @checked($platformSetting->stripe_enabled)>
+                        <label class="form-check-label" for="stripe_enabled">Enable Stripe subscription control</label>
+                    </div>
+                    <div class="form-group">
+                        <label>Mode</label>
+                        <select name="stripe_mode" class="form-control">
+                            <option value="test" @selected($platformSetting->stripe_mode === 'test')>Test</option>
+                            <option value="live" @selected($platformSetting->stripe_mode === 'live')>Live</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Publishable Key</label>
+                        <input type="text" name="stripe_publishable_key" class="form-control" value="{{ old('stripe_publishable_key', $platformSetting->stripe_publishable_key) }}" placeholder="pk_test_xxx / pk_live_xxx">
+                    </div>
+                    <div class="form-group">
+                        <label>Secret Key</label>
+                        <input type="password" name="stripe_secret_key" class="form-control" placeholder="Leave unchanged to keep current secret">
+                    </div>
+                    <div class="form-group mb-0">
+                        <label>Webhook Secret</label>
+                        <input type="password" name="stripe_webhook_secret" class="form-control" placeholder="whsec_xxx">
+                    </div>
+                </div>
+                <div class="card-footer d-flex justify-content-between align-items-center">
+                    <small class="text-muted">กำหนด Stripe Price ID รายแพ็กเกจที่เมนู Package Management</small>
+                    <button class="btn btn-info">Save Stripe Settings</button>
+                </div>
+            </form>
+        </div>
+        <div class="alert alert-light border">
+            Package creation/update/edit and SlipOK Addon limits moved to
+            <a href="{{ route('admin.packages') }}"><strong>Package Management</strong></a>.
         </div>
     </div>
 </div>

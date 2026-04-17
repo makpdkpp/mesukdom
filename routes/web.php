@@ -65,7 +65,13 @@ Route::middleware(['auth', 'verified', 'role:owner,staff', 'tenant.active'])->pr
 Route::middleware(['auth', 'verified', 'role:super_admin,support_admin'])->prefix('admin')->group(function (): void {
     Route::get('/', [AdminPortalController::class, 'dashboard'])->name('admin.dashboard');
     Route::get('/platform', [AdminPortalController::class, 'index'])->name('admin.platform');
+    Route::get('/packages', [AdminPortalController::class, 'packages'])->name('admin.packages');
+
+    Route::post('/packages', [AdminPortalController::class, 'storePackage'])->name('admin.packages.store');
+    Route::patch('/packages/{plan}', [AdminPortalController::class, 'updatePackage'])->name('admin.packages.update');
+
     Route::post('/slipok/settings', [AdminPortalController::class, 'updateSlipOkSettings'])->name('admin.slipok.settings.update');
+    Route::post('/stripe/settings', [AdminPortalController::class, 'updateStripeSettings'])->name('admin.stripe.settings.update');
     Route::patch('/plans/{plan}/slipok', [AdminPortalController::class, 'updatePlanSlipOkSettings'])->name('admin.plans.slipok.update');
     Route::patch('/tenants/{tenant}/plan', [AdminPortalController::class, 'updateTenantPlan'])->name('admin.tenants.plan.update');
     Route::patch('/tenants/{tenant}/suspend', [DashboardController::class, 'suspendTenant'])->name('admin.tenants.suspend');

@@ -302,14 +302,41 @@
             </div>
 
             <div class="mt-14 grid gap-6 lg:grid-cols-3">
-                @forelse($plans->take(3) as $plan)
-                    <article class="reveal-up relative flex flex-col rounded-2xl border {{ $loop->iteration === 2 ? 'border-amber-400 bg-white ring-2 ring-amber-400' : 'border-slate-200 bg-white' }} p-7 shadow-sm" style="--enter-delay:{{ 0.05 + $loop->index * 0.1 }}s">
+                @php
+                    $pricingPlans = $plans->take(3)->values();
+                    $recommendedPlan = $pricingPlans->first(fn ($candidate) => $candidate->isRecommended());
 
-                        @if($loop->iteration === 2)
+                    if ($recommendedPlan) {
+                        $otherPlans = $pricingPlans
+                            ->reject(fn ($candidate) => $candidate->id === $recommendedPlan->id)
+                            ->sortBy('price_monthly')
+                            ->values();
+
+                        $orderedPlans = collect();
+
+                        if ($otherPlans->count() > 0) {
+                            $orderedPlans->push($otherPlans->first());
+                        }
+
+                        $orderedPlans->push($recommendedPlan);
+
+                        if ($otherPlans->count() > 1) {
+                            $orderedPlans->push($otherPlans->last());
+                        }
+                    } else {
+                        $orderedPlans = $pricingPlans->sortBy('price_monthly')->values();
+                    }
+                @endphp
+
+                @forelse($orderedPlans as $plan)
+                    @php($isFeaturedPlan = $recommendedPlan && $plan->id === $recommendedPlan->id)
+                    <article class="reveal-up relative flex flex-col rounded-2xl border {{ $isFeaturedPlan ? 'border-amber-400 bg-white ring-2 ring-amber-400' : 'border-slate-200 bg-white' }} p-7 shadow-sm" style="--enter-delay:{{ 0.05 + $loop->index * 0.1 }}s">
+
+                        @if($isFeaturedPlan)
                             <span class="absolute -top-3.5 left-1/2 -translate-x-1/2 rounded-full bg-amber-500 px-4 py-1 text-xs font-bold text-white shadow-lg">แนะนำ</span>
                         @endif
 
-                        <p class="text-sm font-bold uppercase tracking-wider {{ $loop->iteration === 2 ? 'text-amber-600' : 'text-slate-500' }}">{{ $plan->slug ?: $plan->name }}</p>
+                        <p class="text-sm font-bold uppercase tracking-wider {{ $isFeaturedPlan ? 'text-amber-600' : 'text-slate-500' }}">{{ $plan->slug ?: $plan->name }}</p>
                         <h3 class="mt-3 text-2xl font-bold text-slate-900">{{ $plan->name }}</h3>
 
                         <p class="mt-5">
@@ -339,7 +366,7 @@
                         <div class="mt-8">
                             @guest
                                 <button type="button" data-open-auth-modal="signup" data-plan-id="{{ $plan->id }}"
-                                    class="flex w-full items-center justify-center rounded-xl {{ $loop->iteration === 2 ? 'bg-amber-500 text-white shadow-lg shadow-amber-500/25 hover:bg-amber-600' : 'bg-slate-900 text-white hover:bg-slate-800' }} px-5 py-3 text-sm font-bold transition">
+                                    class="flex w-full items-center justify-center rounded-xl {{ $isFeaturedPlan ? 'bg-amber-500 text-white shadow-lg shadow-amber-500/25 hover:bg-amber-600' : 'bg-slate-900 text-white hover:bg-slate-800' }} px-5 py-3 text-sm font-bold transition">
                                     เลือกแพ็กเกจนี้
                                 </button>
                             @else

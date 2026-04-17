@@ -15,6 +15,11 @@ use Illuminate\Support\Facades\Crypt;
  * @property ?string $slipok_api_secret
  * @property ?string $slipok_secret_header_name
  * @property int $slipok_timeout_seconds
+ * @property bool $stripe_enabled
+ * @property string $stripe_mode
+ * @property ?string $stripe_publishable_key
+ * @property ?string $stripe_secret_key
+ * @property ?string $stripe_webhook_secret
  */
 final class PlatformSetting extends Model
 {
@@ -24,6 +29,11 @@ final class PlatformSetting extends Model
         'slipok_api_secret',
         'slipok_secret_header_name',
         'slipok_timeout_seconds',
+        'stripe_enabled',
+        'stripe_mode',
+        'stripe_publishable_key',
+        'stripe_secret_key',
+        'stripe_webhook_secret',
     ];
 
     protected function casts(): array
@@ -31,6 +41,7 @@ final class PlatformSetting extends Model
         return [
             'slipok_enabled' => 'boolean',
             'slipok_timeout_seconds' => 'integer',
+            'stripe_enabled' => 'boolean',
         ];
     }
 
@@ -41,6 +52,8 @@ final class PlatformSetting extends Model
             'slipok_api_url' => 'https://connect.slip2go.com/api/verify-slip/qr-base64/info',
             'slipok_secret_header_name' => 'Authorization',
             'slipok_timeout_seconds' => 15,
+            'stripe_enabled' => false,
+            'stripe_mode' => 'test',
         ]);
     }
 
@@ -48,6 +61,28 @@ final class PlatformSetting extends Model
      * @return Attribute<?string, ?string>
      */
     protected function slipokApiSecret(): Attribute
+    {
+        return Attribute::make(
+            get: fn (mixed $value): ?string => $this->decryptNullableString($value),
+            set: fn (mixed $value): ?string => $this->encryptNullableString($value),
+        );
+    }
+
+    /**
+     * @return Attribute<?string, ?string>
+     */
+    protected function stripeSecretKey(): Attribute
+    {
+        return Attribute::make(
+            get: fn (mixed $value): ?string => $this->decryptNullableString($value),
+            set: fn (mixed $value): ?string => $this->encryptNullableString($value),
+        );
+    }
+
+    /**
+     * @return Attribute<?string, ?string>
+     */
+    protected function stripeWebhookSecret(): Attribute
     {
         return Attribute::make(
             get: fn (mixed $value): ?string => $this->decryptNullableString($value),

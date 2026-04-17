@@ -11,6 +11,7 @@ class Plan extends Model
         'name',
         'slug',
         'price_monthly',
+        'stripe_price_id',
         'description',
         'limits',
         'is_active',
@@ -36,6 +37,18 @@ class Plan extends Model
         $value = Arr::get($this->limitsArray(), 'slipok_monthly_limit', 0);
 
         return max(0, is_numeric($value) ? (int) $value : 0);
+    }
+
+    public function roomsLimit(): int
+    {
+        $value = Arr::get($this->limitsArray(), 'rooms', 0);
+
+        return max(0, is_numeric($value) ? (int) $value : 0);
+    }
+
+    public function isRecommended(): bool
+    {
+        return (bool) Arr::get($this->limitsArray(), 'recommended', false);
     }
 
     /**

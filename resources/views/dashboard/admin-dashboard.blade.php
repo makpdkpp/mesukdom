@@ -40,15 +40,6 @@
     </div>
 </div>
 
-<div class="card card-outline card-primary">
-    <div class="card-header">
-        <h3 class="card-title mb-0">Dashboard Admin</h3>
-    </div>
-    <div class="card-body">
-        <p class="mb-0 text-muted">ภาพรวมแพลตฟอร์มถูกแยกจากหน้าจัดการแล้ว สามารถเข้าไปตั้งค่าได้ที่เมนู Platform Admin</p>
-    </div>
-</div>
-
 <div class="card card-outline card-secondary">
     <div class="card-header">
         <h3 class="card-title mb-0">System Monitoring</h3>
