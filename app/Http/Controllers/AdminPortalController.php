@@ -13,10 +13,13 @@ use App\Models\Tenant;
 use App\Models\User;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Redis;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
 use Illuminate\View\View;
+use Throwable;
 
 final class AdminPortalController extends Controller
 {
@@ -25,8 +28,10 @@ final class AdminPortalController extends Controller
         $queueConnection = (string) config('queue.default', 'sync');
         $hasJobsTable = Schema::hasTable('jobs');
         $hasFailedJobsTable = Schema::hasTable('failed_jobs');
+
         $pendingJobs = $hasJobsTable ? (int) DB::table('jobs')->count() : null;
         $failedJobsCount = $hasFailedJobsTable ? (int) DB::table('failed_jobs')->count() : 0;
+        $redisHealth = $this->redisHealthPayload();
         $slipOkUsageTotal = SlipVerificationUsage::withoutGlobalScopes()
             ->where('provider', 'slipok')
             ->where('usage_month', now()->format('Y-m'))
@@ -44,10 +49,179 @@ final class AdminPortalController extends Controller
             'queueConnection' => $queueConnection,
             'pendingJobs' => $pendingJobs,
             'failedJobsCount' => $failedJobsCount,
+            'redisHealth' => $redisHealth,
             'apiUsageTotal' => $slipOkUsageTotal,
             'notificationLogs' => NotificationLog::withoutGlobalScopes()->latest()->take(10)->get(),
             'paymentLogs' => Payment::withoutGlobalScopes()->latest()->take(10)->get(),
         ]);
+    }
+
+    public function migrate(Request $request): RedirectResponse
+    {
+        $token = (string) $request->input('migrate_token', '');
+        $expected = (string) config('app.migrate_token', '');
+
+        if ($expected === '') {
+            abort(403, 'Migrations are disabled.');
+        }
+
+        if (! hash_equals($expected, $token)) {
+            abort(403, 'Invalid token.');
+        }
+
+        try {
+            Artisan::call('migrate', ['--force' => true]);
+            $output = Artisan::output();
+
+            return back()->with([
+                'success' => 'Migrations executed.',
+                'migrateOutput' => $output,
+            ]);
+        } catch (Throwable $e) {
+            return back()->with([
+                'error' => 'Migration failed: '.class_basename($e).' - '.$e->getMessage(),
+                'migrateOutput' => $e->getTraceAsString(),
+            ]);
+        }
+    }
+
+    public function dbMigration(): View
+    {
+        $hasTimestamps = Schema::hasTable('migrations') && Schema::hasColumn('migrations', 'created_at');
+
+        $migrationRows = Schema::hasTable('migrations')
+            ? DB::table('migrations')
+                ->select($hasTimestamps ? ['migration', 'batch', 'created_at'] : ['migration', 'batch'])
+                ->orderBy('migration')
+                ->get()
+            : collect();
+
+        $completedMap = $migrationRows->mapWithKeys(fn ($row): array => [
+            (string) $row->migration => [
+                'batch'      => is_numeric($row->batch) ? (int) $row->batch : null,
+                'run_date'   => $hasTimestamps ? ($row->created_at ?? null) : null,
+            ],
+        ]);
+
+        $files = app('migrator')->getMigrationFiles(database_path('migrations'));
+        ksort($files);
+
+        $items = [];
+        foreach ($files as $migration => $path) {
+            $completed = $completedMap->has($migration);
+            $rowData   = $completed ? $completedMap->get($migration) : [];
+            $items[] = [
+                'migration' => $migration,
+                'path'      => (string) $path,
+                'completed' => $completed,
+                'batch'     => $completed ? (int) ($rowData['batch'] ?? 0) : null,
+                'run_date'  => $completed ? ($rowData['run_date'] ?? null) : null,
+            ];
+        }
+
+        $total     = count($items);
+        $completed = collect($items)->where('completed', true)->count();
+        $pending   = $total - $completed;
+
+        $maxBatch = Schema::hasTable('migrations') ? (int) DB::table('migrations')->max('batch') : 0;
+
+        // Database schema: list of tables with their columns
+        $dbSchema = [];
+        try {
+            $tables = DB::select('SHOW TABLES');
+            $dbKey  = 'Tables_in_' . DB::getDatabaseName();
+            foreach ($tables as $tableRow) {
+                $tableName = $tableRow->$dbKey ?? array_values((array) $tableRow)[0];
+                $columns   = DB::select('SHOW COLUMNS FROM `' . $tableName . '`');
+                $dbSchema[(string) $tableName] = array_map(fn ($col): array => [
+                    'field'   => $col->Field,
+                    'type'    => $col->Type,
+                    'null'    => $col->Null,
+                    'key'     => $col->Key,
+                    'default' => $col->Default,
+                ], $columns);
+            }
+        } catch (Throwable) {
+            $dbSchema = [];
+        }
+
+        return view('dashboard.admin-dbmigration', [
+            'totalMigrations'     => $total,
+            'completedMigrations' => $completed,
+            'pendingMigrations'   => $pending,
+            'maxBatch'            => $maxBatch,
+            'migrationItems'      => $items,
+            'dbSchema'            => $dbSchema,
+        ]);
+    }
+
+    public function rollback(Request $request): RedirectResponse
+    {
+        $token = (string) $request->input('migrate_token', '');
+        $expected = (string) config('app.migrate_token', '');
+
+        if ($expected === '') {
+            abort(403, 'Migrations are disabled.');
+        }
+
+        if (! hash_equals($expected, $token)) {
+            abort(403, 'Invalid token.');
+        }
+
+        try {
+            Artisan::call('migrate:rollback', ['--force' => true]);
+            $output = Artisan::output();
+
+            return back()->with([
+                'success' => 'Rollback executed.',
+                'migrateOutput' => $output,
+            ]);
+        } catch (Throwable $e) {
+            return back()->with([
+                'error' => 'Rollback failed: '.class_basename($e).' - '.$e->getMessage(),
+                'migrateOutput' => $e->getTraceAsString(),
+            ]);
+        }
+    }
+
+    /**
+     * @return array{client: string, connections: array<string, array{ok: bool, ping: string|null, error: string|null}>, ok: bool}
+     */
+    private function redisHealthPayload(): array
+    {
+        $client = (string) config('database.redis.client', 'unknown');
+        $connections = [];
+
+        foreach (['default', 'line'] as $connectionName) {
+            try {
+                $connection = Redis::connection($connectionName);
+                $pingResult = method_exists($connection, 'ping')
+                    ? $connection->ping()
+                    : $connection->command('ping');
+                $ping = is_string($pingResult) ? $pingResult : (is_scalar($pingResult) ? (string) $pingResult : null);
+                $pongLike = $ping !== null && str_contains(strtoupper($ping), 'PONG');
+
+                $connections[$connectionName] = [
+                    'ok' => $pongLike,
+                    'ping' => $ping,
+                    'error' => null,
+                ];
+            } catch (Throwable $e) {
+                $connections[$connectionName] = [
+                    'ok' => false,
+                    'ping' => null,
+                    'error' => class_basename($e).' - '.$e->getMessage(),
+                ];
+            }
+        }
+
+        $overallOk = collect($connections)->every(fn (array $item): bool => (bool) ($item['ok'] ?? false));
+
+        return [
+            'client' => $client,
+            'connections' => $connections,
+            'ok' => $overallOk,
+        ];
     }
 
     public function index(): View
