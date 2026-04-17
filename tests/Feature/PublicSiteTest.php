@@ -15,7 +15,7 @@ class PublicSiteTest extends TestCase
         $response = $this->get('/');
 
         $response->assertOk();
-        $response->assertSee('MesukDom');
+        $response->assertSee('MesukDorm');
         $response->assertSee('จัดการหอพักครบตั้งแต่ห้องว่างจนถึงบิลค้างชำระ');
         $response->assertSee(route('pricing'), false);
         $response->assertSee(route('register'), false);

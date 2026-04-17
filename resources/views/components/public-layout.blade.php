@@ -7,8 +7,8 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <meta name="description" content="{{ $description ?? 'MesukDom ช่วยเจ้าของหอจัดการห้อง ผู้เช่า สัญญา บิล และการแจ้งเตือนในระบบเดียว' }}">
-    <title>{{ $title ?? 'MesukDom' }}</title>
+    <meta name="description" content="{{ $description ?? 'MesukDorm ช่วยเจ้าของหอจัดการห้อง ผู้เช่า สัญญา บิล และการแจ้งเตือนในระบบเดียว' }}">
+    <title>{{ $title ?? 'MesukDorm' }}</title>
 
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -162,16 +162,15 @@
             <a href="{{ route('landing') }}" class="flex items-center gap-3">
                 <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-amber-500 text-sm font-extrabold text-white shadow-lg shadow-amber-500/30">MD</span>
                 <span>
-                    <span class="font-display block text-base font-bold tracking-tight text-slate-950">MesukDom</span>
+                    <span class="font-display block text-base font-bold tracking-tight text-slate-950">MesukDorm</span>
                     <span class="block text-xs font-medium text-slate-500">Dormitory SaaS Platform</span>
                 </span>
             </a>
 
             <nav class="hidden items-center gap-6 text-sm font-semibold text-slate-600 md:flex">
-                <a href="{{ route('landing') }}#preview" class="transition hover:text-slate-950">Preview</a>
-                <a href="{{ route('landing') }}#trust" class="transition hover:text-slate-950">Trust</a>
-                <a href="{{ route('pricing') }}" class="transition hover:text-slate-950">Pricing</a>
-                <a href="{{ route('landing') }}#try" class="transition hover:text-slate-950">Try</a>
+                <a href="{{ route('landing') }}#features" class="transition hover:text-slate-950">ฟีเจอร์</a>
+                <a href="{{ route('landing') }}#pricing" class="transition hover:text-slate-950">ราคา</a>
+                <a href="{{ route('pricing') }}" class="transition hover:text-slate-950">แพ็กเกจ</a>
             </nav>
 
             <div class="flex items-center gap-3">
@@ -197,20 +196,20 @@
     <footer class="px-4 pb-10 pt-16 sm:px-6 lg:px-8">
         <div class="glass-panel mx-auto flex max-w-7xl flex-col gap-6 rounded-[2rem] px-6 py-8 sm:px-8 lg:flex-row lg:items-center lg:justify-between">
             <div>
-                <p class="font-display text-xl font-bold text-slate-950">MesukDom</p>
-                <p class="mt-2 max-w-2xl text-sm leading-7 text-slate-600">Public site สำหรับแนะนำระบบ จัดการ onboarding ของเจ้าของหอ และเชื่อมต่อสู่ user portal ได้ใน flow เดียว</p>
+                <p class="font-display text-xl font-bold text-slate-950">MesukDorm</p>
+                <p class="mt-2 max-w-2xl text-sm leading-7 text-slate-600">ระบบบริหารจัดการหอพักและอพาร์ตเมนต์ครบวงจร จัดการห้อง ผู้เช่า บิล สัญญา และแจ้งซ่อมในที่เดียว</p>
             </div>
             <div class="flex flex-wrap gap-4 text-sm font-semibold text-slate-600">
-                <a href="{{ route('pricing') }}" class="transition hover:text-slate-950">Pricing</a>
-                <a href="{{ route('landing') }}#preview" class="transition hover:text-slate-950">Preview</a>
-                <a href="{{ route('landing') }}#trust" class="transition hover:text-slate-950">Trust</a>
+                <a href="{{ route('pricing') }}" class="transition hover:text-slate-950">แพ็กเกจ</a>
+                <a href="{{ route('landing') }}#features" class="transition hover:text-slate-950">ฟีเจอร์</a>
+                <a href="{{ route('landing') }}#pricing" class="transition hover:text-slate-950">ราคา</a>
                 @guest
                     @if($authModals)
-                        <button type="button" data-open-auth-modal="signup" class="transition hover:text-slate-950">Sign up</button>
-                        <button type="button" data-open-auth-modal="login" class="transition hover:text-slate-950">Login</button>
+                        <button type="button" data-open-auth-modal="signup" class="transition hover:text-slate-950">สมัครใช้งาน</button>
+                        <button type="button" data-open-auth-modal="login" class="transition hover:text-slate-950">เข้าสู่ระบบ</button>
                     @else
-                        <a href="{{ route('register') }}" class="transition hover:text-slate-950">Sign up</a>
-                        <a href="{{ route('login') }}" class="transition hover:text-slate-950">Login</a>
+                        <a href="{{ route('register') }}" class="transition hover:text-slate-950">สมัครใช้งาน</a>
+                        <a href="{{ route('login') }}" class="transition hover:text-slate-950">เข้าสู่ระบบ</a>
                     @endif
                 @endguest
             </div>

@@ -1,518 +1,501 @@
 <x-public-layout
-    title="MesukDom • ระบบบริหารหอพักแบบ SaaS"
-    description="ระบบบริหารหอพักสมัยใหม่สำหรับเจ้าของหอและทีมงาน พร้อมแดชบอร์ดเรียลไทม์ การติดตามผู้เช่า บิล และ LINE automation"
+    title="MesukDorm • ระบบบริหารหอพักและอพาร์ตเมนต์"
+    description="ระบบบริหารหอพักสมัยใหม่ จัดการห้อง ผู้เช่า บิล สัญญา และแจ้งซ่อม ครบจบในที่เดียว พร้อม LINE แจ้งเตือนอัตโนมัติ"
     :auth-modals="true"
 >
-    <section class="relative overflow-hidden px-4 pb-14 pt-8 sm:px-6 lg:px-8 lg:pt-10">
-        <div class="ambient-ring left-[-4rem] top-[9rem] h-48 w-48"></div>
-        <div class="ambient-ring right-[12%] top-[3rem] h-24 w-24"></div>
 
-        <div class="mx-auto grid max-w-7xl gap-10 lg:grid-cols-[1.02fr,0.98fr] lg:items-center">
-            <div class="reveal-soft" style="--enter-delay: 0.05s;">
-                <div class="inline-flex items-center gap-3 rounded-full border border-white/70 bg-white/65 px-4 py-2 text-xs font-bold uppercase tracking-[0.24em] text-slate-700 shadow-lg shadow-slate-200/40 backdrop-blur">
-                    <span class="inline-flex h-2.5 w-2.5 rounded-full bg-emerald-500"></span>
-                    Premium dorm operations suite
-                </div>
-
-                <h1 class="mt-6 max-w-5xl text-5xl font-bold leading-[0.98] tracking-tight text-slate-950 sm:text-6xl lg:text-7xl">
-                    Landing page สำหรับหอพักที่ต้องการ
-                    <span class="block text-slate-500">ภาพลักษณ์น่าเชื่อถือ และ operations ที่ดูพรีเมียมตั้งแต่แรกเห็น</span>
-                </h1>
-
-                <p class="mt-6 max-w-2xl text-lg leading-8 text-slate-600 sm:text-xl">
-                    MesukDom วาง positioning ให้เจ้าของหอและทีมงานดูเป็นมืออาชีพตั้งแต่ public site ไปจนถึง dashboard ด้วยโครงสร้างที่ชัดเจน ข้อมูลที่ดูเชื่อถือได้ และ flow ทดลองใช้งานที่ไม่สะดุด
-                </p>
-
-                <div class="mt-8 flex flex-col gap-4 sm:flex-row sm:items-center">
-                    @guest
-                        <button type="button" data-open-auth-modal="signup" class="inline-flex items-center justify-center rounded-full bg-slate-950 px-6 py-3 text-base font-bold text-white shadow-2xl shadow-slate-900/20 transition hover:bg-slate-800">
-                            Try MesukDom free
-                        </button>
-                        <a href="#pricing" class="inline-flex items-center justify-center rounded-full border border-slate-300 bg-white/80 px-6 py-3 text-base font-bold text-slate-700 transition hover:border-slate-950 hover:text-slate-950">
-                            View pricing
-                        </a>
-                    @else
-                        <a href="{{ route('app.dashboard') }}" class="inline-flex items-center justify-center rounded-full bg-slate-950 px-6 py-3 text-base font-bold text-white shadow-2xl shadow-slate-900/20 transition hover:bg-slate-800">
-                            ไปที่ Dashboard
-                        </a>
-                    @endguest
-                </div>
-
-                <div class="mt-10 grid gap-4 sm:grid-cols-3">
-                    <div class="glass-panel reveal-up rounded-[1.75rem] p-5" style="--enter-delay: 0.14s;">
-                        <p class="text-xs font-bold uppercase tracking-[0.24em] text-slate-500">Properties live</p>
-                        <p class="mt-3 text-3xl font-extrabold text-slate-950">{{ number_format($publicStats['tenants_total']) }}</p>
-                        <p class="mt-2 text-sm leading-6 text-slate-600">จำนวนโครงการที่อยู่ในระบบและพร้อมถูกบริหารจาก flow เดียว</p>
-                    </div>
-                    <div class="glass-panel reveal-up rounded-[1.75rem] p-5" style="--enter-delay: 0.22s;">
-                        <p class="text-xs font-bold uppercase tracking-[0.24em] text-slate-500">Approved this month</p>
-                        <p class="mt-3 text-3xl font-extrabold text-slate-950">฿{{ number_format((float) $publicStats['monthly_revenue'], 0) }}</p>
-                        <p class="mt-2 text-sm leading-6 text-slate-600">ยอดชำระที่อนุมัติแล้วในเดือนปัจจุบันจากข้อมูล payment จริง</p>
-                    </div>
-                    <div class="glass-panel reveal-up rounded-[1.75rem] p-5" style="--enter-delay: 0.3s;">
-                        <p class="text-xs font-bold uppercase tracking-[0.24em] text-slate-500">Occupancy rate</p>
-                        <p class="mt-3 text-3xl font-extrabold text-slate-950">{{ $publicStats['occupancy_rate'] }}%</p>
-                        <p class="mt-2 text-sm leading-6 text-slate-600">คิดจากจำนวนห้องที่ occupied เทียบกับ inventory ทั้งหมดในระบบ</p>
-                    </div>
-                </div>
-
-                <div class="mt-8 flex flex-wrap items-center gap-3 text-sm font-semibold text-slate-500">
-                    <span class="rounded-full border border-white/70 bg-white/55 px-4 py-2 backdrop-blur">Multi-tenant architecture</span>
-                    <span class="rounded-full border border-white/70 bg-white/55 px-4 py-2 backdrop-blur">Premium resident touchpoints</span>
-                    <span class="rounded-full border border-white/70 bg-white/55 px-4 py-2 backdrop-blur">LINE OA automation</span>
-                </div>
-            </div>
-
-            <div class="premium-panel reveal-up float-glow relative overflow-hidden rounded-[2.5rem] p-6 text-white sm:p-8" style="--enter-delay: 0.12s;">
-                <div class="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(245,158,11,0.18),transparent_28%),radial-gradient(circle_at_bottom_left,rgba(20,184,166,0.14),transparent_32%)]"></div>
-                <div class="relative space-y-5">
-                    <div class="flex items-center justify-between gap-4">
-                        <div>
-                            <p class="text-xs font-bold uppercase tracking-[0.24em] text-white/55">Featured preview</p>
-                            <p class="mt-2 text-2xl font-bold">The owner dashboard, framed like a premium control room</p>
-                        </div>
-                        <span class="rounded-full bg-white/10 px-3 py-1 text-xs font-bold text-emerald-200 ring-1 ring-white/15">Live status</span>
-                    </div>
-
-                    <div class="grid gap-4 lg:grid-cols-[1.08fr,0.92fr]">
-                        <div class="rounded-[1.75rem] bg-white/8 p-5 ring-1 ring-white/10 backdrop-blur-sm">
-                            <div class="flex items-center justify-between text-sm text-white/65">
-                                <span>Portfolio overview</span>
-                                <span>Live system snapshot</span>
-                            </div>
-                            <div class="mt-6 grid gap-3 sm:grid-cols-2">
-                                <div class="rounded-2xl bg-white/10 px-4 py-4 ring-1 ring-white/10">
-                                    <p class="text-sm text-white/55">Properties</p>
-                                    <p class="mt-1 text-3xl font-extrabold">{{ number_format($publicStats['tenants_total']) }}</p>
-                                </div>
-                                <div class="rounded-2xl bg-white/10 px-4 py-4 ring-1 ring-white/10">
-                                    <p class="text-sm text-white/55">Rooms online</p>
-                                    <p class="mt-1 text-3xl font-extrabold">{{ number_format($publicStats['rooms_total']) }}</p>
-                                </div>
-                                <div class="rounded-2xl bg-white/10 px-4 py-4 ring-1 ring-white/10">
-                                    <p class="text-sm text-white/55">Pending payments</p>
-                                    <p class="mt-1 text-3xl font-extrabold">{{ number_format($publicStats['pending_payments']) }}</p>
-                                </div>
-                                <div class="rounded-2xl bg-white/10 px-4 py-4 ring-1 ring-white/10">
-                                    <p class="text-sm text-white/55">Overdue invoices</p>
-                                    <p class="mt-1 text-3xl font-extrabold">{{ number_format($publicStats['overdue_invoices']) }}</p>
-                                </div>
-                                <div class="rounded-2xl bg-white/10 px-4 py-4 ring-1 ring-white/10 sm:col-span-2">
-                                    <div class="flex items-end justify-between gap-4">
-                                        <div>
-                                            <p class="text-sm text-white/55">Approved revenue this month</p>
-                                            <p class="mt-1 text-3xl font-extrabold">฿{{ number_format((float) $publicStats['monthly_revenue'], 0) }}</p>
-                                        </div>
-                                        <div class="rounded-2xl bg-white/10 px-4 py-3 text-right ring-1 ring-white/10">
-                                            <p class="text-xs uppercase tracking-[0.22em] text-white/50">Open repairs</p>
-                                            <p class="mt-1 text-lg font-bold text-amber-200">{{ number_format($publicStats['open_repairs']) }}</p>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="space-y-4">
-                            <div class="rounded-[1.75rem] bg-white/8 p-5 ring-1 ring-white/10 backdrop-blur-sm">
-                                <p class="text-xs font-bold uppercase tracking-[0.24em] text-white/50">Property cards</p>
-                                <div class="mt-4 space-y-3">
-                                    @forelse($propertyHighlights as $property)
-                                        <div class="rounded-2xl bg-white/10 px-4 py-3 ring-1 ring-white/10">
-                                            <div class="flex items-center justify-between gap-4 text-sm font-semibold">
-                                                <span>{{ $property['name'] }}</span>
-                                                <span class="{{ $property['occupancy_rate'] >= 80 ? 'text-emerald-200' : 'text-amber-200' }}">{{ $property['occupancy_rate'] }}% occupied</span>
-                                            </div>
-                                            <p class="mt-2 text-sm text-white/60">{{ number_format($property['rooms_total']) }} rooms, {{ number_format($property['pending_payments']) }} pending payments, {{ number_format($property['open_repairs']) }} open repairs</p>
-                                        </div>
-                                    @empty
-                                        <div class="rounded-2xl bg-white/10 px-4 py-3 text-sm text-white/70 ring-1 ring-white/10">
-                                            ยังไม่มี property data ในระบบสำหรับแสดง featured cards
-                                        </div>
-                                    @endforelse
-                                </div>
-                            </div>
-
-                            <div class="rounded-[1.75rem] bg-white/8 p-5 ring-1 ring-white/10 backdrop-blur-sm">
-                                <p class="text-xs font-bold uppercase tracking-[0.24em] text-white/50">Featured property</p>
-                                <div class="mt-4 grid gap-3 sm:grid-cols-3 lg:grid-cols-1">
-                                    @if($featuredProperty)
-                                        <div class="rounded-2xl bg-white/10 px-4 py-3 ring-1 ring-white/10">
-                                            <p class="text-sm text-white/60">{{ $featuredProperty['name'] }}</p>
-                                            <p class="mt-1 text-2xl font-extrabold">฿{{ number_format((float) $featuredProperty['monthly_revenue'], 0) }}</p>
-                                        </div>
-                                        <div class="rounded-2xl bg-white/10 px-4 py-3 ring-1 ring-white/10">
-                                            <p class="text-sm text-white/60">Occupied rooms</p>
-                                            <p class="mt-1 text-2xl font-extrabold">{{ number_format($featuredProperty['rooms_occupied']) }}/{{ number_format($featuredProperty['rooms_total']) }}</p>
-                                        </div>
-                                        <div class="rounded-2xl bg-white/10 px-4 py-3 ring-1 ring-white/10">
-                                            <p class="text-sm text-white/60">Overdue invoices</p>
-                                            <p class="mt-1 text-2xl font-extrabold">{{ number_format($featuredProperty['overdue_invoices']) }}</p>
-                                        </div>
-                                    @else
-                                        <div class="rounded-2xl bg-white/10 px-4 py-3 text-sm text-white/70 ring-1 ring-white/10 sm:col-span-3 lg:col-span-1">
-                                            เมื่อมี tenant และธุรกรรมในระบบ การ์ดนี้จะสรุป property ที่เด่นที่สุดให้อัตโนมัติ
-                                        </div>
-                                    @endif
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </section>
-
-    <section id="trust" class="px-4 pb-8 sm:px-6 lg:px-8">
-        <div class="mx-auto max-w-7xl rounded-[2.25rem] border border-white/60 bg-white/58 px-6 py-6 shadow-xl shadow-slate-200/30 backdrop-blur sm:px-8">
-            <div class="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
-                <div class="max-w-2xl">
-                    <p class="text-sm font-bold uppercase tracking-[0.24em] text-slate-500">Trust layer</p>
-                    <h2 class="mt-3 text-3xl font-bold tracking-tight text-slate-950 sm:text-4xl">Premium feel ต้องมาพร้อมความไว้ใจที่มองเห็นได้ทันที</h2>
-                </div>
-                <div class="flex flex-wrap gap-3 text-xs font-bold uppercase tracking-[0.22em] text-slate-500">
-                    <span class="rounded-full bg-slate-950 px-4 py-3 text-white">Owner + staff access</span>
-                    <span class="rounded-full bg-white px-4 py-3 text-slate-700 ring-1 ring-slate-200">Signed payment links</span>
-                    <span class="rounded-full bg-white px-4 py-3 text-slate-700 ring-1 ring-slate-200">LINE webhook logs</span>
-                    <span class="rounded-full bg-white px-4 py-3 text-slate-700 ring-1 ring-slate-200">Tenant-safe data isolation</span>
-                </div>
-            </div>
-        </div>
-    </section>
-
-    <section id="preview" class="px-4 py-12 sm:px-6 lg:px-8">
+    {{-- ══════════════════════════════════════════════════
+        HERO
+    ══════════════════════════════════════════════════ --}}
+    <section class="relative overflow-hidden px-4 pb-20 pt-16 sm:px-6 lg:px-8 lg:pb-28 lg:pt-24">
         <div class="mx-auto max-w-7xl">
-            <div class="grid gap-5 lg:grid-cols-[0.88fr,1.12fr]">
-                <article class="mesh-card reveal-up rounded-[2.25rem] p-7" style="--enter-delay: 0.08s;">
-                    <p class="text-sm font-bold uppercase tracking-[0.24em] text-amber-700">Property cards</p>
-                    <h2 class="mt-3 text-3xl font-bold tracking-tight text-slate-950 sm:text-4xl">Glassmorphism cards ที่ทำให้แต่ละโครงการดูมีระดับ</h2>
-                    <p class="mt-4 text-lg leading-8 text-slate-600">แทนการเล่าระบบแบบ generic หน้า landing นี้โชว์ property preview, occupancy signal และ service quality ให้ผู้เข้าชมเข้าใจคุณค่าของระบบเร็วขึ้น</p>
+            <div class="grid items-center gap-12 lg:grid-cols-2 lg:gap-16">
+                {{-- Text --}}
+                <div class="reveal-soft" style="--enter-delay:.05s">
+                    <p class="inline-block rounded-full bg-amber-100 px-4 py-1.5 text-sm font-semibold text-amber-700">
+                        ทดลองใช้ฟรี — ไม่ต้องผูกบัตร
+                    </p>
 
-                    <div class="mt-8 space-y-4">
-                        <div class="glass-panel reveal-soft rounded-[1.75rem] p-5" style="--enter-delay: 0.12s;">
-                            <div class="flex items-start justify-between gap-4">
-                                <div>
-                                    <p class="text-xs font-bold uppercase tracking-[0.22em] text-slate-500">Featured property</p>
-                                    <h3 class="mt-2 text-2xl font-bold text-slate-950">{{ $featuredProperty['name'] ?? 'Portfolio overview' }}</h3>
-                                </div>
-                                <span class="rounded-full bg-emerald-500/10 px-3 py-1 text-xs font-bold text-emerald-700">Data-driven</span>
-                            </div>
-                            <div class="mt-5 grid gap-3 sm:grid-cols-3">
-                                <div class="rounded-2xl bg-white/80 px-4 py-4 ring-1 ring-slate-200/70">
-                                    <p class="text-sm text-slate-500">Occupancy</p>
-                                    <p class="mt-1 text-2xl font-extrabold text-slate-950">{{ $featuredProperty['occupancy_rate'] ?? $publicStats['occupancy_rate'] }}%</p>
-                                </div>
-                                <div class="rounded-2xl bg-white/80 px-4 py-4 ring-1 ring-slate-200/70">
-                                    <p class="text-sm text-slate-500">Collection</p>
-                                    <p class="mt-1 text-2xl font-extrabold text-slate-950">฿{{ number_format((float) ($featuredProperty['monthly_revenue'] ?? $publicStats['monthly_revenue']), 0) }}</p>
-                                </div>
-                                <div class="rounded-2xl bg-white/80 px-4 py-4 ring-1 ring-slate-200/70">
-                                    <p class="text-sm text-slate-500">Open repairs</p>
-                                    <p class="mt-1 text-2xl font-extrabold text-slate-950">{{ number_format($featuredProperty['open_repairs'] ?? $publicStats['open_repairs']) }}</p>
-                                </div>
-                            </div>
+                    <h1 class="mt-6 text-4xl font-extrabold leading-tight tracking-tight text-slate-900 sm:text-5xl lg:text-6xl">
+                        ระบบบริหารจัดการ<br class="hidden sm:block">
+                        <span class="text-amber-600">หอพักและอพาร์ตเมนต์</span>
+                    </h1>
+
+                    <p class="mt-6 max-w-xl text-lg leading-relaxed text-slate-600">
+                        MesukDorm ช่วยให้คุณจัดการห้องพัก ผู้เช่า สัญญา บิลค่าเช่า และแจ้งซ่อม ได้ครบจบในที่เดียว พร้อมส่งบิลผ่าน LINE อัตโนมัติ
+                    </p>
+
+                    <div class="mt-8 flex flex-wrap items-center gap-4">
+                        @guest
+                            <button type="button" data-open-auth-modal="signup"
+                                class="inline-flex items-center gap-2 rounded-xl bg-amber-500 px-7 py-3.5 text-base font-bold text-white shadow-lg shadow-amber-500/25 transition hover:bg-amber-600">
+                                <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+                                เริ่มใช้งานฟรี
+                            </button>
+                            <a href="#features"
+                                class="inline-flex items-center gap-2 rounded-xl border border-slate-300 bg-white px-7 py-3.5 text-base font-bold text-slate-700 transition hover:border-slate-400 hover:text-slate-900">
+                                ดูฟีเจอร์ทั้งหมด
+                                <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg>
+                            </a>
+                        @else
+                            <a href="{{ route('app.dashboard') }}"
+                                class="inline-flex items-center gap-2 rounded-xl bg-amber-500 px-7 py-3.5 text-base font-bold text-white shadow-lg shadow-amber-500/25 transition hover:bg-amber-600">
+                                เข้าสู่ Dashboard
+                                <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M13 7l5 5m0 0l-5 5m5-5H6"/></svg>
+                            </a>
+                        @endguest
+                    </div>
+
+                    {{-- Trust badges --}}
+                    <div class="mt-10 flex flex-wrap items-center gap-x-6 gap-y-3 text-sm text-slate-500">
+                        <span class="flex items-center gap-2">
+                            <svg class="h-5 w-5 text-teal-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg>
+                            ข้อมูลแยกตาม Tenant
+                        </span>
+                        <span class="flex items-center gap-2">
+                            <svg class="h-5 w-5 text-teal-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M3 15a4 4 0 004 4h9a5 5 0 10-.1-9.999 5.002 5.002 0 10-9.78 2.096A4.001 4.001 0 003 15z"/></svg>
+                            ใช้งานผ่านเว็บได้เลย
+                        </span>
+                        <span class="flex items-center gap-2">
+                            <svg class="h-5 w-5 text-teal-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/></svg>
+                            LINE แจ้งเตือนอัตโนมัติ
+                        </span>
+                    </div>
+                </div>
+
+                {{-- Hero visual: Dashboard preview mockup --}}
+                <div class="reveal-up relative" style="--enter-delay:.18s">
+                    <div class="relative rounded-2xl border border-slate-200/80 bg-white p-4 shadow-2xl shadow-slate-900/10 sm:p-6">
+                        {{-- Fake browser bar --}}
+                        <div class="mb-4 flex items-center gap-2">
+                            <span class="h-3 w-3 rounded-full bg-red-400"></span>
+                            <span class="h-3 w-3 rounded-full bg-amber-400"></span>
+                            <span class="h-3 w-3 rounded-full bg-green-400"></span>
+                            <span class="ml-3 flex-1 rounded-md bg-slate-100 px-3 py-1 text-xs text-slate-400">mesukdorm.com/app/dashboard</span>
                         </div>
-
-                        <div class="glass-panel reveal-soft rounded-[1.75rem] p-5" style="--enter-delay: 0.18s;">
-                            <p class="text-xs font-bold uppercase tracking-[0.22em] text-slate-500">Resident experience</p>
-                            <p class="mt-3 text-lg font-bold text-slate-950">โปรไฟล์แต่ละหอสามารถสื่อสารมาตรฐานบริการได้ชัดขึ้น</p>
-                            <p class="mt-2 text-sm leading-6 text-slate-600">ทั้งหน้า public และ dashboard พูดภาษาเดียวกัน: เรียบ หรู มั่นใจ และอ้างอิงตัวเลขจริงจาก tenant, rooms, invoices และ payments</p>
+                        {{-- Dashboard mockup --}}
+                        <div class="space-y-3">
+                            <div class="grid grid-cols-3 gap-3">
+                                <div class="rounded-xl bg-amber-50 p-4 text-center">
+                                    <p class="text-2xl font-extrabold text-amber-600">{{ number_format($publicStats['tenants_total']) }}</p>
+                                    <p class="mt-1 text-xs text-slate-500">โครงการ</p>
+                                </div>
+                                <div class="rounded-xl bg-teal-50 p-4 text-center">
+                                    <p class="text-2xl font-extrabold text-teal-600">{{ number_format($publicStats['rooms_total']) }}</p>
+                                    <p class="mt-1 text-xs text-slate-500">ห้องทั้งหมด</p>
+                                </div>
+                                <div class="rounded-xl bg-emerald-50 p-4 text-center">
+                                    <p class="text-2xl font-extrabold text-emerald-600">{{ $publicStats['occupancy_rate'] }}%</p>
+                                    <p class="mt-1 text-xs text-slate-500">อัตราเข้าพัก</p>
+                                </div>
+                            </div>
+                            {{-- Fake room grid --}}
+                            <div class="rounded-xl border border-slate-100 bg-slate-50 p-3">
+                                <p class="mb-2 text-xs font-semibold text-slate-400">ผังห้องพัก</p>
+                                <div class="grid grid-cols-6 gap-1.5 sm:grid-cols-8">
+                                    @for($i = 0; $i < 16; $i++)
+                                        <div class="aspect-square rounded-md {{ $i < round(16 * $publicStats['occupancy_rate'] / 100) ? 'bg-teal-400' : 'bg-slate-200' }}"></div>
+                                    @endfor
+                                </div>
+                                <div class="mt-2 flex items-center gap-4 text-[10px] text-slate-400">
+                                    <span class="flex items-center gap-1"><span class="inline-block h-2 w-2 rounded-sm bg-teal-400"></span> มีผู้เช่า</span>
+                                    <span class="flex items-center gap-1"><span class="inline-block h-2 w-2 rounded-sm bg-slate-200"></span> ว่าง</span>
+                                </div>
+                            </div>
+                            {{-- Fake chart bar --}}
+                            <div class="rounded-xl border border-slate-100 bg-slate-50 p-3">
+                                <p class="mb-2 text-xs font-semibold text-slate-400">รายได้รายเดือน</p>
+                                <div class="flex items-end gap-1.5" style="height:60px">
+                                    @foreach([40,65,55,80,70,90,75,85,95,60,78,88] as $h)
+                                        <div class="flex-1 rounded-t bg-amber-400" style="height:{{ $h }}%; opacity:{{ $loop->last ? '0.9' : ($h > 75 ? '0.7' : '0.4') }}"></div>
+                                    @endforeach
+                                </div>
+                                <div class="mt-1 flex justify-between text-[9px] text-slate-400">
+                                    <span>ม.ค.</span><span>มิ.ย.</span><span>ธ.ค.</span>
+                                </div>
+                            </div>
                         </div>
                     </div>
-                </article>
-
-                <div class="grid gap-5 sm:grid-cols-2">
-                    <article class="glass-panel reveal-up rounded-[2rem] p-6" style="--enter-delay: 0.14s;">
-                        <p class="text-xs font-bold uppercase tracking-[0.24em] text-slate-500">01</p>
-                        <h3 class="mt-4 text-2xl font-bold text-slate-950">Executive occupancy view</h3>
-                        <p class="mt-3 text-base leading-7 text-slate-600">มองเห็นห้องว่าง ห้องพร้อมปล่อย และพื้นที่ที่ควรเร่งทำรายได้แบบไม่ต้องเปิดหลายหน้าจอ</p>
-                    </article>
-
-                    <article class="mesh-card reveal-up rounded-[2rem] p-6" style="--enter-delay: 0.2s;">
-                        <p class="text-xs font-bold uppercase tracking-[0.24em] text-amber-700">02</p>
-                        <h3 class="mt-4 text-2xl font-bold text-slate-950">Billing, but still elegant</h3>
-                        <p class="mt-3 text-base leading-7 text-slate-600">สถานะบิล, สลิป, ยอดค้าง และ resident payment links ถูกจัดวางแบบอ่านง่ายและดู premium</p>
-                    </article>
-
-                    <article class="mesh-card reveal-up rounded-[2rem] p-6 sm:col-span-2" style="--enter-delay: 0.26s;">
-                        <div class="grid gap-5 lg:grid-cols-[1fr,0.9fr] lg:items-center">
-                            <div>
-                                <p class="text-xs font-bold uppercase tracking-[0.24em] text-teal-700">03</p>
-                                <h3 class="mt-4 text-3xl font-bold text-slate-950">Communication flow ที่น่าเชื่อถือ ไม่ใช่แค่ส่งข้อความได้</h3>
-                                <p class="mt-3 text-base leading-7 text-slate-600">เชื่อม LINE OA, broadcast ตาม segment และเก็บ logs เพื่อให้ทีมงานตอบคำถามผู้เช่าได้ด้วยข้อมูลจริงทุกครั้ง</p>
-                            </div>
-                            <div class="rounded-[1.75rem] bg-white/80 p-5 ring-1 ring-slate-200/70">
-                                <div class="space-y-3 text-sm font-semibold text-slate-700">
-                                    <div class="flex items-center justify-between rounded-2xl bg-slate-50 px-4 py-3">
-                                        <span>Rooms occupied</span>
-                                        <span class="text-slate-950">{{ number_format($publicStats['rooms_occupied']) }}</span>
-                                    </div>
-                                    <div class="flex items-center justify-between rounded-2xl bg-slate-50 px-4 py-3">
-                                        <span>Pending payments</span>
-                                        <span class="text-slate-950">{{ number_format($publicStats['pending_payments']) }}</span>
-                                    </div>
-                                    <div class="flex items-center justify-between rounded-2xl bg-slate-50 px-4 py-3">
-                                        <span>Overdue invoices</span>
-                                        <span class="text-slate-950">{{ number_format($publicStats['overdue_invoices']) }}</span>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </article>
+                    {{-- Decorative dots --}}
+                    <div class="absolute -right-4 -top-4 -z-10 h-24 w-24 rounded-full bg-amber-200/40 blur-2xl"></div>
+                    <div class="absolute -bottom-4 -left-4 -z-10 h-32 w-32 rounded-full bg-teal-200/40 blur-2xl"></div>
                 </div>
             </div>
         </div>
     </section>
 
-    <section class="px-4 py-12 sm:px-6 lg:px-8">
-        <div class="mx-auto max-w-7xl">
-            <div class="flex flex-col gap-6 md:flex-row md:items-end md:justify-between">
-                <div class="max-w-3xl">
-                    <p class="text-sm font-bold uppercase tracking-[0.24em] text-amber-700">Why it converts</p>
-                    <h2 class="mt-3 text-3xl font-bold tracking-tight text-slate-950 sm:text-4xl">โครงสร้างหน้าออกแบบให้ผู้ชมรู้สึกทั้งเชื่อถือและอยากทดลองต่อทันที</h2>
-                    <p class="mt-4 text-lg leading-8 text-slate-600">แทนการขายด้วยคำกว้าง ๆ หน้าใหม่นี้ใช้ proof points, property previews และ trial CTA ที่พาผู้ใช้ไปยัง signup flow เดิมโดยตรง</p>
-                </div>
-                @guest
-                    <button type="button" data-open-auth-modal="signup" class="inline-flex items-center justify-center rounded-full border border-slate-300 bg-white/80 px-5 py-3 text-sm font-bold text-slate-700 transition hover:border-slate-950 hover:text-slate-950">
-                        ทดลองใช้งานจากหน้านี้
-                    </button>
-                @endguest
+    {{-- ══════════════════════════════════════════════════
+        STATS BAR
+    ══════════════════════════════════════════════════ --}}
+    <section class="border-y border-slate-200/60 bg-white/70 px-4 py-10 backdrop-blur sm:px-6 lg:px-8">
+        <div class="mx-auto grid max-w-5xl grid-cols-2 gap-8 text-center lg:grid-cols-4">
+            <div>
+                <p class="text-3xl font-extrabold text-slate-900">{{ number_format($publicStats['tenants_total']) }}</p>
+                <p class="mt-1 text-sm text-slate-500">โครงการที่ใช้งาน</p>
             </div>
-
-            <div class="mt-10 grid gap-5 lg:grid-cols-3">
-                <article class="glass-panel rounded-[2rem] p-6">
-                    <p class="text-sm font-bold uppercase tracking-[0.24em] text-slate-500">One clear story</p>
-                    <p class="mt-4 text-4xl font-extrabold text-slate-950">1 flow</p>
-                    <p class="mt-3 text-base leading-7 text-slate-600">Public site, pricing, trial signup และ owner onboarding เชื่อมกันในทางเดียว ไม่หลุดบริบท</p>
-                </article>
-
-                <article class="glass-panel rounded-[2rem] p-6">
-                    <p class="text-sm font-bold uppercase tracking-[0.24em] text-slate-500">Trust by design</p>
-                    <p class="mt-4 text-4xl font-extrabold text-slate-950">Tenant-safe</p>
-                    <p class="mt-3 text-base leading-7 text-slate-600">ย้ำเรื่อง data separation, audit trail และ signed links ตั้งแต่ก่อนผู้ใช้กดสมัคร</p>
-                </article>
-
-                <article class="glass-panel rounded-[2rem] p-6">
-                    <p class="text-sm font-bold uppercase tracking-[0.24em] text-slate-500">Premium tone</p>
-                    <p class="mt-4 text-4xl font-extrabold text-slate-950">Calm UI</p>
-                    <p class="mt-3 text-base leading-7 text-slate-600">พื้นผิวแก้ว สีอบอุ่น และจังหวะเนื้อหาที่นิ่งกว่า ช่วยให้แบรนด์ดูแพงขึ้นโดยไม่เกินจริง</p>
-                </article>
+            <div>
+                <p class="text-3xl font-extrabold text-slate-900">{{ number_format($publicStats['rooms_total']) }}</p>
+                <p class="mt-1 text-sm text-slate-500">ห้องในระบบ</p>
+            </div>
+            <div>
+                <p class="text-3xl font-extrabold text-slate-900">{{ $publicStats['occupancy_rate'] }}%</p>
+                <p class="mt-1 text-sm text-slate-500">อัตราเข้าพักเฉลี่ย</p>
+            </div>
+            <div>
+                <p class="text-3xl font-extrabold text-slate-900">฿{{ number_format((float) $publicStats['monthly_revenue'], 0) }}</p>
+                <p class="mt-1 text-sm text-slate-500">รายได้เดือนนี้</p>
             </div>
         </div>
     </section>
 
-    <section id="pricing" class="px-4 py-12 sm:px-6 lg:px-8">
+    {{-- ══════════════════════════════════════════════════
+        FEATURES (8 items)
+    ══════════════════════════════════════════════════ --}}
+    <section id="features" class="px-4 py-20 sm:px-6 lg:px-8 lg:py-28">
         <div class="mx-auto max-w-7xl">
-            <div class="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
-                <div class="max-w-3xl">
-                    <p class="text-sm font-bold uppercase tracking-[0.24em] text-teal-700">Pricing</p>
-                    <h2 class="mt-3 text-3xl font-bold tracking-tight text-slate-950 sm:text-4xl">Pricing ที่อ่านง่าย และพร้อมต่อเข้ากับ trial flow ทันที</h2>
-                    <p class="mt-4 text-lg leading-8 text-slate-600">การ์ดราคายังดึงจากข้อมูลจริงในระบบเหมือนเดิม แต่ถูกจัดให้รู้สึก premium มากขึ้น และเชื่อมการเลือก plan ไปยัง signup modal ได้ตรง ๆ</p>
-                </div>
-                <div class="rounded-[1.5rem] border border-white/60 bg-white/60 px-5 py-4 text-sm font-semibold text-slate-600 shadow-lg shadow-slate-200/30 backdrop-blur">
-                    ทุกแพ็กเกจพร้อม billing, room management และ resident communication workflow
-                </div>
+            <div class="mx-auto max-w-2xl text-center">
+                <p class="text-sm font-semibold uppercase tracking-widest text-amber-600">ฟีเจอร์ครบวงจร</p>
+                <h2 class="mt-3 text-3xl font-extrabold tracking-tight text-slate-900 sm:text-4xl">ครบทุกเรื่องที่เจ้าของหอพักต้องใช้</h2>
+                <p class="mt-4 text-lg text-slate-600">จัดการทุกอย่างในที่เดียว ตั้งแต่ห้องพัก สัญญา บิล ไปจนถึงแจ้งซ่อมและแจ้งเตือนผ่าน LINE</p>
             </div>
 
-            <div class="mt-10 grid gap-5 lg:grid-cols-3">
+            <div class="mt-16 grid gap-x-8 gap-y-12 sm:grid-cols-2 lg:grid-cols-4">
+                {{-- Feature 01 --}}
+                <div class="reveal-up group" style="--enter-delay:.05s">
+                    <div class="flex h-14 w-14 items-center justify-center rounded-2xl bg-amber-100 text-amber-600 transition group-hover:bg-amber-500 group-hover:text-white">
+                        <svg class="h-7 w-7" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 21h19.5m-18-18v18m10.5-18v18m6-13.5V21M6.75 6.75h.75m-.75 3h.75m-.75 3h.75m3-6h.75m-.75 3h.75m-.75 3h.75M6.75 21v-3.375c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21M3 3h12m-.75 4.5H21m-3.75 3H21"/></svg>
+                    </div>
+                    <p class="mt-5 text-xs font-bold text-amber-600">01</p>
+                    <h3 class="mt-2 text-lg font-bold text-slate-900">จัดการห้องพักและผังห้อง</h3>
+                    <p class="mt-2 text-sm leading-relaxed text-slate-600">กำหนดจำนวนชั้น ห้อง และสถานะการเช่า ดูผังห้องแบบภาพรวมได้ทันที</p>
+                </div>
+
+                {{-- Feature 02 --}}
+                <div class="reveal-up group" style="--enter-delay:.1s">
+                    <div class="flex h-14 w-14 items-center justify-center rounded-2xl bg-teal-100 text-teal-600 transition group-hover:bg-teal-500 group-hover:text-white">
+                        <svg class="h-7 w-7" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19.128a9.38 9.38 0 002.625.372 9.337 9.337 0 004.121-.952 4.125 4.125 0 00-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 018.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0111.964-3.07M12 6.375a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zm8.25 2.25a2.625 2.625 0 11-5.25 0 2.625 2.625 0 015.25 0z"/></svg>
+                    </div>
+                    <p class="mt-5 text-xs font-bold text-teal-600">02</p>
+                    <h3 class="mt-2 text-lg font-bold text-slate-900">จัดเก็บข้อมูลผู้เช่า</h3>
+                    <p class="mt-2 text-sm leading-relaxed text-slate-600">บันทึกข้อมูลผู้เช่าอย่างครบถ้วน เบอร์โทร สัญญา วันเข้า-ออก ค้นหาง่ายในที่เดียว</p>
+                </div>
+
+                {{-- Feature 03 --}}
+                <div class="reveal-up group" style="--enter-delay:.15s">
+                    <div class="flex h-14 w-14 items-center justify-center rounded-2xl bg-amber-100 text-amber-600 transition group-hover:bg-amber-500 group-hover:text-white">
+                        <svg class="h-7 w-7" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z"/></svg>
+                    </div>
+                    <p class="mt-5 text-xs font-bold text-amber-600">03</p>
+                    <h3 class="mt-2 text-lg font-bold text-slate-900">ทำสัญญาเช่าออนไลน์</h3>
+                    <p class="mt-2 text-sm leading-relaxed text-slate-600">สร้างสัญญาเช่า กำหนดวันเริ่ม-สิ้นสุด ค่ามัดจำ เก็บประวัติสัญญาทุกฉบับในระบบ</p>
+                </div>
+
+                {{-- Feature 04 --}}
+                <div class="reveal-up group" style="--enter-delay:.2s">
+                    <div class="flex h-14 w-14 items-center justify-center rounded-2xl bg-teal-100 text-teal-600 transition group-hover:bg-teal-500 group-hover:text-white">
+                        <svg class="h-7 w-7" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 13.5l10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75z"/></svg>
+                    </div>
+                    <p class="mt-5 text-xs font-bold text-teal-600">04</p>
+                    <h3 class="mt-2 text-lg font-bold text-slate-900">บันทึกค่าน้ำ-ค่าไฟ</h3>
+                    <p class="mt-2 text-sm leading-relaxed text-slate-600">จดมิเตอร์ค่าน้ำ ค่าไฟผ่านระบบ คำนวณยอดอัตโนมัติ ลดความผิดพลาดจากการคิดเอง</p>
+                </div>
+
+                {{-- Feature 05 --}}
+                <div class="reveal-up group" style="--enter-delay:.25s">
+                    <div class="flex h-14 w-14 items-center justify-center rounded-2xl bg-amber-100 text-amber-600 transition group-hover:bg-amber-500 group-hover:text-white">
+                        <svg class="h-7 w-7" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M9 14.25l6-6m4.5-3.493V21.75l-3.75-1.5-3.75 1.5-3.75-1.5-3.75 1.5V4.757c0-1.108.806-2.057 1.907-2.185a48.507 48.507 0 0111.186 0c1.1.128 1.907 1.077 1.907 2.185zM9.75 9h.008v.008H9.75V9zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm4.125 4.5h.008v.008h-.008V13.5zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z"/></svg>
+                    </div>
+                    <p class="mt-5 text-xs font-bold text-amber-600">05</p>
+                    <h3 class="mt-2 text-lg font-bold text-slate-900">สร้างใบแจ้งหนี้อัตโนมัติ</h3>
+                    <p class="mt-2 text-sm leading-relaxed text-slate-600">สรุปยอดค่าเช่า ค่าน้ำ ค่าไฟ และค่าบริการเป็นบิลรายเดือน ส่งถึงผู้เช่าได้ทันที</p>
+                </div>
+
+                {{-- Feature 06 --}}
+                <div class="reveal-up group" style="--enter-delay:.3s">
+                    <div class="flex h-14 w-14 items-center justify-center rounded-2xl bg-teal-100 text-teal-600 transition group-hover:bg-teal-500 group-hover:text-white">
+                        <svg class="h-7 w-7" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 4.875c0-.621.504-1.125 1.125-1.125h4.5c.621 0 1.125.504 1.125 1.125v4.5c0 .621-.504 1.125-1.125 1.125h-4.5A1.125 1.125 0 013.75 9.375v-4.5zM3.75 14.625c0-.621.504-1.125 1.125-1.125h4.5c.621 0 1.125.504 1.125 1.125v4.5c0 .621-.504 1.125-1.125 1.125h-4.5a1.125 1.125 0 01-1.125-1.125v-4.5zM13.5 4.875c0-.621.504-1.125 1.125-1.125h4.5c.621 0 1.125.504 1.125 1.125v4.5c0 .621-.504 1.125-1.125 1.125h-4.5A1.125 1.125 0 0113.5 9.375v-4.5z"/><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 14.625v2.25m0 2.25h2.25m2.25 0h-2.25m0 0v-2.25m0 0h-2.25"/></svg>
+                    </div>
+                    <p class="mt-5 text-xs font-bold text-teal-600">06</p>
+                    <h3 class="mt-2 text-lg font-bold text-slate-900">สแกนจ่ายผ่าน QR Code</h3>
+                    <p class="mt-2 text-sm leading-relaxed text-slate-600">รองรับ PromptPay QR Code ผู้เช่าสแกนจ่ายได้ทันที ตรวจสอบสถานะการชำระแบบเรียลไทม์</p>
+                </div>
+
+                {{-- Feature 07 --}}
+                <div class="reveal-up group" style="--enter-delay:.35s">
+                    <div class="flex h-14 w-14 items-center justify-center rounded-2xl bg-amber-100 text-amber-600 transition group-hover:bg-amber-500 group-hover:text-white">
+                        <svg class="h-7 w-7" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M11.42 15.17l-5.1-3.4a1.5 1.5 0 01-.42-2.08l.72-1.08a1.5 1.5 0 012.08-.42l5.1 3.4m-2.38 3.58l5.1 3.4a1.5 1.5 0 002.08-.42l.72-1.08a1.5 1.5 0 00-.42-2.08l-5.1-3.4m-2.38 3.58l2.38-3.58"/></svg>
+                    </div>
+                    <p class="mt-5 text-xs font-bold text-amber-600">07</p>
+                    <h3 class="mt-2 text-lg font-bold text-slate-900">บันทึกแจ้งซ่อม</h3>
+                    <p class="mt-2 text-sm leading-relaxed text-slate-600">รับแจ้งซ่อมจากผู้เช่า ติดตามสถานะงาน เก็บประวัติการซ่อมของแต่ละห้องอย่างเป็นระบบ</p>
+                </div>
+
+                {{-- Feature 08 --}}
+                <div class="reveal-up group" style="--enter-delay:.4s">
+                    <div class="flex h-14 w-14 items-center justify-center rounded-2xl bg-teal-100 text-teal-600 transition group-hover:bg-teal-500 group-hover:text-white">
+                        <svg class="h-7 w-7" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M8.625 12a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H8.25m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H12m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0h-.375M21 12c0 4.556-4.03 8.25-9 8.25a9.764 9.764 0 01-2.555-.337A5.972 5.972 0 015.41 20.97a5.969 5.969 0 01-.474-.065 4.48 4.48 0 00.978-2.025c.09-.457-.133-.901-.467-1.226C3.93 16.178 3 14.189 3 12c0-4.556 4.03-8.25 9-8.25s9 3.694 9 8.25z"/></svg>
+                    </div>
+                    <p class="mt-5 text-xs font-bold text-teal-600">08</p>
+                    <h3 class="mt-2 text-lg font-bold text-slate-900">ส่งบิลผ่าน LINE อัตโนมัติ</h3>
+                    <p class="mt-2 text-sm leading-relaxed text-slate-600">เชื่อม LINE OA ส่งบิลค่าเช่า แจ้งเตือนค่าค้าง และ broadcast ข่าวสารถึงผู้เช่าได้ในคลิกเดียว</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    {{-- ══════════════════════════════════════════════════
+        HOW IT WORKS
+    ══════════════════════════════════════════════════ --}}
+    <section class="bg-slate-50 px-4 py-20 sm:px-6 lg:px-8 lg:py-28">
+        <div class="mx-auto max-w-7xl">
+            <div class="mx-auto max-w-2xl text-center">
+                <p class="text-sm font-semibold uppercase tracking-widest text-teal-600">เริ่มต้นง่าย</p>
+                <h2 class="mt-3 text-3xl font-extrabold tracking-tight text-slate-900 sm:text-4xl">ใช้งานได้ใน 3 ขั้นตอน</h2>
+            </div>
+
+            <div class="mt-16 grid gap-8 lg:grid-cols-3">
+                <div class="reveal-up relative rounded-2xl border border-slate-200 bg-white p-8 text-center" style="--enter-delay:.05s">
+                    <div class="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-amber-500 text-2xl font-extrabold text-white shadow-lg shadow-amber-500/25">1</div>
+                    <h3 class="mt-6 text-xl font-bold text-slate-900">สมัครบัญชี</h3>
+                    <p class="mt-3 text-sm leading-relaxed text-slate-600">กรอกชื่อหอพัก เลือกแพ็กเกจ สร้างบัญชีเสร็จใน 1 นาที ทดลองใช้ฟรีไม่มีค่าใช้จ่าย</p>
+                </div>
+                <div class="reveal-up relative rounded-2xl border border-slate-200 bg-white p-8 text-center" style="--enter-delay:.15s">
+                    <div class="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-amber-500 text-2xl font-extrabold text-white shadow-lg shadow-amber-500/25">2</div>
+                    <h3 class="mt-6 text-xl font-bold text-slate-900">ตั้งค่าหอพัก</h3>
+                    <p class="mt-3 text-sm leading-relaxed text-slate-600">เพิ่มห้องพัก ตั้งราคาค่าเช่า นำเข้าข้อมูลผู้เช่าเดิม พร้อมใช้งานจริงได้เลย</p>
+                </div>
+                <div class="reveal-up relative rounded-2xl border border-slate-200 bg-white p-8 text-center" style="--enter-delay:.25s">
+                    <div class="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-amber-500 text-2xl font-extrabold text-white shadow-lg shadow-amber-500/25">3</div>
+                    <h3 class="mt-6 text-xl font-bold text-slate-900">เริ่มบริหาร</h3>
+                    <p class="mt-3 text-sm leading-relaxed text-slate-600">ออกบิล ส่ง LINE แจ้งเตือน รับแจ้งซ่อม ติดตามรายได้ ทุกอย่างจัดการจากหน้าจอเดียว</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    {{-- ══════════════════════════════════════════════════
+        MID CTA
+    ══════════════════════════════════════════════════ --}}
+    @guest
+    <section class="px-4 py-16 sm:px-6 lg:px-8">
+        <div class="mx-auto max-w-4xl rounded-3xl bg-gradient-to-br from-amber-500 to-amber-600 px-8 py-12 text-center text-white shadow-xl shadow-amber-500/20 sm:px-12 sm:py-16">
+            <h2 class="text-3xl font-extrabold sm:text-4xl">พร้อมเปลี่ยนการบริหารหอพัก<br>ให้เป็นเรื่องง่ายแล้วหรือยัง?</h2>
+            <p class="mx-auto mt-4 max-w-xl text-lg text-amber-100">เริ่มต้นฟรี ไม่ต้องผูกบัตรเครดิต ตั้งค่าเสร็จใน 5 นาที</p>
+            <button type="button" data-open-auth-modal="signup"
+                class="mt-8 inline-flex items-center gap-2 rounded-xl bg-white px-8 py-4 text-base font-bold text-amber-600 shadow-lg transition hover:bg-amber-50">
+                <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+                ทดลองใช้ฟรี
+            </button>
+        </div>
+    </section>
+    @endguest
+
+    {{-- ══════════════════════════════════════════════════
+        PRICING
+    ══════════════════════════════════════════════════ --}}
+    <section id="pricing" class="bg-slate-50 px-4 py-20 sm:px-6 lg:px-8 lg:py-28">
+        <div class="mx-auto max-w-7xl">
+            <div class="mx-auto max-w-2xl text-center">
+                <p class="text-sm font-semibold uppercase tracking-widest text-amber-600">แพ็กเกจและราคา</p>
+                <h2 class="mt-3 text-3xl font-extrabold tracking-tight text-slate-900 sm:text-4xl">เลือกแพ็กเกจที่เหมาะกับหอพักของคุณ</h2>
+                <p class="mt-4 text-lg text-slate-600">ทุกแพ็กเกจรวมฟีเจอร์หลักครบ — จัดการห้อง บิล สัญญา และ LINE แจ้งเตือน</p>
+            </div>
+
+            <div class="mt-14 grid gap-6 lg:grid-cols-3">
                 @forelse($plans->take(3) as $plan)
-                    <article class="{{ $loop->iteration === 2 ? 'premium-panel text-white' : 'glass-panel' }} rounded-[2.2rem] p-6">
-                        <div class="flex items-start justify-between gap-4">
-                            <div>
-                                <p class="text-sm font-bold uppercase tracking-[0.24em] {{ $loop->iteration === 2 ? 'text-white/60' : 'text-amber-700' }}">{{ $plan->slug ?: 'Plan' }}</p>
-                                <h3 class="mt-4 text-2xl font-bold {{ $loop->iteration === 2 ? 'text-white' : 'text-slate-950' }}">{{ $plan->name }}</h3>
-                            </div>
-                            @if($loop->iteration === 2)
-                                <span class="rounded-full bg-white/10 px-3 py-1 text-xs font-bold uppercase tracking-[0.2em] text-amber-200 ring-1 ring-white/10">Featured</span>
-                            @endif
-                        </div>
+                    <article class="reveal-up relative flex flex-col rounded-2xl border {{ $loop->iteration === 2 ? 'border-amber-400 bg-white ring-2 ring-amber-400' : 'border-slate-200 bg-white' }} p-7 shadow-sm" style="--enter-delay:{{ 0.05 + $loop->index * 0.1 }}s">
 
-                        <p class="mt-5 text-4xl font-extrabold tracking-tight {{ $loop->iteration === 2 ? 'text-white' : 'text-slate-950' }}">
-                            {{ number_format((float) $plan->price_monthly, 0) }}
-                            <span class="ml-1 text-lg font-semibold {{ $loop->iteration === 2 ? 'text-white/60' : 'text-slate-500' }}">บาท/เดือน</span>
+                        @if($loop->iteration === 2)
+                            <span class="absolute -top-3.5 left-1/2 -translate-x-1/2 rounded-full bg-amber-500 px-4 py-1 text-xs font-bold text-white shadow-lg">แนะนำ</span>
+                        @endif
+
+                        <p class="text-sm font-bold uppercase tracking-wider {{ $loop->iteration === 2 ? 'text-amber-600' : 'text-slate-500' }}">{{ $plan->slug ?: $plan->name }}</p>
+                        <h3 class="mt-3 text-2xl font-bold text-slate-900">{{ $plan->name }}</h3>
+
+                        <p class="mt-5">
+                            <span class="text-4xl font-extrabold text-slate-900">{{ number_format((float) $plan->price_monthly, 0) }}</span>
+                            <span class="ml-1 text-base text-slate-500">บาท/เดือน</span>
                         </p>
 
                         @if($plan->description)
-                            <p class="mt-4 text-base leading-7 {{ $loop->iteration === 2 ? 'text-white/70' : 'text-slate-600' }}">{{ $plan->description }}</p>
+                            <p class="mt-4 text-sm leading-relaxed text-slate-600">{{ $plan->description }}</p>
                         @endif
 
                         @php($limits = (array) ($plan->limits ?? []))
-                        <div class="mt-6 space-y-3">
+                        <ul class="mt-6 flex-1 space-y-3">
                             @forelse($limits as $key => $value)
-                                <div class="flex items-center justify-between rounded-2xl px-4 py-3 text-sm font-semibold {{ $loop->parent->iteration === 2 ? 'bg-white/10 text-white ring-1 ring-white/10' : 'bg-white/80 text-slate-700 ring-1 ring-slate-200/70' }}">
-                                    <span>{{ ucfirst((string) $key) }}</span>
-                                    <span class="{{ $loop->parent->iteration === 2 ? 'text-white' : 'text-slate-950' }}">{{ $value }}</span>
-                                </div>
+                                <li class="flex items-center gap-3 text-sm text-slate-700">
+                                    <svg class="h-5 w-5 flex-shrink-0 text-teal-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
+                                    {{ ucfirst((string) $key) }}: {{ $value }}
+                                </li>
                             @empty
-                                <div class="rounded-2xl px-4 py-3 text-sm font-semibold {{ $loop->iteration === 2 ? 'bg-white/10 text-white ring-1 ring-white/10' : 'bg-white/80 text-slate-700 ring-1 ring-slate-200/70' }}">พร้อมใช้งานกับ billing, room management และ LINE workflow</div>
+                                <li class="flex items-center gap-3 text-sm text-slate-700">
+                                    <svg class="h-5 w-5 flex-shrink-0 text-teal-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
+                                    ครบทุกฟีเจอร์หลัก
+                                </li>
                             @endforelse
-                        </div>
+                        </ul>
 
-                        <div class="mt-8 space-y-3">
+                        <div class="mt-8">
                             @guest
-                                <button type="button" data-open-auth-modal="signup" data-plan-id="{{ $plan->id }}" class="inline-flex w-full items-center justify-center rounded-full {{ $loop->iteration === 2 ? 'bg-white text-slate-950 hover:bg-white/90' : 'bg-slate-950 text-white hover:bg-slate-800' }} px-5 py-3 text-sm font-bold transition">
-                                    Start this plan
-                                </button>
-                                <button type="button" data-open-auth-modal="login" class="inline-flex w-full items-center justify-center rounded-full border {{ $loop->iteration === 2 ? 'border-white/20 bg-white/5 text-white hover:bg-white/10' : 'border-slate-300 bg-white/80 text-slate-700 hover:border-slate-950 hover:text-slate-950' }} px-5 py-3 text-sm font-bold transition">
-                                    มีบัญชีอยู่แล้ว
+                                <button type="button" data-open-auth-modal="signup" data-plan-id="{{ $plan->id }}"
+                                    class="flex w-full items-center justify-center rounded-xl {{ $loop->iteration === 2 ? 'bg-amber-500 text-white shadow-lg shadow-amber-500/25 hover:bg-amber-600' : 'bg-slate-900 text-white hover:bg-slate-800' }} px-5 py-3 text-sm font-bold transition">
+                                    เลือกแพ็กเกจนี้
                                 </button>
                             @else
-                                <a href="{{ route('app.dashboard') }}" class="inline-flex w-full items-center justify-center rounded-full bg-slate-950 px-5 py-3 text-sm font-bold text-white transition hover:bg-slate-800">
+                                <a href="{{ route('app.dashboard') }}"
+                                    class="flex w-full items-center justify-center rounded-xl bg-slate-900 px-5 py-3 text-sm font-bold text-white transition hover:bg-slate-800">
                                     ไปที่ Dashboard
                                 </a>
                             @endguest
                         </div>
                     </article>
                 @empty
-                    <div class="glass-panel rounded-[2rem] px-6 py-10 text-center lg:col-span-3">
-                        <p class="text-lg font-bold text-slate-950">ยังไม่มีแพ็กเกจในระบบ</p>
-                        <p class="mt-3 text-base text-slate-600">เพิ่มข้อมูล plans แล้ว pricing cards จะใช้ข้อมูลจริงทันที</p>
+                    <div class="col-span-full rounded-2xl border border-slate-200 bg-white px-6 py-12 text-center">
+                        <p class="text-lg font-bold text-slate-900">ยังไม่มีแพ็กเกจในระบบ</p>
+                        <p class="mt-2 text-sm text-slate-600">เพิ่มข้อมูล plans แล้วราคาจะแสดงอัตโนมัติ</p>
                     </div>
                 @endforelse
             </div>
         </div>
     </section>
 
-    <section id="try" class="px-4 pb-14 pt-8 sm:px-6 lg:px-8">
-        <div class="mx-auto max-w-7xl rounded-[2.5rem] bg-slate-950 px-6 py-8 text-white shadow-2xl shadow-slate-900/20 sm:px-8 sm:py-10">
-            <div class="grid gap-6 lg:grid-cols-[1fr,auto] lg:items-center">
-                <div class="max-w-3xl">
-                    <p class="text-sm font-bold uppercase tracking-[0.24em] text-amber-200">Try</p>
-                    <h2 class="mt-3 text-3xl font-bold tracking-tight sm:text-4xl">ทดลองวางแบรนด์หอของคุณบน flow ที่ดูน่าเชื่อถือกว่าทันที</h2>
-                    <p class="mt-4 text-lg leading-8 text-white/70">กดเริ่มทดลองแล้วใช้ signup modal เดิมเพื่อสร้าง owner account, tenant และ plan selection ต่อได้ทันที โดยไม่ต้องสร้าง flow ใหม่เพิ่ม</p>
-                </div>
+    {{-- ══════════════════════════════════════════════════
+        FINAL CTA
+    ══════════════════════════════════════════════════ --}}
+    <section class="px-4 py-20 sm:px-6 lg:px-8 lg:py-28">
+        <div class="mx-auto max-w-3xl text-center">
+            <h2 class="text-3xl font-extrabold tracking-tight text-slate-900 sm:text-4xl">เริ่มบริหารหอพักอย่างมืออาชีพ<br>ตั้งแต่วันนี้</h2>
+            <p class="mx-auto mt-5 max-w-xl text-lg text-slate-600">ไม่ว่าจะหอพัก 10 ห้อง หรืออพาร์ตเมนต์ 200 ห้อง MesukDorm ช่วยให้คุณจัดการได้ครบจบในที่เดียว</p>
 
-                <div class="flex flex-col gap-3 sm:flex-row lg:flex-col lg:items-end">
-                    @guest
-                        <button type="button" data-open-auth-modal="signup" class="inline-flex items-center justify-center rounded-full bg-white px-6 py-3 text-base font-bold text-slate-950 transition hover:bg-white/90">
-                            Start free trial
-                        </button>
-                        <button type="button" data-open-auth-modal="login" class="inline-flex items-center justify-center rounded-full border border-white/20 bg-white/5 px-6 py-3 text-base font-bold text-white transition hover:bg-white/10">
-                            Owner login
-                        </button>
-                    @else
-                        <a href="{{ route('app.dashboard') }}" class="inline-flex items-center justify-center rounded-full bg-white px-6 py-3 text-base font-bold text-slate-950 transition hover:bg-white/90">
-                            เปิด dashboard
-                        </a>
-                    @endguest
-                </div>
+            <div class="mt-8 flex flex-wrap items-center justify-center gap-4">
+                @guest
+                    <button type="button" data-open-auth-modal="signup"
+                        class="inline-flex items-center gap-2 rounded-xl bg-amber-500 px-8 py-4 text-base font-bold text-white shadow-lg shadow-amber-500/25 transition hover:bg-amber-600">
+                        <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+                        ทดลองใช้ฟรี
+                    </button>
+                    <button type="button" data-open-auth-modal="login"
+                        class="inline-flex items-center gap-2 rounded-xl border border-slate-300 bg-white px-8 py-4 text-base font-bold text-slate-700 transition hover:border-slate-400 hover:text-slate-900">
+                        เข้าสู่ระบบ
+                    </button>
+                @else
+                    <a href="{{ route('app.dashboard') }}"
+                        class="inline-flex items-center gap-2 rounded-xl bg-amber-500 px-8 py-4 text-base font-bold text-white shadow-lg shadow-amber-500/25 transition hover:bg-amber-600">
+                        เข้าสู่ Dashboard
+                        <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M13 7l5 5m0 0l-5 5m5-5H6"/></svg>
+                    </a>
+                @endguest
             </div>
         </div>
     </section>
 
+    {{-- ══════════════════════════════════════════════════
+        AUTH MODALS (logic preserved)
+    ══════════════════════════════════════════════════ --}}
     @guest
         <div id="auth-modal-backdrop" class="pointer-events-none fixed inset-0 z-40 hidden bg-slate-950/35 opacity-0 transition duration-200"></div>
 
+        {{-- LOGIN MODAL --}}
         <div id="login-modal" class="pointer-events-none fixed inset-0 z-50 hidden items-center justify-center px-4 opacity-0 transition duration-200 sm:px-6">
             <div class="absolute inset-0" data-close-auth-modal></div>
-            <div class="relative max-h-[90vh] w-full max-w-md overflow-auto rounded-[2rem] border border-white/60 bg-white/82 p-6 shadow-2xl shadow-slate-950/20 backdrop-blur-xl sm:p-7">
-                <button type="button" class="absolute right-4 top-4 inline-flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-500 transition hover:text-slate-950" data-close-auth-modal>
+            <div class="relative max-h-[90vh] w-full max-w-md overflow-auto rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl sm:p-8">
+                <button type="button" class="absolute right-4 top-4 inline-flex h-9 w-9 items-center justify-center rounded-full text-slate-400 transition hover:bg-slate-100 hover:text-slate-700" data-close-auth-modal>
                     <span class="sr-only">Close</span>
-                    <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="m6 6 12 12"/><path d="M18 6 6 18"/></svg>
+                    <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
                 </button>
 
-                <p class="text-xs font-bold uppercase tracking-[0.24em] text-slate-500">Login</p>
-                <h3 class="mt-3 text-3xl font-bold text-slate-950">เข้าสู่ระบบเพื่อเปิด dashboard ของคุณ</h3>
-                <p class="mt-3 text-sm leading-7 text-slate-600">ใช้บัญชีเดิมของ owner หรือ staff เพื่อเข้าไปจัดการข้อมูลห้อง ผู้เช่า บิล และการแจ้งเตือน</p>
+                <h3 class="text-2xl font-bold text-slate-900">เข้าสู่ระบบ</h3>
+                <p class="mt-2 text-sm text-slate-600">ใช้บัญชีเดิมเพื่อเข้าจัดการข้อมูลห้อง ผู้เช่า บิล และการแจ้งเตือน</p>
 
                 <form method="POST" action="{{ route('login') }}" class="mt-6 space-y-4">
                     @csrf
                     <div>
-                        <label for="landing_login_email" class="text-sm font-semibold text-slate-700">Email</label>
-                        <input id="landing_login_email" name="email" type="email" value="{{ old('email') }}" required autocomplete="username" class="mt-2 block w-full rounded-2xl border border-slate-200 bg-white/90 px-4 py-3 text-slate-900 shadow-sm outline-none transition focus:border-slate-400 focus:ring-0" />
+                        <label for="landing_login_email" class="text-sm font-medium text-slate-700">อีเมล</label>
+                        <input id="landing_login_email" name="email" type="email" value="{{ old('email') }}" required autocomplete="username" class="mt-1.5 block w-full rounded-xl border border-slate-300 px-4 py-3 text-slate-900 shadow-sm outline-none transition focus:border-amber-500 focus:ring-1 focus:ring-amber-500" />
                     </div>
                     <div>
-                        <label for="landing_login_password" class="text-sm font-semibold text-slate-700">Password</label>
-                        <input id="landing_login_password" name="password" type="password" required autocomplete="current-password" class="mt-2 block w-full rounded-2xl border border-slate-200 bg-white/90 px-4 py-3 text-slate-900 shadow-sm outline-none transition focus:border-slate-400 focus:ring-0" />
+                        <label for="landing_login_password" class="text-sm font-medium text-slate-700">รหัสผ่าน</label>
+                        <input id="landing_login_password" name="password" type="password" required autocomplete="current-password" class="mt-1.5 block w-full rounded-xl border border-slate-300 px-4 py-3 text-slate-900 shadow-sm outline-none transition focus:border-amber-500 focus:ring-1 focus:ring-amber-500" />
                     </div>
-                    <label for="landing_remember" class="flex items-center gap-3 text-sm text-slate-600">
-                        <input id="landing_remember" name="remember" type="checkbox" class="rounded border-slate-300 text-slate-950 focus:ring-slate-400" />
-                        Remember me
+                    <label for="landing_remember" class="flex items-center gap-2 text-sm text-slate-600">
+                        <input id="landing_remember" name="remember" type="checkbox" class="rounded border-slate-300 text-amber-500 focus:ring-amber-500" />
+                        จดจำการเข้าสู่ระบบ
                     </label>
                     <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                         @if (Route::has('password.request'))
-                            <a href="{{ route('password.request') }}" class="text-sm font-semibold text-slate-500 underline decoration-slate-300 decoration-2 underline-offset-4">Forgot your password?</a>
+                            <a href="{{ route('password.request') }}" class="text-sm text-amber-600 hover:text-amber-700">ลืมรหัสผ่าน?</a>
                         @endif
-                        <button type="submit" class="inline-flex items-center justify-center rounded-full bg-slate-950 px-5 py-3 text-sm font-bold text-white transition hover:bg-slate-800">Log in</button>
+                        <button type="submit" class="inline-flex items-center justify-center rounded-xl bg-amber-500 px-6 py-3 text-sm font-bold text-white transition hover:bg-amber-600">เข้าสู่ระบบ</button>
                     </div>
                 </form>
             </div>
         </div>
 
+        {{-- SIGNUP MODAL --}}
         <div id="signup-modal" class="pointer-events-none fixed inset-0 z-50 hidden items-center justify-center px-4 opacity-0 transition duration-200 sm:px-6">
             <div class="absolute inset-0" data-close-auth-modal></div>
-            <div class="relative max-h-[90vh] w-full max-w-2xl overflow-auto rounded-[2rem] border border-white/60 bg-white/84 p-6 shadow-2xl shadow-slate-950/20 backdrop-blur-xl sm:p-8">
-                <button type="button" class="absolute right-4 top-4 inline-flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-500 transition hover:text-slate-950" data-close-auth-modal>
+            <div class="relative max-h-[90vh] w-full max-w-lg overflow-auto rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl sm:p-8">
+                <button type="button" class="absolute right-4 top-4 inline-flex h-9 w-9 items-center justify-center rounded-full text-slate-400 transition hover:bg-slate-100 hover:text-slate-700" data-close-auth-modal>
                     <span class="sr-only">Close</span>
-                    <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="m6 6 12 12"/><path d="M18 6 6 18"/></svg>
+                    <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
                 </button>
 
-                <div class="grid gap-8 lg:grid-cols-[0.82fr,1.18fr] lg:items-start">
-                    <div class="rounded-[1.75rem] bg-slate-950 p-6 text-white shadow-xl shadow-slate-950/25">
-                        <p class="text-xs font-bold uppercase tracking-[0.24em] text-white/60">Sign up</p>
-                        <h3 class="mt-4 text-3xl font-bold">เปิด tenant ใหม่ใน flow เดียว</h3>
-                        <p class="mt-4 text-sm leading-7 text-white/75">ฟอร์มนี้ยังส่งไปยัง registration route เดิมทั้งหมด เพื่อสร้าง owner account, tenant และ plan selection ตาม flow เดิมของระบบ</p>
-                        <div class="mt-6 space-y-3 text-sm font-semibold">
-                            <div class="rounded-2xl bg-white/10 px-4 py-3 ring-1 ring-white/10">Owner account + tenant</div>
-                            <div class="rounded-2xl bg-white/10 px-4 py-3 ring-1 ring-white/10">Plan selection from pricing cards</div>
-                            <div class="rounded-2xl bg-white/10 px-4 py-3 ring-1 ring-white/10">Ready for dashboard onboarding</div>
+                <h3 class="text-2xl font-bold text-slate-900">สร้างบัญชีใหม่</h3>
+                <p class="mt-2 text-sm text-slate-600">กรอกข้อมูลด้านล่างเพื่อเริ่มใช้งาน MesukDorm สำหรับหอพักของคุณ</p>
+
+                <form method="POST" action="{{ route('register') }}" class="mt-6 space-y-4">
+                    @csrf
+                    <div>
+                        <label for="landing_register_name" class="text-sm font-medium text-slate-700">ชื่อ-นามสกุล</label>
+                        <input id="landing_register_name" name="name" type="text" value="{{ old('name') }}" required autocomplete="name" class="mt-1.5 block w-full rounded-xl border border-slate-300 px-4 py-3 text-slate-900 shadow-sm outline-none transition focus:border-amber-500 focus:ring-1 focus:ring-amber-500" />
+                    </div>
+                    <div>
+                        <label for="landing_register_tenant_name" class="text-sm font-medium text-slate-700">ชื่อหอพัก / อพาร์ตเมนต์</label>
+                        <input id="landing_register_tenant_name" name="tenant_name" type="text" value="{{ old('tenant_name') }}" required autocomplete="organization" class="mt-1.5 block w-full rounded-xl border border-slate-300 px-4 py-3 text-slate-900 shadow-sm outline-none transition focus:border-amber-500 focus:ring-1 focus:ring-amber-500" />
+                    </div>
+                    <div>
+                        <label for="landing_register_plan_id" class="text-sm font-medium text-slate-700">เลือกแพ็กเกจ</label>
+                        <select id="landing_register_plan_id" name="plan_id" class="mt-1.5 block w-full rounded-xl border border-slate-300 px-4 py-3 text-slate-900 shadow-sm outline-none transition focus:border-amber-500 focus:ring-1 focus:ring-amber-500" required>
+                            @foreach(($plans ?? []) as $plan)
+                                <option value="{{ $plan->id }}" @selected((string) old('plan_id', request('plan')) === (string) $plan->id)>
+                                    {{ $plan->name }} ({{ number_format((float) $plan->price_monthly, 0) }} บาท/เดือน)
+                                </option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <div>
+                        <label for="landing_register_email" class="text-sm font-medium text-slate-700">อีเมล</label>
+                        <input id="landing_register_email" name="email" type="email" value="{{ old('email') }}" required autocomplete="username" class="mt-1.5 block w-full rounded-xl border border-slate-300 px-4 py-3 text-slate-900 shadow-sm outline-none transition focus:border-amber-500 focus:ring-1 focus:ring-amber-500" />
+                    </div>
+                    <div class="grid gap-4 sm:grid-cols-2">
+                        <div>
+                            <label for="landing_register_password" class="text-sm font-medium text-slate-700">รหัสผ่าน</label>
+                            <input id="landing_register_password" name="password" type="password" required autocomplete="new-password" class="mt-1.5 block w-full rounded-xl border border-slate-300 px-4 py-3 text-slate-900 shadow-sm outline-none transition focus:border-amber-500 focus:ring-1 focus:ring-amber-500" />
+                        </div>
+                        <div>
+                            <label for="landing_register_password_confirmation" class="text-sm font-medium text-slate-700">ยืนยันรหัสผ่าน</label>
+                            <input id="landing_register_password_confirmation" name="password_confirmation" type="password" required autocomplete="new-password" class="mt-1.5 block w-full rounded-xl border border-slate-300 px-4 py-3 text-slate-900 shadow-sm outline-none transition focus:border-amber-500 focus:ring-1 focus:ring-amber-500" />
                         </div>
                     </div>
 
-                    <div>
-                        <form method="POST" action="{{ route('register') }}" class="space-y-4">
-                            @csrf
-                            <div>
-                                <label for="landing_register_name" class="text-sm font-semibold text-slate-700">Name</label>
-                                <input id="landing_register_name" name="name" type="text" value="{{ old('name') }}" required autocomplete="name" class="mt-2 block w-full rounded-2xl border border-slate-200 bg-white/90 px-4 py-3 text-slate-900 shadow-sm outline-none transition focus:border-slate-400 focus:ring-0" />
-                            </div>
-                            <div>
-                                <label for="landing_register_tenant_name" class="text-sm font-semibold text-slate-700">Dormitory / Tenant Name</label>
-                                <input id="landing_register_tenant_name" name="tenant_name" type="text" value="{{ old('tenant_name') }}" required autocomplete="organization" class="mt-2 block w-full rounded-2xl border border-slate-200 bg-white/90 px-4 py-3 text-slate-900 shadow-sm outline-none transition focus:border-slate-400 focus:ring-0" />
-                            </div>
-                            <div>
-                                <label for="landing_register_plan_id" class="text-sm font-semibold text-slate-700">Plan</label>
-                                <select id="landing_register_plan_id" name="plan_id" class="mt-2 block w-full rounded-2xl border border-slate-200 bg-white/90 px-4 py-3 text-slate-900 shadow-sm outline-none transition focus:border-slate-400 focus:ring-0" required>
-                                    @foreach(($plans ?? []) as $plan)
-                                        <option value="{{ $plan->id }}" @selected((string) old('plan_id', request('plan')) === (string) $plan->id)>
-                                            {{ $plan->name }} ({{ number_format((float) $plan->price_monthly, 0) }}/mo)
-                                        </option>
-                                    @endforeach
-                                </select>
-                            </div>
-                            <div>
-                                <label for="landing_register_email" class="text-sm font-semibold text-slate-700">Email</label>
-                                <input id="landing_register_email" name="email" type="email" value="{{ old('email') }}" required autocomplete="username" class="mt-2 block w-full rounded-2xl border border-slate-200 bg-white/90 px-4 py-3 text-slate-900 shadow-sm outline-none transition focus:border-slate-400 focus:ring-0" />
-                            </div>
-                            <div class="grid gap-4 sm:grid-cols-2">
-                                <div>
-                                    <label for="landing_register_password" class="text-sm font-semibold text-slate-700">Password</label>
-                                    <input id="landing_register_password" name="password" type="password" required autocomplete="new-password" class="mt-2 block w-full rounded-2xl border border-slate-200 bg-white/90 px-4 py-3 text-slate-900 shadow-sm outline-none transition focus:border-slate-400 focus:ring-0" />
-                                </div>
-                                <div>
-                                    <label for="landing_register_password_confirmation" class="text-sm font-semibold text-slate-700">Confirm Password</label>
-                                    <input id="landing_register_password_confirmation" name="password_confirmation" type="password" required autocomplete="new-password" class="mt-2 block w-full rounded-2xl border border-slate-200 bg-white/90 px-4 py-3 text-slate-900 shadow-sm outline-none transition focus:border-slate-400 focus:ring-0" />
-                                </div>
-                            </div>
+                    @if (Laravel\Jetstream\Jetstream::hasTermsAndPrivacyPolicyFeature())
+                        <label for="landing_register_terms" class="flex items-start gap-2 text-sm text-slate-600">
+                            <input name="terms" id="landing_register_terms" type="checkbox" required class="mt-1 rounded border-slate-300 text-amber-500 focus:ring-amber-500" />
+                            <span>
+                                {!! __('I agree to the :terms_of_service and :privacy_policy', [
+                                    'terms_of_service' => '<a target="_blank" href="'.route('terms.show').'" class="font-semibold text-amber-600 underline hover:text-amber-700">'.__('Terms of Service').'</a>',
+                                    'privacy_policy' => '<a target="_blank" href="'.route('policy.show').'" class="font-semibold text-amber-600 underline hover:text-amber-700">'.__('Privacy Policy').'</a>',
+                                ]) !!}
+                            </span>
+                        </label>
+                    @endif
 
-                            @if (Laravel\Jetstream\Jetstream::hasTermsAndPrivacyPolicyFeature())
-                                <label for="landing_register_terms" class="flex items-start gap-3 rounded-2xl border border-slate-200/80 bg-slate-50/80 px-4 py-4 text-sm leading-6 text-slate-600">
-                                    <input name="terms" id="landing_register_terms" type="checkbox" required class="mt-1 rounded border-slate-300 text-slate-950 focus:ring-slate-400" />
-                                    <span>
-                                        {!! __('I agree to the :terms_of_service and :privacy_policy', [
-                                            'terms_of_service' => '<a target="_blank" href="'.route('terms.show').'" class="font-semibold text-slate-900 underline decoration-amber-400 decoration-2 underline-offset-4">'.__('Terms of Service').'</a>',
-                                            'privacy_policy' => '<a target="_blank" href="'.route('policy.show').'" class="font-semibold text-slate-900 underline decoration-amber-400 decoration-2 underline-offset-4">'.__('Privacy Policy').'</a>',
-                                        ]) !!}
-                                    </span>
-                                </label>
-                            @endif
-
-                            <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                                <button type="button" data-open-auth-modal="login" class="text-left text-sm font-semibold text-slate-500 underline decoration-slate-300 decoration-2 underline-offset-4">Already registered?</button>
-                                <button type="submit" class="inline-flex items-center justify-center rounded-full bg-slate-950 px-5 py-3 text-sm font-bold text-white transition hover:bg-slate-800">Create account</button>
-                            </div>
-                        </form>
+                    <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                        <button type="button" data-open-auth-modal="login" class="text-sm text-amber-600 hover:text-amber-700">มีบัญชีอยู่แล้ว?</button>
+                        <button type="submit" class="inline-flex items-center justify-center rounded-xl bg-amber-500 px-6 py-3 text-sm font-bold text-white transition hover:bg-amber-600">สร้างบัญชี</button>
                     </div>
-                </div>
+                </form>
             </div>
         </div>
 
@@ -527,7 +510,6 @@
                 function setModalState(name) {
                     Object.entries(modals).forEach(([key, modal]) => {
                         const active = key === name;
-
                         modal.classList.toggle('hidden', !active);
                         modal.classList.toggle('opacity-100', active);
                         modal.classList.toggle('pointer-events-auto', active);
@@ -548,11 +530,9 @@
                     button.addEventListener('click', function () {
                         const target = this.getAttribute('data-open-auth-modal');
                         const planId = this.getAttribute('data-plan-id');
-
                         if (target === 'signup' && planId && planSelect) {
                             planSelect.value = planId;
                         }
-
                         setModalState(target);
                     });
                 });
@@ -571,4 +551,5 @@
             });
         </script>
     @endguest
-</x-public-layout>
+
+</x-public-layout>

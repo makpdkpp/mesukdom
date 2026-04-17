@@ -3,7 +3,7 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>{{ $title ?? 'MesukDom Dormitory SaaS' }}</title>
+    <title>{{ $title ?? 'MesukDorm Dormitory SaaS' }}</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@5.15.4/css/all.min.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/admin-lte@3.2/dist/css/adminlte.min.css">
     <style>
@@ -33,7 +33,7 @@
 
     <aside class="main-sidebar sidebar-dark-primary elevation-4">
         <a href="{{ route('app.dashboard') }}" class="brand-link text-center">
-            <span class="brand-text font-weight-light">MesukDom</span>
+            <span class="brand-text font-weight-light">MesukDorm</span>
         </a>
 
         <div class="sidebar">
@@ -105,7 +105,7 @@
     </div>
 
     <footer class="main-footer text-sm">
-        <strong>MesukDom</strong> dormitory management SaaS MVP
+        <strong>MesukDorm</strong> dormitory management SaaS MVP
     </footer>
 </div>
 <script src="https://cdn.jsdelivr.net/npm/jquery@3.7.1/dist/jquery.min.js"></script>

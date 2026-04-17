@@ -38,7 +38,7 @@
                 @endisset
 
                 <h1 class="font-display text-3xl font-bold tracking-tight text-slate-950 sm:text-4xl">{{ isset($title) ? trim((string) $title) : 'Welcome back' }}</h1>
-                <p class="mt-3 text-base leading-8 text-slate-600">{{ isset($description) ? trim((string) $description) : 'ยืนยันตัวตนเพื่อเข้าใช้งาน MesukDom และเชื่อมต่อกับ tenant portal ของคุณ' }}</p>
+                <p class="mt-3 text-base leading-8 text-slate-600">{{ isset($description) ? trim((string) $description) : 'ยืนยันตัวตนเพื่อเข้าใช้งาน MesukDorm และเชื่อมต่อกับ tenant portal ของคุณ' }}</p>
             </div>
 
             <div class="mt-8 max-w-xl">

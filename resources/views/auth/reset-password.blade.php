@@ -13,7 +13,7 @@
         </x-slot>
 
         <x-slot name="description">
-            ตั้งรหัสผ่านใหม่เพื่อกลับเข้าสู่ MesukDom และใช้งาน dashboard ตาม tenant ที่ผูกกับบัญชีนี้
+            ตั้งรหัสผ่านใหม่เพื่อกลับเข้าสู่ MesukDorm และใช้งาน dashboard ตาม tenant ที่ผูกกับบัญชีนี้
         </x-slot>
 
         <x-validation-errors class="mb-4" />

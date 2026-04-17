@@ -60,7 +60,7 @@
         @endif
     </div>
 
-    <div class="footer">MesukDom Dormitory Management &mdash; This is an automated notification.</div>
+    <div class="footer">MesukDorm Dormitory Management &mdash; This is an automated notification.</div>
 </div>
 </body>
 </html>

@@ -27,7 +27,7 @@ class DatabaseSeeder extends Seeder
 
         $tenant = Tenant::create([
             'plan_id' => $plan?->id,
-            'name' => 'MesukDom Demo Residence',
+            'name' => 'MesukDorm Demo Residence',
             'domain' => 'demo.local',
             'plan' => 'pro',
             'status' => 'active',

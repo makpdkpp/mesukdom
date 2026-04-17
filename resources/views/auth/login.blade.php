@@ -65,7 +65,7 @@
             </div>
 
             <div class="mt-6 text-sm text-slate-500">
-                ยังไม่มีบัญชี? <a href="{{ route('register') }}" class="font-semibold text-slate-700 underline decoration-amber-400 decoration-2 underline-offset-4">สมัครใช้งาน MesukDom</a>
+                ยังไม่มีบัญชี? <a href="{{ route('register') }}" class="font-semibold text-slate-700 underline decoration-amber-400 decoration-2 underline-offset-4">สมัครใช้งาน MesukDorm</a>
             </div>
         </form>
     </x-authentication-card>

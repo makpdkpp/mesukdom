@@ -56,7 +56,7 @@
                 <a href="{{ route('landing') }}" class="flex items-center gap-3">
                     <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-amber-500 text-sm font-extrabold text-white shadow-lg shadow-amber-500/30">MD</span>
                     <span>
-                        <span class="font-display block text-base font-bold tracking-tight text-slate-950">MesukDom</span>
+                        <span class="font-display block text-base font-bold tracking-tight text-slate-950">MesukDorm</span>
                         <span class="block text-xs font-medium text-slate-500">Dormitory SaaS Platform</span>
                     </span>
                 </a>

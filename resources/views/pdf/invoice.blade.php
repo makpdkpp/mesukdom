@@ -85,7 +85,7 @@
     <table class="header">
         <tr>
             <td>
-                <div class="brand">MesukDom</div>
+                <div class="brand">MesukDorm</div>
                 <div class="muted">Dormitory Management SaaS</div>
                 <div class="muted">Invoice PDF</div>
             </td>

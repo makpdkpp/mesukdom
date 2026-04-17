@@ -1,4 +1,4 @@
-<x-public-layout title="Pricing • MesukDom" description="เลือกแพ็กเกจสำหรับระบบบริหารหอพักแบบ SaaS พร้อมหน้าราคาโทนพรีเมียมที่เชื่อม onboarding ได้ทันที">
+<x-public-layout title="Pricing • MesukDorm" description="เลือกแพ็กเกจสำหรับระบบบริหารหอพักแบบ SaaS พร้อมหน้าราคาโทนพรีเมียมที่เชื่อม onboarding ได้ทันที">
     <section class="px-4 pb-10 pt-10 sm:px-6 lg:px-8">
         <div class="mx-auto grid max-w-7xl gap-8 lg:grid-cols-[1fr,0.92fr] lg:items-center">
             <div class="reveal-soft" style="--enter-delay: 0.04s;">
