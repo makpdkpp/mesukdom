@@ -1,6 +1,10 @@
 @extends('layouts.adminlte')
 
 @section('content')
+@php
+    $lineAddFriendUrl = $currentTenant?->lineAddFriendUrl();
+    $lineAddFriendQrSvg = $lineAddFriendUrl ? app(\App\Services\QrCodeService::class)->generateSvg($lineAddFriendUrl, 120) : null;
+@endphp
 <div class="row">
     <div class="col-lg-4">
         <div class="card card-success">
@@ -151,6 +155,7 @@
                                         </form>
                                     </div>
                                     @if($activeLineLink)
+                                        @php($signedLinkUrl = \Illuminate\Support\Facades\URL::temporarySignedRoute('resident.line.link.create', $activeLineLink->expired_at ?? now()->addDay(), ['tenant' => $customer->tenant_id, 'token' => $activeLineLink->link_token]))
                                         <div class="alert alert-warning border mb-0 py-3 px-3">
                                             <div class="small text-uppercase font-weight-bold text-muted">Link Code</div>
                                             <div class="d-flex flex-wrap align-items-center mt-2" style="gap:8px;">
@@ -160,9 +165,27 @@
                                                     class="btn btn-sm btn-outline-dark"
                                                     onclick="navigator.clipboard && navigator.clipboard.writeText('LINK {{ $activeLineLink->link_token }}')"
                                                 >Copy Command</button>
+                                                <a href="{{ $signedLinkUrl }}" target="_blank" class="btn btn-sm btn-outline-primary">Open Link Portal</a>
+                                                @if($lineAddFriendUrl)
+                                                    <a href="{{ $lineAddFriendUrl }}" target="_blank" class="btn btn-sm btn-success"><i class="fab fa-line mr-1"></i>Add Friend</a>
+                                                @endif
                                             </div>
                                             <div class="mt-2 small"><strong>Expires:</strong> {{ optional($activeLineLink->expired_at)->format('d/m/Y H:i') }}</div>
-                                            <div class="mt-1 small">ให้ผู้เช่าส่งข้อความไปยัง LINE OA ว่า <strong style="font-family:monospace;letter-spacing:.08em;">LINK {{ $activeLineLink->link_token }}</strong></div>
+                                            <div class="mt-1 small">ให้ผู้เช่าเพิ่มเพื่อน LINE OA แล้วกดปุ่ม <strong>ยืนยันห้องพัก</strong> ในแชต จากนั้นกรอกรหัส <strong style="font-family:monospace;letter-spacing:.08em;">{{ $activeLineLink->link_token }}</strong></div>
+                                            <div class="mt-1 small text-muted">ยังสามารถใช้คำสั่งสำรอง <strong style="font-family:monospace;letter-spacing:.08em;">LINK {{ $activeLineLink->link_token }}</strong> หรือเปิด Link Portal โดยตรงได้หากจำเป็น</div>
+
+                                            @if($lineAddFriendUrl && $lineAddFriendQrSvg)
+                                                <div class="mt-3 d-flex flex-wrap align-items-center" style="gap:16px;">
+                                                    <div class="border rounded bg-white p-2" style="width:140px;">
+                                                        {!! $lineAddFriendQrSvg !!}
+                                                    </div>
+                                                    <div class="small text-muted" style="max-width:280px;">
+                                                        สแกน QR นี้เพื่อเพิ่มเพื่อน LINE OA ของหอ แล้วค่อยกลับมากดยืนยันห้องพักในแชต
+                                                    </div>
+                                                </div>
+                                            @else
+                                                <div class="mt-3 small text-danger">ยังไม่ได้ตั้งค่า LINE Basic ID ที่หน้า Settings จึงยังสร้าง Add Friend link/QR ให้ผู้เช่าไม่ได้</div>
+                                            @endif
                                         </div>
                                     @endif
                                 </div>

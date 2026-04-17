@@ -53,7 +53,69 @@ class AuthorizationTest extends TestCase
         $response = $this->actingAs($admin)->get('/admin');
 
         $response->assertOk();
-        $response->assertSeeText('System Monitoring & Notification Logs');
+        $response->assertSeeText('Dashboard Admin');
+        $response->assertSeeText('Total Tenants');
+    }
+
+    public function test_support_admin_sidebar_shows_only_admin_menu_items(): void
+    {
+        $admin = User::factory()->create([
+            'role' => 'support_admin',
+        ]);
+
+        $response = $this->actingAs($admin)->get('/admin');
+
+        $response->assertOk();
+        $response->assertSeeText('Dashboard Admin');
+        $response->assertSeeText('Platform Admin');
+        $response->assertDontSeeText('Rooms');
+        $response->assertDontSeeText('Residents');
+        $response->assertDontSeeText('Contracts');
+        $response->assertDontSeeText('Invoices');
+        $response->assertDontSeeText('Payments');
+        $response->assertDontSeeText('Broadcasts');
+        $response->assertDontSeeText('Settings');
+    }
+
+    public function test_kpi_cards_are_only_visible_on_admin_dashboard(): void
+    {
+        $admin = User::factory()->create([
+            'role' => 'support_admin',
+        ]);
+
+        $dashboardResponse = $this->actingAs($admin)->get('/admin');
+
+        $dashboardResponse->assertOk();
+        $dashboardResponse->assertSeeText('Total Tenants');
+        $dashboardResponse->assertSeeText('Active Users');
+        $dashboardResponse->assertSeeText('SaaS Revenue');
+        $dashboardResponse->assertSeeText('SlipOK Calls This Month');
+
+        $platformResponse = $this->actingAs($admin)->get('/admin/platform');
+
+        $platformResponse->assertOk();
+        $platformResponse->assertSeeText('Global SlipOK Settings');
+        $platformResponse->assertDontSeeText('Total Tenants');
+        $platformResponse->assertDontSeeText('Active Users');
+        $platformResponse->assertDontSeeText('SaaS Revenue');
+        $platformResponse->assertDontSeeText('SlipOK Calls This Month');
+    }
+
+    public function test_admin_dashboard_shows_required_system_monitoring_sections(): void
+    {
+        $admin = User::factory()->create([
+            'role' => 'support_admin',
+        ]);
+
+        $response = $this->actingAs($admin)->get('/admin');
+
+        $response->assertOk();
+        $response->assertSeeText('Server Status');
+        $response->assertSeeText('Queue Status');
+        $response->assertSeeText('Failed Jobs');
+        $response->assertSeeText('API Usage');
+        $response->assertSeeText('Notification Logs');
+        $response->assertSeeText('Payment Logs');
     }
 
     public function test_support_admin_cannot_access_tenant_portal_routes(): void

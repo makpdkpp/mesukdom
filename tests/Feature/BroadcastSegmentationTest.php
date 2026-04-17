@@ -194,13 +194,51 @@ class BroadcastSegmentationTest extends TestCase
         $this->assertContains($customer3->name, $logs);
     }
 
-    private function createTenantAndOwner(string $tenantName = 'Broadcast Dorm'): array
+    public function test_owner_cannot_send_broadcast_without_line_token_configuration(): void
+    {
+        config(['services.line.channel_access_token' => null]);
+        Http::fake(['https://api.line.me/*' => Http::response(['ok' => true], 200)]);
+
+        [$tenant, $user] = $this->createTenantAndOwner('No Token Dorm', null);
+
+        $room = Room::create([
+            'tenant_id' => $tenant->id,
+            'building' => 'A',
+            'room_number' => 'A-101',
+            'floor' => 1,
+            'room_type' => 'Standard',
+            'price' => 3500,
+            'status' => 'occupied',
+        ]);
+
+        Customer::create([
+            'tenant_id' => $tenant->id,
+            'room_id' => $room->id,
+            'name' => 'Resident A',
+            'line_user_id' => 'U-A',
+        ]);
+
+        $this->actingAs($user)
+            ->withSession(['tenant_id' => $tenant->id])
+            ->post(route('app.broadcasts.store'), [
+                'scope' => 'all',
+                'message' => 'Water outage tonight',
+            ])
+            ->assertRedirect()
+            ->assertSessionHas('error', 'LINE channel access token is not configured. Please update LINE settings before broadcasting.');
+
+        $this->assertDatabaseCount('broadcast_messages', 0);
+        $this->assertDatabaseCount('notification_logs', 0);
+    }
+
+    private function createTenantAndOwner(string $tenantName = 'Broadcast Dorm', ?string $lineToken = 'tenant-line-token'): array
     {
         $tenant = Tenant::create([
             'name' => $tenantName,
             'domain' => str()->slug($tenantName).'.local',
             'plan' => 'trial',
             'status' => 'active',
+            'line_channel_access_token' => $lineToken,
         ]);
 
         $user = User::factory()->create([

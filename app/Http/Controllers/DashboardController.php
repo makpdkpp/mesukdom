@@ -9,21 +9,30 @@ use App\Models\Customer;
 use App\Models\CustomerDocument;
 use App\Models\CustomerLineLink;
 use App\Models\Invoice;
+use App\Models\LineMessage;
+use App\Models\LineWebhookLog;
 use App\Models\NotificationLog;
 use App\Models\Payment;
+use App\Models\Plan;
 use App\Models\Room;
+use App\Models\SlipVerificationUsage;
 use App\Models\Tenant;
 use App\Models\User;
+use App\Services\Line\LineService;
 use App\Services\PromptPayService;
+use App\Services\SlipVerificationService;
 use App\Support\TenantContext;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
+use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\URL;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
 
 class DashboardController extends Controller
@@ -33,6 +42,25 @@ class DashboardController extends Controller
         $this->refreshInvoiceStatuses();
 
         $revenueTrend = $this->buildRevenueTrend();
+        $tenant = app(TenantContext::class)->tenant();
+        $subscriptionPlan = $tenant?->plan_id
+            ? Plan::query()->find($tenant->plan_id)
+            : null;
+        $slipOkUsageThisMonth = $tenant
+            ? SlipVerificationUsage::query()
+                ->where('tenant_id', $tenant->id)
+                ->where('provider', 'slipok')
+                ->where('usage_month', now()->format('Y-m'))
+                ->count()
+            : 0;
+        $slipOkUsageLimit = $subscriptionPlan?->slipOkMonthlyLimit() ?? 0;
+        $slipOkEnabled = $subscriptionPlan?->supportsSlipOk() ?? false;
+        $slipOkRemaining = $slipOkEnabled
+            ? ($slipOkUsageLimit > 0 ? max(0, $slipOkUsageLimit - $slipOkUsageThisMonth) : null)
+            : 0;
+        $slipOkUsagePercent = $slipOkEnabled && $slipOkUsageLimit > 0
+            ? min(100, (int) round(($slipOkUsageThisMonth / max(1, $slipOkUsageLimit)) * 100))
+            : 0;
 
         $stats = [
             'rooms_total' => Room::count(),
@@ -44,12 +72,18 @@ class DashboardController extends Controller
         ];
 
         return view('dashboard.index', [
-            'tenant' => app(TenantContext::class)->tenant(),
+            'tenant' => $tenant,
             'stats' => $stats,
             'revenueTrend' => $revenueTrend,
             'revenueTrendMax' => max(1, $revenueTrend->max('total')),
             'rooms' => Room::query()->orderBy('room_number')->get(),
             'recentInvoices' => Invoice::query()->with(['customer', 'room'])->latest('due_date')->take(5)->get(),
+            'subscriptionPlan' => $subscriptionPlan,
+            'slipOkEnabled' => $slipOkEnabled,
+            'slipOkUsageThisMonth' => $slipOkUsageThisMonth,
+            'slipOkUsageLimit' => $slipOkUsageLimit,
+            'slipOkRemaining' => $slipOkRemaining,
+            'slipOkUsagePercent' => $slipOkUsagePercent,
         ]);
     }
 
@@ -127,20 +161,33 @@ class DashboardController extends Controller
             ->delete();
 
         $token = $this->generateCustomerLineLinkToken($customer->tenant_id);
+        $expiresAt = now()->addDay();
 
         $customer->lineLinks()->create([
             'tenant_id' => $customer->tenant_id,
             'link_token' => $token,
-            'expired_at' => now()->addDay(),
+            'expired_at' => $expiresAt,
         ]);
+
+        $tenant = Tenant::query()->find($customer->tenant_id);
+        $linkingUrl = URL::temporarySignedRoute(
+            'resident.line.link.create',
+            $expiresAt,
+            [
+                'tenant' => $customer->tenant_id,
+                'token' => $token,
+            ]
+        );
 
         return back()->with('status_card', [
             'theme' => 'warning',
             'title' => 'LINE link code ready',
             'customer' => $customer->name,
             'code' => $token,
-            'instruction' => 'LINK '.$token,
-            'expires_at' => now()->addDay()->format('d/m/Y H:i'),
+            'instruction' => 'เพิ่มเพื่อน LINE OA ก่อน แล้วกดปุ่มยืนยันห้องพักเพื่อกรอกรหัส '.$token,
+            'add_friend_url' => $tenant?->lineAddFriendUrl(),
+            'link_url' => $linkingUrl,
+            'expires_at' => $expiresAt->format('d/m/Y H:i'),
         ]);
     }
 
@@ -247,15 +294,25 @@ class DashboardController extends Controller
 
         return view('dashboard.invoices', [
             'invoices' => Invoice::query()->with(['customer', 'room', 'payments'])->latest('due_date')->get(),
-            'contracts' => Contract::query()->with(['customer', 'room'])->latest()->get(),
+            'contracts' => Contract::query()
+                ->with(['customer', 'room'])
+                ->where('status', 'active')
+                ->latest('start_date')
+                ->latest('id')
+                ->get(),
         ]);
     }
 
     public function storeInvoice(Request $request): RedirectResponse
     {
         $validated = $this->validateInvoice($request);
+        $contractId = (int) $validated['contract_id'];
 
-        $contract = Contract::query()->with(['customer', 'room'])->findOrFail($validated['contract_id']);
+        $contract = Contract::query()->with(['customer', 'room'])->findOrFail($contractId);
+
+        /** @var Customer|null $contractCustomer */
+        $contractCustomer = $contract->customer;
+        $resolvedRoomId = $contractCustomer?->room_id ?: $contract->room_id;
 
         $water = (float) ($validated['water_fee'] ?? 0);
         $electricity = (float) ($validated['electricity_fee'] ?? 0);
@@ -265,7 +322,7 @@ class DashboardController extends Controller
         $invoice = Invoice::create([
             'contract_id' => $contract->id,
             'customer_id' => $contract->customer_id,
-            'room_id' => $contract->room_id,
+            'room_id' => $resolvedRoomId,
             'water_fee' => $water,
             'electricity_fee' => $electricity,
             'service_fee' => $service,
@@ -313,7 +370,42 @@ class DashboardController extends Controller
         ]);
     }
 
-    public function storePayment(Request $request): RedirectResponse
+    public function lineActivity(): View
+    {
+        $recentWebhookLogs = LineWebhookLog::query()
+            ->latest('id')
+            ->take(20)
+            ->get();
+
+        $recentLineMessages = LineMessage::query()
+            ->with('customer')
+            ->latest('sent_at')
+            ->take(20)
+            ->get();
+
+        $recentLineNotifications = NotificationLog::query()
+            ->where('channel', 'line')
+            ->latest('id')
+            ->take(20)
+            ->get();
+
+        $linkedResidents = Customer::query()
+            ->whereNotNull('line_user_id')
+            ->count();
+
+        return view('dashboard.line-activity', [
+            'tenant' => app(TenantContext::class)->tenant(),
+            'linkedResidents' => $linkedResidents,
+            'webhookEventsToday' => LineWebhookLog::query()->whereDate('created_at', today())->count(),
+            'outboundMessagesToday' => LineMessage::query()->where('direction', 'outbound')->whereDate('sent_at', today())->count(),
+            'failedLineNotifications' => NotificationLog::query()->where('channel', 'line')->where('status', 'failed')->count(),
+            'recentWebhookLogs' => $recentWebhookLogs,
+            'recentLineMessages' => $recentLineMessages,
+            'recentLineNotifications' => $recentLineNotifications,
+        ]);
+    }
+
+    public function storePayment(Request $request, SlipVerificationService $slipVerificationService): RedirectResponse
     {
         $validated = $this->validatePayment($request);
 
@@ -324,12 +416,29 @@ class DashboardController extends Controller
         }
 
         $payment = Payment::create($validated);
+        $verificationOutcome = null;
+        $autoApproved = false;
+
+        if ($payment->method === 'slip' && $payment->status === 'pending' && $payment->slip_path) {
+            $verificationOutcome = $slipVerificationService->verifyPayment($payment);
+            $autoApproved = $this->autoApprovePaymentIfSlipVerified($payment);
+        }
 
         if ($payment->status === 'approved') {
             $payment->invoice?->update(['status' => 'paid']);
         }
 
-        return back()->with('status', 'Payment recorded successfully.');
+        $message = 'Payment recorded successfully.';
+
+        if ($verificationOutcome !== null) {
+            $message .= ' SlipOK: '.$verificationOutcome['message'];
+        }
+
+        if ($autoApproved) {
+            $message .= ' Auto-approved and invoice marked as paid.';
+        }
+
+        return back()->with('status', $message);
     }
 
     public function viewSlip(int $payment): Response
@@ -340,11 +449,39 @@ class DashboardController extends Controller
             abort(404);
         }
 
-        $mime = Storage::disk('local')->mimeType($payment->slip_path) ?: 'application/octet-stream';
+        $mime = File::mimeType(Storage::disk('local')->path($payment->slip_path)) ?: 'application/octet-stream';
 
         return response(Storage::disk('local')->get($payment->slip_path), 200)
             ->header('Content-Type', $mime)
             ->header('Content-Disposition', 'inline; filename="'.basename($payment->slip_path).'"');
+    }
+
+    public function recheckPaymentSlip(int $payment, SlipVerificationService $slipVerificationService): RedirectResponse
+    {
+        $payment = Payment::query()->findOrFail($payment);
+
+        if ($payment->status !== 'pending') {
+            return back()->with('error', 'Only pending payments can be rechecked.');
+        }
+
+        if ($payment->method !== 'slip' || ! $payment->slip_path) {
+            return back()->with('error', 'Only slip-based payments can be rechecked.');
+        }
+
+        if ($payment->verification_status !== 'failed') {
+            return back()->with('error', 'Only failed SlipOK payments can be rechecked.');
+        }
+
+        $verificationOutcome = $slipVerificationService->verifyPayment($payment);
+        $autoApproved = $this->autoApprovePaymentIfSlipVerified($payment);
+
+        $message = 'SlipOK recheck completed: '.$verificationOutcome['message'];
+
+        if ($autoApproved) {
+            $message .= ' Auto-approved and invoice marked as paid.';
+        }
+
+        return back()->with('status', $message);
     }
 
     public function approvePayment(int $payment): RedirectResponse
@@ -361,8 +498,14 @@ class DashboardController extends Controller
         ]);
         $payment->invoice?->update(['status' => 'paid']);
 
+        $notifiablePayment = $payment->fresh();
+
+        if (! $notifiablePayment instanceof Payment) {
+            $notifiablePayment = $payment;
+        }
+
         $this->sendPaymentEmailNotification(
-            $payment->fresh()->loadMissing(['invoice.customer', 'invoice.room']),
+            $notifiablePayment->loadMissing(['invoice.customer', 'invoice.room']),
             'payment_approved'
         );
 
@@ -411,6 +554,7 @@ class DashboardController extends Controller
         $validated = $request->validate([
             'promptpay_number'          => ['nullable', 'string', 'max:20', 'regex:/^[0-9\-]+$/'],
             'line_channel_id'           => ['nullable', 'string', 'max:100'],
+            'line_basic_id'             => ['nullable', 'string', 'max:100'],
             'line_channel_access_token' => ['nullable', 'string', 'max:500'],
             'line_channel_secret'       => ['nullable', 'string', 'max:255'],
             'support_contact_name'      => ['nullable', 'string', 'max:255'],
@@ -419,9 +563,13 @@ class DashboardController extends Controller
         ]);
 
         $tenant = app(TenantContext::class)->tenant();
+        $webhookUrl = route('api.line.webhook');
+
         $tenant?->update([
             'promptpay_number'          => $validated['promptpay_number'] ?? null,
             'line_channel_id'           => $validated['line_channel_id'] ?? null,
+            'line_basic_id'             => $validated['line_basic_id'] ?? null,
+            'line_webhook_url'          => $webhookUrl,
             'line_channel_access_token' => $validated['line_channel_access_token'] ?? null,
             'line_channel_secret'       => $validated['line_channel_secret'] ?? null,
             'support_contact_name'      => $validated['support_contact_name'] ?? null,
@@ -430,6 +578,33 @@ class DashboardController extends Controller
         ]);
 
         return back()->with('status', 'Settings updated.');
+    }
+
+    public function syncLineRichMenu(LineService $lineService): RedirectResponse
+    {
+        $tenant = app(TenantContext::class)->tenant();
+        abort_if(! $tenant, 403);
+
+        if (! $tenant->line_channel_access_token || ! $tenant->line_channel_secret) {
+            return back()->with('error', 'Please save LINE channel credentials before syncing the rich menu.');
+        }
+
+        try {
+            $result = $lineService->syncResidentRichMenu($tenant);
+        } catch (\Throwable $exception) {
+            return back()->with('error', 'LINE rich menu sync failed: '.$exception->getMessage());
+        }
+
+        if (($result['status'] ?? 'failed') !== 'sent') {
+            return back()->with('error', 'LINE rich menu sync failed.');
+        }
+
+        $tenant->update([
+            'line_rich_menu_id' => $result['richMenuId'] ?? null,
+            'line_webhook_url' => route('api.line.webhook'),
+        ]);
+
+        return back()->with('status', 'LINE rich menu synced successfully.');
     }
 
     public function promptpayQr(Invoice $invoice): \Illuminate\Http\Response
@@ -504,7 +679,7 @@ class DashboardController extends Controller
         ])->download(($payment->receipt_no ?? 'RECEIPT-'.$payment->id).'.pdf');
     }
 
-    public function residentPaySlip(Request $request, Invoice $invoice): RedirectResponse
+    public function residentPaySlip(Request $request, Invoice $invoice, SlipVerificationService $slipVerificationService): RedirectResponse
     {
         abort_if($invoice->tenant?->status === 'suspended', 403, 'This service is currently unavailable.');
 
@@ -522,7 +697,7 @@ class DashboardController extends Controller
 
         $slipPath = $request->file('slip')->store("slips/{$invoice->tenant_id}/resident", 'local');
 
-        Payment::create([
+        $payment = Payment::create([
             'tenant_id' => $invoice->tenant_id,
             'invoice_id' => $invoice->id,
             'amount' => $request->input('amount'),
@@ -533,11 +708,44 @@ class DashboardController extends Controller
             'notes' => 'Submitted by resident via portal',
         ]);
 
-        return back()->with('status', 'Slip submitted for review. The dorm owner will verify your payment shortly.');
+        $verificationOutcome = $slipVerificationService->verifyPayment($payment);
+        $autoApproved = $this->autoApprovePaymentIfSlipVerified($payment);
+
+        $message = 'Slip submitted successfully. SlipOK: '.$verificationOutcome['message'];
+
+        if ($autoApproved) {
+            $message .= ' Payment auto-approved and invoice marked as paid.';
+        }
+
+        return back()->with('status', $message);
+    }
+
+    protected function autoApprovePaymentIfSlipVerified(Payment $payment): bool
+    {
+        $payment->refresh();
+
+        if ($payment->status !== 'pending' || $payment->verification_status !== 'verified') {
+            return false;
+        }
+
+        $payment->update([
+            'status' => 'approved',
+            'receipt_no' => $payment->receipt_no ?: Payment::generateReceiptNo((int) $payment->tenant_id),
+        ]);
+
+        $payment->invoice?->update(['status' => 'paid']);
+
+        $this->sendPaymentEmailNotification(
+            $payment->fresh()->loadMissing(['invoice.customer', 'invoice.room']),
+            'payment_approved'
+        );
+
+        return true;
     }
 
     protected function sendPaymentEmailNotification(Payment $payment, string $event): void
     {
+        /** @var \App\Models\Customer|null $customer */
         $customer = $payment->invoice?->customer;
         $invoiceNo = $payment->invoice?->invoice_no ?? '-';
         $email = $customer?->email;
@@ -570,6 +778,8 @@ class DashboardController extends Controller
     protected function sendLineNotification(Invoice $invoice, string $event): void
     {
         $invoice->loadMissing(['customer', 'room']);
+        /** @var \App\Models\Customer|null $customer */
+        $customer = $invoice->customer;
 
         $invoiceUrl = $invoice->signedResidentUrl();
 
@@ -583,6 +793,7 @@ class DashboardController extends Controller
             $invoiceUrl
         );
 
+        /** @var \App\Models\Tenant|null $invoiceTenant */
         $invoiceTenant = $invoice->tenant ?? app(TenantContext::class)->tenant();
 
         if (! $invoiceTenant) {
@@ -592,10 +803,10 @@ class DashboardController extends Controller
         SendLineMessageJob::dispatch(
             $invoiceTenant->id,
             $event,
-            $invoice->customer?->line_user_id,
+            $customer?->line_user_id,
             $message,
-            $invoice->customer?->name,
-            $invoice->customer?->id,
+            $customer?->name,
+            $customer?->id,
             ['invoice_id' => $invoice->id]
         );
     }
@@ -666,6 +877,13 @@ class DashboardController extends Controller
         ]);
 
         $contract = Contract::query()->findOrFail((int) $validated['contract_id']);
+
+        if ($contract->status !== 'active') {
+            throw ValidationException::withMessages([
+                'contract_id' => 'Only active contracts can be invoiced.',
+            ]);
+        }
+
         $validated['contract_id'] = $contract->id;
 
         return $validated;

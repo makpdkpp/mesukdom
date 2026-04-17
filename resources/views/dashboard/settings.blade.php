@@ -59,6 +59,18 @@
                         @enderror
                     </div>
                     <div class="form-group">
+                        <label>LINE Basic ID</label>
+                        <input name="line_basic_id"
+                               type="text"
+                               class="form-control @error('line_basic_id') is-invalid @enderror"
+                               placeholder="@mesukdome"
+                               value="{{ old('line_basic_id', $tenant?->line_basic_id) }}">
+                        <small class="form-text text-muted">ใช้สร้างปุ่ม Add Friend และ QR สำหรับ onboarding ผู้เช่า ควรเป็น Basic ID ที่ขึ้นต้นด้วย @</small>
+                        @error('line_basic_id')
+                            <div class="invalid-feedback">{{ $message }}</div>
+                        @enderror
+                    </div>
+                    <div class="form-group">
                         <label>Channel Access Token</label>
                         <textarea name="line_channel_access_token"
                                   rows="3"
@@ -88,8 +100,32 @@
                     </div>
                     <div class="form-group mb-0 mt-3">
                         <label>Webhook URL</label>
-                        <input type="text" class="form-control" value="{{ route('api.line.webhook') }}" readonly>
+                        <input type="text" class="form-control" value="{{ old('line_webhook_url', $tenant?->line_webhook_url ?? route('api.line.webhook')) }}" readonly>
                         <small class="form-text text-muted">นำ URL นี้ไปใส่ใน LINE Developers Console -> Messaging API -> Webhook URL</small>
+                    </div>
+
+                    @if($tenant?->lineAddFriendUrl())
+                        <div class="border rounded bg-light mt-3 p-3">
+                            <div class="font-weight-bold">Resident Add Friend Preview</div>
+                            <div class="small text-muted mt-1">ลิงก์นี้ใช้สำหรับ Step 1 ให้ผู้เช่าเพิ่มเพื่อนก่อนเริ่มขั้นตอนยืนยันห้องพัก</div>
+                            <div class="mt-2">
+                                <input type="text" class="form-control" value="{{ $tenant->lineAddFriendUrl() }}" readonly>
+                            </div>
+                            <div class="mt-3 d-flex flex-wrap align-items-center" style="gap:16px;">
+                                <div class="border rounded bg-white p-2" style="width:160px;">
+                                    {!! app(\App\Services\QrCodeService::class)->generateSvg($tenant->lineAddFriendUrl(), 140) !!}
+                                </div>
+                                <div>
+                                    <a href="{{ $tenant->lineAddFriendUrl() }}" target="_blank" class="btn btn-sm btn-success">
+                                        <i class="fab fa-line mr-1"></i> Open Add Friend Link
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    @endif
+
+                    <div class="alert alert-light border mt-3 mb-0 small">
+                        LINE credentials จะถูกเข้ารหัสเมื่อบันทึกลงฐานข้อมูล และระบบจะบันทึก Webhook URL ล่าสุดให้อัตโนมัติ
                     </div>
 
                     <hr>
@@ -125,6 +161,14 @@
             <div class="mb-4">
                 <button class="btn btn-primary btn-lg"><i class="fas fa-save mr-1"></i> Save Settings</button>
             </div>
+        </form>
+
+        <form method="POST" action="{{ route('app.settings.line-rich-menu.sync') }}" class="mb-4">
+            @csrf
+            <button class="btn btn-outline-success btn-lg"><i class="fab fa-line mr-1"></i> Sync Resident Rich Menu</button>
+            @if($tenant?->line_rich_menu_id)
+                <div class="small text-muted mt-2">Current rich menu: {{ $tenant->line_rich_menu_id }}</div>
+            @endif
         </form>
     </div>
 </div>

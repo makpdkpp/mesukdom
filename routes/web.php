@@ -1,8 +1,10 @@
 <?php
 
 use App\Http\Controllers\BroadcastController;
+use App\Http\Controllers\AdminPortalController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\PricingController;
+use App\Http\Controllers\ResidentLineLinkController;
 use App\Http\Controllers\ResidentSupportController;
 use App\Support\PublicSiteMetrics;
 use Illuminate\Support\Facades\Route;
@@ -45,26 +47,35 @@ Route::middleware(['auth', 'verified', 'role:owner,staff', 'tenant.active'])->pr
     Route::post('/payments', [DashboardController::class, 'storePayment'])->name('app.payments.store');
     Route::get('/payments/{payment}/receipt', [DashboardController::class, 'downloadReceiptPdf'])->name('app.payments.receipt');
     Route::get('/payments/{payment}/slip', [DashboardController::class, 'viewSlip'])->name('app.payments.slip');
+    Route::patch('/payments/{payment}/recheck-slip', [DashboardController::class, 'recheckPaymentSlip'])->name('app.payments.recheck-slip');
     Route::patch('/payments/{payment}/approve', [DashboardController::class, 'approvePayment'])->name('app.payments.approve');
     Route::patch('/payments/{payment}/reject', [DashboardController::class, 'rejectPayment'])->name('app.payments.reject');
     
     Route::get('/broadcasts', [BroadcastController::class, 'index'])->name('app.broadcasts');
     Route::post('/broadcasts', [BroadcastController::class, 'store'])->name('app.broadcasts.store');
+    Route::get('/line-activity', [DashboardController::class, 'lineActivity'])->name('app.line-activity');
 
     Route::get('/settings', [DashboardController::class, 'settings'])->name('app.settings');
     Route::post('/settings', [DashboardController::class, 'updateSettings'])->name('app.settings.update');
+    Route::post('/settings/line-rich-menu/sync', [DashboardController::class, 'syncLineRichMenu'])->name('app.settings.line-rich-menu.sync');
 
     Route::get('/invoices/{invoice}/promptpay-qr', [DashboardController::class, 'promptpayQr'])->name('app.invoices.promptpay-qr');
 });
 
 Route::middleware(['auth', 'verified', 'role:super_admin,support_admin'])->prefix('admin')->group(function (): void {
-    Route::get('/', [DashboardController::class, 'admin'])->name('admin.dashboard');
+    Route::get('/', [AdminPortalController::class, 'dashboard'])->name('admin.dashboard');
+    Route::get('/platform', [AdminPortalController::class, 'index'])->name('admin.platform');
+    Route::post('/slipok/settings', [AdminPortalController::class, 'updateSlipOkSettings'])->name('admin.slipok.settings.update');
+    Route::patch('/plans/{plan}/slipok', [AdminPortalController::class, 'updatePlanSlipOkSettings'])->name('admin.plans.slipok.update');
+    Route::patch('/tenants/{tenant}/plan', [AdminPortalController::class, 'updateTenantPlan'])->name('admin.tenants.plan.update');
     Route::patch('/tenants/{tenant}/suspend', [DashboardController::class, 'suspendTenant'])->name('admin.tenants.suspend');
     Route::patch('/tenants/{tenant}/unsuspend', [DashboardController::class, 'unsuspendTenant'])->name('admin.tenants.unsuspend');
 });
 Route::middleware('signed')->group(function (): void {
     Route::get('/resident/invoices/{invoice:public_id}', [DashboardController::class, 'residentInvoice'])->name('resident.invoice');
     Route::get('/resident/invoices/{invoice:public_id}/payments/{payment}/receipt', [DashboardController::class, 'residentDownloadReceipt'])->name('resident.invoice.receipt');
+    Route::get('/resident/line/link/{tenant}', [ResidentLineLinkController::class, 'create'])->name('resident.line.link.create');
+    Route::post('/resident/line/link/{tenant}', [ResidentLineLinkController::class, 'store'])->name('resident.line.link.store');
     Route::get('/resident/line/repair/{customer}', [ResidentSupportController::class, 'createRepairRequest'])->name('resident.line.repair.create');
     Route::post('/resident/line/repair/{customer}', [ResidentSupportController::class, 'storeRepairRequest'])->name('resident.line.repair.store');
 });

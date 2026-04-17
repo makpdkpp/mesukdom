@@ -10,6 +10,7 @@ use App\Models\Invoice;
 use App\Models\LineMessage;
 use App\Models\NotificationLog;
 use App\Models\Payment;
+use App\Models\Room;
 use App\Models\Tenant;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\URL;
@@ -23,18 +24,28 @@ final class LineWebhookHandler
     ) {}
 
     /**
-     * @return array{message:string,status:string,payload:array}
+      * @param array<string, mixed> $event
+     * @return array{message:string,status:string,payload:array<string,mixed>}
      */
     public function handle(Tenant $tenant, array $event): array
     {
-        $type = (string) data_get($event, 'type', 'unknown');
-        $userId = (string) data_get($event, 'source.userId', 'guest');
-        $replyToken = data_get($event, 'replyToken');
+          $typeValue = data_get($event, 'type', 'unknown');
+          $userIdValue = data_get($event, 'source.userId', 'guest');
+          $replyTokenValue = data_get($event, 'replyToken');
+
+          $type = is_string($typeValue) ? $typeValue : 'unknown';
+          $userId = is_string($userIdValue) ? $userIdValue : 'guest';
+          $replyToken = is_string($replyTokenValue) && $replyTokenValue !== '' ? $replyTokenValue : null;
 
         if ($type === 'follow') {
             $replyText = $this->messageBuilder->welcome();
-            $replyPayload = $this->lineService->replyText($tenant, $replyToken, $replyText);
-            $this->recordOutboundMessage($tenant, $userId, 'text', $replyText, $replyPayload);
+            $linkUrl = URL::temporarySignedRoute(
+                'resident.line.link.create',
+                now()->addHours(12),
+                ['tenant' => $tenant->id, 'line_user_id' => $userId]
+            );
+            $replyPayload = $this->lineService->replyLinkPrompt($tenant, $replyToken, $replyText, $linkUrl);
+            $this->recordOutboundMessage($tenant, $userId, 'template', $replyText, $replyPayload);
 
             return [
                 'message' => 'New LINE follower connected',
@@ -74,7 +85,7 @@ final class LineWebhookHandler
     }
 
     /**
-     * @return array{message:string,status:string,payload:array}
+        * @return array{message:string,status:string,payload:array<string,mixed>}
      */
     private function handleCommand(
         Tenant $tenant,
@@ -109,8 +120,13 @@ final class LineWebhookHandler
 
         if (! $customer) {
             $pendingReply = $this->messageBuilder->pendingLink();
-            $replyPayload = $this->lineService->replyText($tenant, $replyToken, $pendingReply);
-            $this->recordOutboundMessage($tenant, $userId, 'text', $pendingReply, $replyPayload);
+            $linkUrl = URL::temporarySignedRoute(
+                'resident.line.link.create',
+                now()->addHours(12),
+                ['tenant' => $tenant->id, 'line_user_id' => $userId]
+            );
+            $replyPayload = $this->lineService->replyLinkPrompt($tenant, $replyToken, $pendingReply, $linkUrl);
+            $this->recordOutboundMessage($tenant, $userId, 'template', $pendingReply, $replyPayload);
 
             return [
                 'message' => 'LINE user not linked to resident',
@@ -162,11 +178,14 @@ final class LineWebhookHandler
         }
 
         if ($command === 'history') {
+            $invoiceIds = Invoice::query()
+                ->where('tenant_id', $customer->tenant_id)
+                ->where('customer_id', $customer->id)
+                ->pluck('id');
+
             $payments = Payment::query()
                 ->where('tenant_id', $customer->tenant_id)
-                ->whereHas('invoice', function ($query) use ($customer): void {
-                    $query->where('customer_id', $customer->id);
-                })
+                ->whereIn('invoice_id', $invoiceIds)
                 ->orderByDesc('payment_date')
                 ->limit(3)
                 ->get();
@@ -200,7 +219,7 @@ final class LineWebhookHandler
         }
 
         if ($command === 'contact') {
-            $tenant = $customer->tenant;
+            $tenant = Tenant::query()->find($customer->tenant_id);
 
             return $this->messageBuilder->contactOwner(
                 $tenant?->support_contact_name,
@@ -235,7 +254,7 @@ final class LineWebhookHandler
             return null;
         }
 
-        $token = strtoupper($matches[1]);
+        $token = strtoupper((string) $matches[1]);
 
         $lineLink = CustomerLineLink::query()
             ->where('tenant_id', $tenant->id)
@@ -248,7 +267,12 @@ final class LineWebhookHandler
             return $this->messageBuilder->linkTokenInvalid();
         }
 
-        $customer = $lineLink->customer;
+        $customer = $lineLink->customer()->with('room')->first();
+
+        if (! $customer instanceof Customer) {
+            return $this->messageBuilder->linkTokenInvalid();
+        }
+
         $customer->update([
             'line_user_id' => $userId,
             'line_linked_at' => now(),
@@ -256,9 +280,16 @@ final class LineWebhookHandler
 
         $lineLink->update(['used_at' => now()]);
 
-        return $this->messageBuilder->linkSuccess($customer->name, $customer->room?->room_number);
+        $roomNumber = $customer->room_id
+            ? Room::query()->whereKey($customer->room_id)->value('room_number')
+            : null;
+
+        return $this->messageBuilder->linkSuccess($customer->name, is_string($roomNumber) ? $roomNumber : null);
     }
 
+    /**
+     * @param array<string, mixed> $event
+     */
     private function recordInboundMessage(Tenant $tenant, string $lineUserId, string $messageType, array $event): void
     {
         $customerId = Customer::query()

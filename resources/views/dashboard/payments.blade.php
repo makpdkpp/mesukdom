@@ -63,7 +63,7 @@
             </div>
             <div class="card-body table-responsive p-0">
                 <table class="table table-hover text-nowrap">
-                    <thead><tr><th>Invoice</th><th>Resident</th><th>Amount</th><th>Method</th><th>Status</th><th>Paid On</th><th class="text-right">Actions</th></tr></thead>
+                    <thead><tr><th>Invoice</th><th>Resident</th><th>Amount</th><th>Method</th><th>Status</th><th>SlipOK</th><th>Paid On</th><th class="text-right">Actions</th></tr></thead>
                     <tbody>
                     @forelse($payments as $payment)
                         <tr>
@@ -72,10 +72,30 @@
                             <td>{{ number_format((float) $payment->amount, 2) }}</td>
                             <td>{{ ucfirst($payment->method) }}</td>
                             <td>{{ ucfirst($payment->status) }}</td>
+                            <td>
+                                @php($verificationStatus = $payment->verification_status ?: 'manual')
+                                @php($badgeClass = match($verificationStatus) {
+                                    'verified' => 'badge-success',
+                                    'failed' => 'badge-danger',
+                                    'review' => 'badge-warning',
+                                    'skipped' => 'badge-secondary',
+                                    default => 'badge-light',
+                                })
+                                <span class="badge {{ $badgeClass }}">{{ ucfirst($verificationStatus) }}</span>
+                                @if($payment->verification_note)
+                                    <div class="small text-muted mt-1" style="max-width:260px;white-space:normal;">{{ $payment->verification_note }}</div>
+                                @endif
+                            </td>
                             <td>{{ $payment->payment_date->format('d/m/Y') }}</td>
                             <td class="text-right">
                                 @if($payment->slip_path)
                                     <a href="{{ route('app.payments.slip', $payment->id) }}" target="_blank" class="btn btn-xs btn-outline-info">View Slip</a>
+                                @endif
+                                @if($payment->status === 'pending' && $payment->method === 'slip' && $payment->verification_status === 'failed' && $payment->slip_path)
+                                    <form method="POST" action="{{ route('app.payments.recheck-slip', $payment->id) }}" class="d-inline">
+                                        @csrf @method('PATCH')
+                                        <button class="btn btn-xs btn-warning" onclick="return confirm('Recheck this slip with SlipOK?')">Recheck SlipOK</button>
+                                    </form>
                                 @endif
                                 @if($payment->status === 'pending')
                                     <form method="POST" action="{{ route('app.payments.approve', $payment->id) }}" class="d-inline">
@@ -94,7 +114,7 @@
                             </td>
                         </tr>
                     @empty
-                        <tr><td colspan="7" class="text-center text-muted">No payments found</td></tr>
+                        <tr><td colspan="8" class="text-center text-muted">No payments found</td></tr>
                     @endforelse
                     </tbody>
                 </table>

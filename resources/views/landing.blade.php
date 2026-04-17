@@ -321,12 +321,12 @@
                             <p class="mt-4 text-sm leading-relaxed text-slate-600">{{ $plan->description }}</p>
                         @endif
 
-                        @php($limits = (array) ($plan->limits ?? []))
+                        @php($limits = $plan->displayLimits())
                         <ul class="mt-6 flex-1 space-y-3">
                             @forelse($limits as $key => $value)
                                 <li class="flex items-center gap-3 text-sm text-slate-700">
                                     <svg class="h-5 w-5 flex-shrink-0 text-teal-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
-                                    {{ ucfirst((string) $key) }}: {{ $value }}
+                                    {{ $key }}: {{ $value }}
                                 </li>
                             @empty
                                 <li class="flex items-center gap-3 text-sm text-slate-700">
@@ -552,4 +552,4 @@
         </script>
     @endguest
 
-</x-public-layout>
+</x-public-layout>

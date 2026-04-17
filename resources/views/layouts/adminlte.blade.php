@@ -32,24 +32,31 @@
     </nav>
 
     <aside class="main-sidebar sidebar-dark-primary elevation-4">
-        <a href="{{ route('app.dashboard') }}" class="brand-link text-center">
+        @php($isAdminRoute = request()->routeIs('admin.*'))
+        <a href="{{ $isAdminRoute ? route('admin.dashboard') : route('app.dashboard') }}" class="brand-link text-center">
             <span class="brand-text font-weight-light">MesukDorm</span>
         </a>
 
         <div class="sidebar">
             <nav class="mt-3">
                 <ul class="nav nav-pills nav-sidebar flex-column" data-widget="treeview">
-                    <li class="nav-item"><a href="{{ route('app.dashboard') }}" class="nav-link"><i class="nav-icon fas fa-chart-pie"></i><p>Dashboard</p></a></li>
-                    <li class="nav-item"><a href="{{ route('app.rooms') }}" class="nav-link"><i class="nav-icon fas fa-door-open"></i><p>Rooms</p></a></li>
-                    <li class="nav-item"><a href="{{ route('app.customers') }}" class="nav-link"><i class="nav-icon fas fa-users"></i><p>Residents</p></a></li>
-                    <li class="nav-item"><a href="{{ route('app.contracts') }}" class="nav-link"><i class="nav-icon fas fa-file-signature"></i><p>Contracts</p></a></li>
-                    <li class="nav-item"><a href="{{ route('app.invoices') }}" class="nav-link"><i class="nav-icon fas fa-file-invoice-dollar"></i><p>Invoices</p></a></li>
-                    <li class="nav-item"><a href="{{ route('app.payments') }}" class="nav-link"><i class="nav-icon fas fa-money-check-alt"></i><p>Payments</p></a></li>
-                    <li class="nav-item"><a href="{{ route('app.broadcasts') }}" class="nav-link"><i class="nav-icon fas fa-bullhorn"></i><p>Broadcasts</p></a></li>
-                    <li class="nav-item"><a href="{{ route('app.settings') }}" class="nav-link"><i class="nav-icon fas fa-cog"></i><p>Settings</p></a></li>
-                    @can('accessAdminPortal')
-                        <li class="nav-item"><a href="{{ route('admin.dashboard') }}" class="nav-link"><i class="nav-icon fas fa-cogs"></i><p>Platform Admin</p></a></li>
-                    @endcan
+                    @if($isAdminRoute)
+                        <li class="nav-item"><a href="{{ route('admin.dashboard') }}" class="nav-link"><i class="nav-icon fas fa-chart-line"></i><p>Dashboard Admin</p></a></li>
+                        <li class="nav-item"><a href="{{ route('admin.platform') }}" class="nav-link"><i class="nav-icon fas fa-cogs"></i><p>Platform Admin</p></a></li>
+                    @else
+                        <li class="nav-item"><a href="{{ route('app.dashboard') }}" class="nav-link"><i class="nav-icon fas fa-chart-pie"></i><p>Dashboard</p></a></li>
+                        <li class="nav-item"><a href="{{ route('app.rooms') }}" class="nav-link"><i class="nav-icon fas fa-door-open"></i><p>Rooms</p></a></li>
+                        <li class="nav-item"><a href="{{ route('app.customers') }}" class="nav-link"><i class="nav-icon fas fa-users"></i><p>Residents</p></a></li>
+                        <li class="nav-item"><a href="{{ route('app.contracts') }}" class="nav-link"><i class="nav-icon fas fa-file-signature"></i><p>Contracts</p></a></li>
+                        <li class="nav-item"><a href="{{ route('app.invoices') }}" class="nav-link"><i class="nav-icon fas fa-file-invoice-dollar"></i><p>Invoices</p></a></li>
+                        <li class="nav-item"><a href="{{ route('app.payments') }}" class="nav-link"><i class="nav-icon fas fa-money-check-alt"></i><p>Payments</p></a></li>
+                        <li class="nav-item"><a href="{{ route('app.broadcasts') }}" class="nav-link"><i class="nav-icon fas fa-bullhorn"></i><p>Broadcasts</p></a></li>
+                        <li class="nav-item"><a href="{{ route('app.line-activity') }}" class="nav-link"><i class="nav-icon fab fa-line"></i><p>LINE Activity</p></a></li>
+                        <li class="nav-item"><a href="{{ route('app.settings') }}" class="nav-link"><i class="nav-icon fas fa-cog"></i><p>Settings</p></a></li>
+                        @can('accessAdminPortal')
+                            <li class="nav-item"><a href="{{ route('admin.platform') }}" class="nav-link"><i class="nav-icon fas fa-cogs"></i><p>Platform Admin</p></a></li>
+                        @endcan
+                    @endif
                 </ul>
             </nav>
         </div>
@@ -73,6 +80,7 @@
             <div class="container-fluid">
                 @if (session('status_card'))
                     @php($statusCard = session('status_card'))
+                    @php($addFriendQrSvg = !empty($statusCard['add_friend_url']) ? app(\App\Services\QrCodeService::class)->generateSvg($statusCard['add_friend_url'], 132) : null)
                     <div class="alert alert-{{ $statusCard['theme'] ?? 'success' }} border shadow-sm">
                         <div class="d-flex flex-wrap align-items-center justify-content-between" style="gap:12px;">
                             <div>
@@ -88,15 +96,39 @@
                                 <div class="text-md-right">
                                     <div class="badge badge-dark px-3 py-2" style="font-family:monospace;font-size:20px;letter-spacing:.24em;">{{ $statusCard['code'] }}</div>
                                     @if(!empty($statusCard['instruction']))
-                                        <div class="small mt-2">Command: <strong style="font-family:monospace;letter-spacing:.08em;">{{ $statusCard['instruction'] }}</strong></div>
+                                        <div class="small mt-2">How to link: <strong>{{ $statusCard['instruction'] }}</strong></div>
                                     @endif
                                 </div>
                             @endif
                         </div>
+
+                        @if(!empty($statusCard['add_friend_url']) || !empty($statusCard['link_url']))
+                            <div class="d-flex flex-wrap align-items-center mt-3" style="gap:16px;">
+                                @if($addFriendQrSvg)
+                                    <div class="border rounded bg-white p-2" style="width:152px;">
+                                        {!! $addFriendQrSvg !!}
+                                    </div>
+                                @endif
+                                <div>
+                                    @if(!empty($statusCard['add_friend_url']))
+                                        <a href="{{ $statusCard['add_friend_url'] }}" target="_blank" class="btn btn-sm btn-success mr-2 mb-2">
+                                            <i class="fab fa-line mr-1"></i> Add Friend
+                                        </a>
+                                    @endif
+                                    @if(!empty($statusCard['link_url']))
+                                        <a href="{{ $statusCard['link_url'] }}" target="_blank" class="btn btn-sm btn-outline-primary mb-2">Open Link Portal</a>
+                                        <div class="small mt-1 text-muted">Signed portal link: {{ $statusCard['link_url'] }}</div>
+                                    @endif
+                                </div>
+                            </div>
+                        @endif
                     </div>
                 @endif
                 @if (session('status'))
                     <div class="alert alert-success">{{ session('status') }}</div>
+                @endif
+                @if (session('error'))
+                    <div class="alert alert-danger">{{ session('error') }}</div>
                 @endif
 
                 @yield('content')

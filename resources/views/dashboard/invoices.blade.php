@@ -12,7 +12,9 @@
                         <label>Contract</label>
                         <select name="contract_id" class="form-control" required>
                             @foreach($contracts as $contract)
-                                <option value="{{ $contract->id }}" @selected((string) old('contract_id') === (string) $contract->id)>{{ $contract->customer->name }} - {{ $contract->room->room_number }}</option>
+                                <option value="{{ $contract->id }}" @selected((string) old('contract_id') === (string) $contract->id)>
+                                    {{ $contract->customer->name }} - {{ $contract->room->room_number }} (Contract #{{ $contract->id }})
+                                </option>
                             @endforeach
                         </select>
                     </div>

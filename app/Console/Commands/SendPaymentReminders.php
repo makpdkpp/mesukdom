@@ -5,10 +5,13 @@ declare(strict_types=1);
 namespace App\Console\Commands;
 
 use App\Jobs\SendLineMessageJob;
+use App\Models\Customer;
 use App\Models\Invoice;
+use App\Models\Room;
 use App\Models\Tenant;
 use App\Support\TenantContext;
 use Illuminate\Console\Command;
+use Illuminate\Support\Carbon;
 
 class SendPaymentReminders extends Command
 {
@@ -52,28 +55,32 @@ class SendPaymentReminders extends Command
 
     private function sendReminder(Invoice $invoice, Tenant $tenant): void
     {
+        $room = $invoice->room_id ? Room::query()->find($invoice->room_id) : null;
+        $customer = $invoice->customer_id ? Customer::query()->find($invoice->customer_id) : null;
+        $dueDate = Carbon::parse((string) $invoice->due_date)->format('d/m/Y');
+
         $message = sprintf(
             '[REMINDER] Invoice %s for room %s is due on %s. Total: %s THB. Please pay to avoid late fees.',
             $invoice->invoice_no,
-            $invoice->room?->room_number ?? '-',
-            optional($invoice->due_date)->format('d/m/Y'),
+            $room?->room_number ?? '-',
+            $dueDate,
             number_format((float) $invoice->total_amount, 2)
         );
 
         SendLineMessageJob::dispatch(
             $tenant->id,
             'reminder_sent',
-            $invoice->customer?->line_user_id,
+            $customer?->line_user_id,
             $message,
-            $invoice->customer?->name,
-            $invoice->customer?->id,
+            $customer?->name,
+            $customer?->id,
             ['invoice_id' => $invoice->id]
         );
 
         $this->line(sprintf(
             '  [%s] Reminder queued for %s (invoice %s)',
             $tenant->name,
-            $invoice->customer?->name ?? '-',
+            $customer?->name ?? '-',
             $invoice->invoice_no
         ));
     }

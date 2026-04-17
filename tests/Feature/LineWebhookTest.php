@@ -7,6 +7,7 @@ use App\Models\Tenant;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Testing\TestResponse;
 use Tests\TestCase;
 
 class LineWebhookTest extends TestCase
@@ -35,7 +36,7 @@ class LineWebhookTest extends TestCase
             ],
         ];
 
-        $response = $this->callLineWebhook($payload, $tenant->line_channel_secret);
+        $response = $this->callLineWebhook($payload, (string) $tenant->line_channel_secret);
 
         $response->assertOk();
         $response->assertJson(['ok' => true]);
@@ -55,7 +56,7 @@ class LineWebhookTest extends TestCase
         $this->assertDatabaseHas('line_messages', [
             'tenant_id' => $tenant->id,
             'direction' => 'outbound',
-            'message_type' => 'text',
+            'message_type' => 'template',
         ]);
     }
 
@@ -148,7 +149,7 @@ class LineWebhookTest extends TestCase
             ],
         ];
 
-        $response = $this->callLineWebhook($payload, $tenantB->line_channel_secret);
+        $response = $this->callLineWebhook($payload, (string) $tenantB->line_channel_secret);
 
         $response->assertOk();
 
@@ -208,7 +209,7 @@ class LineWebhookTest extends TestCase
             ],
         ];
 
-        $response = $this->callLineWebhook($payload, $tenant->line_channel_secret);
+        $response = $this->callLineWebhook($payload, (string) $tenant->line_channel_secret);
 
         $response->assertOk();
 
@@ -233,9 +234,18 @@ class LineWebhookTest extends TestCase
         ]);
     }
 
-    private function callLineWebhook(array $payload, string $secret)
+    /**
+     * @param array<string, mixed> $payload
+        * @return TestResponse<\Symfony\Component\HttpFoundation\Response>
+     */
+        private function callLineWebhook(array $payload, string $secret)
     {
         $json = json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+
+        if ($json === false) {
+            self::fail('Unable to encode LINE webhook payload to JSON.');
+        }
+
         $signature = base64_encode(hash_hmac('sha256', $json, $secret, true));
 
         return $this->call(

@@ -3,13 +3,12 @@
 namespace App\Models;
 
 use App\Models\Concerns\BelongsToTenant;
-use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class Payment extends Model
 {
-    use BelongsToTenant, HasFactory;
+    use BelongsToTenant;
 
     protected $fillable = [
         'tenant_id',
@@ -21,6 +20,12 @@ class Payment extends Model
         'slip_path',
         'notes',
         'receipt_no',
+        'verification_provider',
+        'verification_status',
+        'verification_note',
+        'verification_qr_code',
+        'verification_payload',
+        'verification_checked_at',
     ];
 
     public static function generateReceiptNo(int $tenantId): string
@@ -43,11 +48,24 @@ class Payment extends Model
         return [
             'payment_date' => 'date',
             'amount' => 'decimal:2',
+            'verification_payload' => 'array',
+            'verification_checked_at' => 'datetime',
         ];
     }
 
+    /**
+     * @return BelongsTo<Invoice, $this>
+     */
     public function invoice(): BelongsTo
     {
         return $this->belongsTo(Invoice::class);
+    }
+
+    /**
+     * @return BelongsTo<Tenant, $this>
+     */
+    public function tenant(): BelongsTo
+    {
+        return $this->belongsTo(Tenant::class);
     }
 }

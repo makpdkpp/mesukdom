@@ -11,6 +11,7 @@ use App\Models\Tenant;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\URL;
+use Illuminate\Testing\TestResponse;
 use Tests\TestCase;
 
 class LineRichMenuTest extends TestCase
@@ -50,7 +51,7 @@ class LineRichMenuTest extends TestCase
                 'source' => ['userId' => 'U-repair-user'],
                 'postback' => ['data' => 'action=repair'],
             ]],
-        ], $tenant->line_channel_secret);
+        ], (string) $tenant->line_channel_secret);
 
         $response->assertOk();
 
@@ -64,6 +65,36 @@ class LineRichMenuTest extends TestCase
 
         $this->assertStringContainsString('แจ้งซ่อมผ่านฟอร์มนี้ได้ทันที', $message);
         $this->assertStringContainsString('/resident/line/repair/', $message);
+    }
+
+    public function test_follow_event_replies_with_linking_button_uri(): void
+    {
+        Http::fake(['https://api.line.me/*' => Http::response(['ok' => true], 200)]);
+
+        $tenant = Tenant::query()->create([
+            'name' => 'Follow Dorm',
+            'line_channel_secret' => 'follow-secret',
+            'line_channel_access_token' => 'follow-token',
+        ]);
+
+        $response = $this->callLineWebhook([
+            'events' => [[
+                'type' => 'follow',
+                'replyToken' => 'reply-token-follow',
+                'source' => ['userId' => 'U-follow-user'],
+            ]],
+        ], (string) $tenant->line_channel_secret);
+
+        $response->assertOk();
+
+        Http::assertSent(function ($request): bool {
+            $messages = data_get($request->data(), 'messages', []);
+
+            return $request->url() === 'https://api.line.me/v2/bot/message/reply'
+                && data_get($messages, '0.type') === 'template'
+                && data_get($messages, '0.template.actions.0.uri') !== null
+                && str_contains((string) data_get($messages, '0.template.actions.0.uri'), '/resident/line/link/');
+        });
     }
 
     public function test_contact_postback_returns_owner_contact_details(): void
@@ -92,7 +123,7 @@ class LineRichMenuTest extends TestCase
                 'source' => ['userId' => 'U-contact-user'],
                 'postback' => ['data' => 'action=contact'],
              ]],
-         ], $tenant->line_channel_secret);
+         ], (string) $tenant->line_channel_secret);
  
          $response->assertOk();
 
@@ -147,9 +178,18 @@ class LineRichMenuTest extends TestCase
         ]);
     }
 
-    private function callLineWebhook(array $payload, string $secret)
+    /**
+     * @param array<string, mixed> $payload
+        * @return TestResponse<\Symfony\Component\HttpFoundation\Response>
+     */
+        private function callLineWebhook(array $payload, string $secret)
     {
         $json = json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+
+        if ($json === false) {
+            self::fail('Unable to encode LINE webhook payload to JSON.');
+        }
+
         $signature = base64_encode(hash_hmac('sha256', $json, $secret, true));
 
         return $this->call(

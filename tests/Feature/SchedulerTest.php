@@ -4,6 +4,8 @@ namespace Tests\Feature;
 
 use App\Console\Commands\ExpireContracts;
 use App\Console\Commands\GenerateMonthlyInvoices;
+use App\Console\Commands\SendContractExpiryReminders;
+use App\Console\Commands\SendOverdueWarnings;
 use App\Console\Commands\SendPaymentReminders;
 use App\Models\Contract;
 use App\Models\Customer;
@@ -176,6 +178,49 @@ class SchedulerTest extends TestCase
         $this->assertDatabaseMissing('notification_logs', [
             'tenant_id' => $tenant->id,
             'event' => 'reminder_sent',
+        ]);
+    }
+
+    public function test_send_overdue_warnings_logs_notification_for_overdue_invoice(): void
+    {
+        $tenant = Tenant::create(['name' => 'Overdue Dorm', 'domain' => 'overdue.local', 'plan' => 'trial', 'status' => 'active']);
+        $room = Room::withoutGlobalScopes()->create(['tenant_id' => $tenant->id, 'room_number' => 'OV-101', 'floor' => 1, 'room_type' => 'Standard', 'price' => 5000, 'status' => 'occupied']);
+        $customer = Customer::withoutGlobalScopes()->create(['tenant_id' => $tenant->id, 'room_id' => $room->id, 'name' => 'Overdue Resident']);
+        $contract = Contract::withoutGlobalScopes()->create([
+            'tenant_id' => $tenant->id, 'customer_id' => $customer->id, 'room_id' => $room->id,
+            'start_date' => '2026-01-01', 'end_date' => '2026-12-31', 'deposit' => 5000, 'monthly_rent' => 5000, 'status' => 'active',
+        ]);
+        Invoice::withoutGlobalScopes()->create([
+            'tenant_id' => $tenant->id, 'contract_id' => $contract->id, 'customer_id' => $customer->id, 'room_id' => $room->id,
+            'total_amount' => 5000, 'water_fee' => 0, 'electricity_fee' => 0, 'service_fee' => 0,
+            'status' => 'sent', 'due_date' => now()->subDays(2)->toDateString(),
+        ]);
+
+        $this->artisan(SendOverdueWarnings::class, ['--days' => 1])->assertSuccessful();
+
+        $this->assertDatabaseHas('notification_logs', [
+            'tenant_id' => $tenant->id,
+            'event' => 'overdue_warning_sent',
+            'channel' => 'line',
+        ]);
+    }
+
+    public function test_send_contract_expiry_reminders_logs_notification_for_expiring_contract(): void
+    {
+        $tenant = Tenant::create(['name' => 'Renew Dorm', 'domain' => 'renew.local', 'plan' => 'trial', 'status' => 'active']);
+        $room = Room::withoutGlobalScopes()->create(['tenant_id' => $tenant->id, 'room_number' => 'RN-101', 'floor' => 1, 'room_type' => 'Standard', 'price' => 5000, 'status' => 'occupied']);
+        $customer = Customer::withoutGlobalScopes()->create(['tenant_id' => $tenant->id, 'room_id' => $room->id, 'name' => 'Renew Resident']);
+        Contract::withoutGlobalScopes()->create([
+            'tenant_id' => $tenant->id, 'customer_id' => $customer->id, 'room_id' => $room->id,
+            'start_date' => '2026-01-01', 'end_date' => now()->addDays(30)->toDateString(), 'deposit' => 5000, 'monthly_rent' => 5000, 'status' => 'active',
+        ]);
+
+        $this->artisan(SendContractExpiryReminders::class, ['--days' => 30])->assertSuccessful();
+
+        $this->assertDatabaseHas('notification_logs', [
+            'tenant_id' => $tenant->id,
+            'event' => 'contract_expiry_reminder_sent',
+            'channel' => 'line',
         ]);
     }
 

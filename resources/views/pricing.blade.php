@@ -80,11 +80,11 @@
                         <p class="mt-5 text-base leading-7 {{ $loop->iteration === 2 ? 'text-white/70' : 'text-slate-600' }}">{{ $plan->description }}</p>
                     @endif
 
-                    @php($limits = (array) ($plan->limits ?? []))
+                    @php($limits = $plan->displayLimits())
                     <div class="mt-6 space-y-3 text-sm font-semibold">
                         @forelse($limits as $key => $value)
                             <div class="flex items-center justify-between rounded-2xl px-4 py-3 {{ $loop->parent->iteration === 2 ? 'bg-white/10 text-white ring-1 ring-white/10' : 'bg-white/80 text-slate-700 ring-1 ring-slate-200/70' }}">
-                                <span>{{ ucfirst((string) $key) }}</span>
+                                <span>{{ $key }}</span>
                                 <span class="{{ $loop->parent->iteration === 2 ? 'text-white' : 'text-slate-950' }}">{{ $value }}</span>
                             </div>
                         @empty

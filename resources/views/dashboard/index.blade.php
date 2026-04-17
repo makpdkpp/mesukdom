@@ -97,6 +97,46 @@
         </div>
     </div>
     <div class="col-md-4">
+        <div class="card card-outline {{ $slipOkEnabled ? 'card-info' : 'card-secondary' }}">
+            <div class="card-header"><h3 class="card-title">SlipOK Addon</h3></div>
+            <div class="card-body">
+                @if($slipOkEnabled)
+                    <div class="d-flex align-items-start justify-content-between mb-3">
+                        <div>
+                            <div class="text-muted text-sm">Current plan</div>
+                            <div class="h5 mb-0">{{ $subscriptionPlan?->name ?? ucfirst((string) ($tenant->plan ?? 'Plan')) }}</div>
+                        </div>
+                        <span class="badge badge-info">Enabled</span>
+                    </div>
+                    <div class="small text-muted mb-2">Usage this month</div>
+                    <div class="d-flex align-items-end justify-content-between mb-2">
+                        <div class="h3 mb-0">{{ $slipOkUsageThisMonth }}</div>
+                        <div class="text-muted">
+                            @if($slipOkUsageLimit > 0)
+                                / {{ $slipOkUsageLimit }} verifications
+                            @else
+                                / Unlimited
+                            @endif
+                        </div>
+                    </div>
+                    @if($slipOkUsageLimit > 0)
+                        <meter class="w-100 mb-2" min="0" max="{{ $slipOkUsageLimit }}" value="{{ min($slipOkUsageThisMonth, $slipOkUsageLimit) }}">{{ $slipOkUsagePercent }}%</meter>
+                        <div class="small text-muted">Remaining this month: <strong>{{ $slipOkRemaining }}</strong></div>
+                    @else
+                        <div class="small text-muted">Your package has no monthly verification cap.</div>
+                    @endif
+                @else
+                    <div class="d-flex align-items-start justify-content-between mb-3">
+                        <div>
+                            <div class="text-muted text-sm">Current plan</div>
+                            <div class="h5 mb-0">{{ $subscriptionPlan?->name ?? ucfirst((string) ($tenant->plan ?? 'Plan')) }}</div>
+                        </div>
+                        <span class="badge badge-secondary">Manual review</span>
+                    </div>
+                    <p class="text-muted mb-0">แพ็กเกจปัจจุบันยังไม่รวม SlipOK addon จึงใช้การตรวจสลิปแบบ manual review อยู่</p>
+                @endif
+            </div>
+        </div>
         <div class="card card-outline card-primary">
             <div class="card-header"><h3 class="card-title">Quick Access</h3></div>
             <div class="card-body">

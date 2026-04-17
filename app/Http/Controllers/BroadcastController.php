@@ -43,6 +43,18 @@ class BroadcastController extends Controller
         $tenant = app(TenantContext::class)->tenant();
         abort_if(! $tenant, 403);
 
+        $tenantAccessToken = is_string($tenant->line_channel_access_token)
+            ? trim($tenant->line_channel_access_token)
+            : '';
+        $fallbackAccessToken = config('services.line.channel_access_token');
+        $fallbackToken = is_string($fallbackAccessToken)
+            ? trim($fallbackAccessToken)
+            : '';
+
+        if ($tenantAccessToken === '' && $fallbackToken === '') {
+            return back()->with('error', 'LINE channel access token is not configured. Please update LINE settings before broadcasting.');
+        }
+
         $scope = $validated['scope'];
         $room = null;
 
@@ -81,6 +93,9 @@ class BroadcastController extends Controller
         }
 
         $recipients = $recipientQuery->get();
+        $recipientCount = $recipients->count();
+        $syncThreshold = 50;
+        $sendSynchronously = $recipientCount > 0 && $recipientCount <= $syncThreshold;
 
         $broadcast = BroadcastMessage::query()->create([
             'tenant_id' => $tenant->id,
@@ -89,12 +104,12 @@ class BroadcastController extends Controller
             'target_floor' => $validated['floor'] ?? null,
             'room_id' => $room?->id,
             'message' => $validated['message'],
-            'recipient_count' => $recipients->count(),
+            'recipient_count' => $recipientCount,
             'sent_at' => now(),
         ]);
 
         foreach ($recipients as $customer) {
-            SendLineMessageJob::dispatch(
+            $jobPayload = [
                 $tenant->id,
                 'broadcast_sent',
                 $customer->line_user_id,
@@ -105,13 +120,23 @@ class BroadcastController extends Controller
                     'broadcast_message_id' => $broadcast->id,
                     'scope' => $scope,
                     'room_id' => $room?->id,
-                ]
-            );
+                ],
+            ];
+
+            if ($sendSynchronously) {
+                SendLineMessageJob::dispatchSync(...$jobPayload);
+
+                continue;
+            }
+
+            SendLineMessageJob::dispatch(...$jobPayload);
         }
 
         $message = $recipients->isEmpty()
             ? 'Broadcast saved, but no linked LINE recipients matched the selected segment.'
-            : 'Broadcast sent to '.$recipients->count().' resident(s).';
+            : ($sendSynchronously
+                ? 'Broadcast sent to '.$recipientCount.' resident(s).'
+                : 'Broadcast queued for '.$recipientCount.' resident(s).');
 
         return back()->with('status', $message);
     }

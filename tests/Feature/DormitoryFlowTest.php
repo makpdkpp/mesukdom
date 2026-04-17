@@ -6,7 +6,9 @@ use App\Models\Contract;
 use App\Models\Customer;
 use App\Models\Invoice;
 use App\Models\Payment;
+use App\Models\Plan;
 use App\Models\Room;
+use App\Models\SlipVerificationUsage;
 use App\Models\Tenant;
 use App\Models\User;
 use App\Mail\PaymentNotification;
@@ -22,9 +24,19 @@ class DormitoryFlowTest extends TestCase
 
     public function test_dashboard_page_can_be_opened(): void
     {
+        $plan = Plan::create([
+            'name' => 'Basic',
+            'slug' => 'basic',
+            'price_monthly' => 499,
+            'limits' => ['rooms' => 80, 'staff' => 3, 'slipok_enabled' => true, 'slipok_monthly_limit' => 20],
+            'is_active' => true,
+            'sort_order' => 1,
+        ]);
+
         $tenant = Tenant::create([
             'name' => 'Demo Dorm',
             'domain' => 'demo.local',
+            'plan_id' => $plan->id,
             'plan' => 'trial',
             'status' => 'active',
         ]);
@@ -41,6 +53,59 @@ class DormitoryFlowTest extends TestCase
         $response->assertOk();
         $response->assertSee('Dormitory Dashboard');
         $response->assertSee('Room Status');
+        $response->assertSee('SlipOK Addon');
+    }
+
+    public function test_dashboard_shows_slipok_usage_meter_for_current_plan(): void
+    {
+        $plan = Plan::create([
+            'name' => 'Pro',
+            'slug' => 'pro',
+            'price_monthly' => 999,
+            'limits' => ['rooms' => 300, 'staff' => 10, 'slipok_enabled' => true, 'slipok_monthly_limit' => 10],
+            'is_active' => true,
+            'sort_order' => 1,
+        ]);
+
+        $tenant = Tenant::create([
+            'name' => 'Meter Dorm',
+            'domain' => 'meter.local',
+            'plan_id' => $plan->id,
+            'plan' => 'pro',
+            'status' => 'active',
+        ]);
+
+        $user = User::factory()->create([
+            'tenant_id' => $tenant->id,
+            'role' => 'owner',
+        ]);
+
+        SlipVerificationUsage::create([
+            'tenant_id' => $tenant->id,
+            'plan_id' => $plan->id,
+            'provider' => 'slipok',
+            'usage_month' => now()->format('Y-m'),
+            'status' => 'verified',
+        ]);
+
+        SlipVerificationUsage::create([
+            'tenant_id' => $tenant->id,
+            'plan_id' => $plan->id,
+            'provider' => 'slipok',
+            'usage_month' => now()->format('Y-m'),
+            'status' => 'verified',
+        ]);
+
+        $response = $this->actingAs($user)
+            ->withSession(['tenant_id' => $tenant->id])
+            ->get('/app/dashboard');
+
+        $response->assertOk();
+        $response->assertSee('SlipOK Addon');
+        $response->assertSee('2', false);
+        $response->assertSee('/ 10 verifications', false);
+        $response->assertSee('Remaining this month:');
+        $response->assertSee('8');
     }
 
     public function test_rooms_page_only_shows_active_tenant_rooms(): void
@@ -581,6 +646,75 @@ class DormitoryFlowTest extends TestCase
             'id' => $invoice->id,
             'status' => 'paid',
         ]);
+    }
+
+    public function test_invoice_uses_resident_current_room_when_contract_room_is_outdated(): void
+    {
+        $tenant = Tenant::create([
+            'name' => 'Room Sync Dorm',
+            'domain' => 'room-sync.local',
+            'plan' => 'trial',
+            'status' => 'active',
+        ]);
+
+        $user = User::factory()->create([
+            'tenant_id' => $tenant->id,
+            'role' => 'owner',
+            'email_verified_at' => now(),
+        ]);
+
+        $roomOld = Room::create([
+            'tenant_id' => $tenant->id,
+            'room_number' => 'A-101',
+            'floor' => 1,
+            'room_type' => 'Standard',
+            'price' => 4500,
+            'status' => 'occupied',
+        ]);
+
+        $roomCurrent = Room::create([
+            'tenant_id' => $tenant->id,
+            'room_number' => 'A-103',
+            'floor' => 1,
+            'room_type' => 'Standard',
+            'price' => 4500,
+            'status' => 'occupied',
+        ]);
+
+        $customer = Customer::create([
+            'tenant_id' => $tenant->id,
+            'room_id' => $roomCurrent->id,
+            'name' => 'Bunma',
+        ]);
+
+        $contract = Contract::create([
+            'tenant_id' => $tenant->id,
+            'customer_id' => $customer->id,
+            'room_id' => $roomOld->id,
+            'start_date' => '2026-01-01',
+            'end_date' => '2026-12-31',
+            'deposit' => 5000,
+            'monthly_rent' => 4500,
+            'status' => 'active',
+        ]);
+
+        $response = $this->actingAs($user)
+            ->withSession(['tenant_id' => $tenant->id])
+            ->post('/app/invoices', [
+                'contract_id' => $contract->id,
+                'water_fee' => 0,
+                'electricity_fee' => 0,
+                'service_fee' => 0,
+                'status' => 'sent',
+                'due_date' => '2026-05-05',
+            ]);
+
+        $response->assertRedirect();
+
+        $invoice = Invoice::query()->firstOrFail();
+
+        $this->assertSame($customer->id, (int) $invoice->customer_id);
+        $this->assertSame($roomCurrent->id, (int) $invoice->room_id);
     }
 
     public function test_dashboard_displays_revenue_trend_for_current_tenant_only(): void

@@ -75,3 +75,19 @@ Equivalent command:
 ```powershell
 & 'C:\laragon\bin\php\php-8.3.30-Win32-vs16-x64\php.exe' artisan queue:work line-redis --queue=line --tries=3 --sleep=1
 ```
+
+## Production Supervisor Setup
+
+Sample Supervisor configs for production are included in [deploy/supervisor/mesukdome-line-worker.conf](deploy/supervisor/mesukdome-line-worker.conf) and [deploy/supervisor/mesukdome-scheduler.conf](deploy/supervisor/mesukdome-scheduler.conf).
+
+Typical rollout on Linux:
+
+```bash
+sudo cp deploy/supervisor/mesukdome-line-worker.conf /etc/supervisor/conf.d/
+sudo cp deploy/supervisor/mesukdome-scheduler.conf /etc/supervisor/conf.d/
+sudo supervisorctl reread
+sudo supervisorctl update
+sudo supervisorctl status
+```
+
+Before enabling these programs, update the `directory`, `command`, `user`, and log paths in each file to match your server.

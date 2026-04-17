@@ -6,18 +6,20 @@ namespace App\Services\Line;
 
 use App\Models\Invoice;
 use App\Models\Payment;
+use App\Models\Room;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 
 final class MessageBuilder
 {
     public function welcome(): string
     {
-        return "ยินดีต้อนรับครับ\nกรุณาส่งรหัสเชื่อมต่อห้องพักในรูปแบบ: LINK ABC123";
+        return 'ยินดีต้อนรับครับ กดปุ่มยืนยันห้องพักเพื่อเปิดหน้าเชื่อมบัญชี LINE กับห้องพัก แล้วกรอกรหัส 6 หลักจากเจ้าของหอ';
     }
 
     public function pendingLink(): string
     {
-        return 'บัญชียังไม่ถูกเชื่อมกับห้องพัก กรุณาส่งรหัสในรูปแบบ: LINK ABC123';
+        return 'บัญชียังไม่ถูกเชื่อมกับห้องพัก กดปุ่มยืนยันห้องพักเพื่อเปิดหน้าเชื่อมบัญชี แล้วกรอกรหัส 6 หลัก';
     }
 
     public function linkSuccess(string $name, ?string $roomNumber): string
@@ -36,12 +38,16 @@ final class MessageBuilder
             return 'ยังไม่มีบิลที่ต้องชำระ';
         }
 
+        $room = $invoice->room_id ? Room::query()->find($invoice->room_id) : null;
+        $roomNumber = $room?->room_number ?? '-';
+        $dueDate = Carbon::parse((string) $invoice->due_date)->format('d/m/Y');
+
         return sprintf(
             'บิลล่าสุด %s ห้อง %s ยอด %s บาท ครบกำหนด %s\n%s',
             $invoice->invoice_no,
-            $invoice->room?->room_number ?? '-',
+            $roomNumber,
             number_format((float) $invoice->total_amount, 2),
-            optional($invoice->due_date)->format('d/m/Y'),
+            $dueDate,
             $invoice->signedResidentUrl()
         );
     }
@@ -65,9 +71,11 @@ final class MessageBuilder
         }
 
         return 'ประวัติการจ่ายล่าสุด'."\n".$payments->map(function (Payment $payment): string {
+            $paymentDate = Carbon::parse((string) $payment->payment_date)->format('d/m/Y');
+
             return sprintf(
                 '- %s %s บาท (%s)',
-                optional($payment->payment_date)->format('d/m/Y'),
+                $paymentDate,
                 number_format((float) $payment->amount, 2),
                 $payment->status
             );
@@ -121,6 +129,6 @@ final class MessageBuilder
 
     public function unsupported(): string
     {
-        return "คำสั่งที่รองรับ:\n- บิล\n- จ่าย\n- ประวัติ\n- แจ้งซ่อม\n- ประกาศ\n- ติดต่อเจ้าของ\n- LINK ABC123";
+        return "คำสั่งที่รองรับ:\n- บิล\n- จ่าย\n- ประวัติ\n- แจ้งซ่อม\n- ประกาศ\n- ติดต่อเจ้าของ\n- LINK ABC123 หรือกดปุ่มยืนยันห้องพักใน LINE";
     }
 }

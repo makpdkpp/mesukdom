@@ -4,15 +4,17 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers;
 
-use App\Jobs\ProcessWebhookEventJob;
+use App\Models\LineWebhookLog;
+use App\Models\NotificationLog;
 use App\Models\Tenant;
+use App\Services\Line\LineWebhookHandler;
 use App\Support\TenantContext;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 class LineWebhookController extends Controller
 {
-    public function __invoke(Request $request): JsonResponse
+    public function __invoke(Request $request, LineWebhookHandler $webhookHandler): JsonResponse
     {
         $payload = $request->getContent();
         $signature = (string) $request->header('x-line-signature', '');
@@ -27,16 +29,50 @@ class LineWebhookController extends Controller
 
         app(TenantContext::class)->set($tenant);
 
-        foreach ($request->json('events', []) as $event) {
-            $this->handleEvent($tenant, $event);
+        try {
+            foreach ($request->json('events', []) as $event) {
+                if (! is_array($event)) {
+                    continue;
+                }
+
+                /** @var array<string, mixed> $event */
+                $this->handleEvent($tenant, $event, $webhookHandler);
+            }
+        } finally {
+            app(TenantContext::class)->set(null);
         }
 
         return response()->json(['ok' => true]);
     }
 
-    protected function handleEvent(Tenant $tenant, array $event): void
+    /**
+     * @param array<string, mixed> $event
+     */
+    protected function handleEvent(Tenant $tenant, array $event, LineWebhookHandler $webhookHandler): void
     {
-        ProcessWebhookEventJob::dispatch($tenant->id, $event);
+        $typeValue = data_get($event, 'type', 'unknown');
+        $userIdValue = data_get($event, 'source.userId', 'guest');
+
+        $type = is_string($typeValue) ? $typeValue : 'unknown';
+        $userId = is_string($userIdValue) ? $userIdValue : 'guest';
+        $result = $webhookHandler->handle($tenant, $event);
+
+        LineWebhookLog::query()->create([
+            'tenant_id' => $tenant->id,
+            'event_type' => $type,
+            'line_user_id' => $userId,
+            'payload' => $event,
+        ]);
+
+        NotificationLog::query()->create([
+            'tenant_id' => $tenant->id,
+            'channel' => 'line',
+            'event' => $type,
+            'target' => $userId,
+            'message' => $result['message'],
+            'status' => $result['status'],
+            'payload' => array_merge(['event' => $event], $result['payload']),
+        ]);
     }
 
     protected function resolveTenant(string $payload, string $signature): ?Tenant

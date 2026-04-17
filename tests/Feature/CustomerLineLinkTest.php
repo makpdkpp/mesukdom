@@ -20,6 +20,7 @@ class CustomerLineLinkTest extends TestCase
         $tenant = Tenant::create([
             'name' => 'Link Code Dorm',
             'domain' => 'link-code.local',
+            'line_basic_id' => '@linkcodedorm',
             'plan' => 'trial',
             'status' => 'active',
         ]);
@@ -50,9 +51,16 @@ class CustomerLineLinkTest extends TestCase
             ->withSession(['tenant_id' => $tenant->id])
             ->post(route('app.customers.line-link.store', $customer))
             ->assertRedirect()
-            ->assertSessionHas('status_card', fn (array $statusCard): bool => ($statusCard['customer'] ?? null) === $customer->name
-                && ($statusCard['title'] ?? null) === 'LINE link code ready'
-                && preg_match('/^[A-HJ-NP-Z2-9]{6}$/', (string) ($statusCard['code'] ?? '')) === 1);
+            ->assertSessionHas('status_card', function (array $statusCard) use ($customer): bool {
+                $linkUrl = (string) ($statusCard['link_url'] ?? '');
+
+                return ($statusCard['customer'] ?? null) === $customer->name
+                    && ($statusCard['title'] ?? null) === 'LINE link code ready'
+                    && ($statusCard['add_friend_url'] ?? null) === 'https://line.me/R/ti/p/@linkcodedorm'
+                    && str_contains($linkUrl, '/resident/line/link/')
+                    && str_contains($linkUrl, 'signature=')
+                    && preg_match('/^[A-HJ-NP-Z2-9]{6}$/', (string) ($statusCard['code'] ?? '')) === 1;
+            });
 
         $link = $customer->lineLinks()->latest('id')->firstOrFail();
 
