@@ -68,6 +68,57 @@
             </div>
             <div class="col-md-4 mb-3">
                 <div class="border rounded p-3 h-100">
+                    <div class="text-muted text-uppercase small">Redis</div>
+                    <div class="h5 mb-1">
+                        @if(data_get($redisHealth, 'ok'))
+                            OK
+                        @else
+                            FAIL
+                        @endif
+                    </div>
+                    <div class="small text-muted">Client: {{ data_get($redisHealth, 'client', 'n/a') }}</div>
+                    <div class="small text-muted">
+                        Default:
+                        @if(data_get($redisHealth, 'connections.default.ok'))
+                            {{ data_get($redisHealth, 'connections.default.ping', 'PONG') }}
+                        @else
+                            Error
+                        @endif
+                    </div>
+                    @if(!data_get($redisHealth, 'connections.default.ok') && data_get($redisHealth, 'connections.default.error'))
+                        <div class="small text-muted">{{ data_get($redisHealth, 'connections.default.error') }}</div>
+                    @endif
+                    <div class="small text-muted">
+                        Line:
+                        @if(data_get($redisHealth, 'connections.line.ok'))
+                            {{ data_get($redisHealth, 'connections.line.ping', 'PONG') }}
+                        @else
+                            Error
+                        @endif
+                    </div>
+                    @if(!data_get($redisHealth, 'connections.line.ok') && data_get($redisHealth, 'connections.line.error'))
+                        <div class="small text-muted">{{ data_get($redisHealth, 'connections.line.error') }}</div>
+                    @endif
+                </div>
+            </div>
+            <div class="col-md-4 mb-3">
+                <div class="border rounded p-3 h-100">
+                    <div class="text-muted text-uppercase small">Maintenance</div>
+                    <div class="h5 mb-2">Migrate</div>
+                    <form method="POST" action="{{ route('admin.maintenance.migrate') }}">
+                        @csrf
+                        <div class="form-group mb-2">
+                            <input type="password" name="migrate_token" class="form-control form-control-sm" placeholder="MIGRATE_TOKEN" autocomplete="off" required>
+                        </div>
+                        <button type="submit" class="btn btn-sm btn-danger" onclick="return confirm('Run migrations now?');">Run migrations</button>
+                    </form>
+                    @if(session('migrateOutput'))
+                        <pre class="mt-2 mb-0 small" style="white-space: pre-wrap;">{{ session('migrateOutput') }}</pre>
+                    @endif
+                </div>
+            </div>
+            <div class="col-md-4 mb-3">
+                <div class="border rounded p-3 h-100">
                     <div class="text-muted text-uppercase small">Failed Jobs</div>
                     <div class="h5 mb-1">{{ $failedJobsCount }}</div>
                     <div class="small text-muted">From failed_jobs table</div>

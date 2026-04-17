@@ -73,8 +73,12 @@ Route::middleware(['auth', 'verified', 'role:owner,staff', 'tenant.active', 'ten
 
 Route::middleware(['auth', 'verified', 'role:super_admin,support_admin'])->prefix('admin')->group(function (): void {
     Route::get('/', [AdminPortalController::class, 'dashboard'])->name('admin.dashboard');
+    Route::get('/dbmigration', [AdminPortalController::class, 'dbMigration'])->name('admin.dbmigration');
     Route::get('/platform', [AdminPortalController::class, 'index'])->name('admin.platform');
     Route::get('/packages', [AdminPortalController::class, 'packages'])->name('admin.packages');
+
+    Route::post('/maintenance/migrate', [AdminPortalController::class, 'migrate'])->name('admin.maintenance.migrate');
+    Route::post('/maintenance/rollback', [AdminPortalController::class, 'rollback'])->name('admin.maintenance.rollback');
 
     Route::post('/packages', [AdminPortalController::class, 'storePackage'])->name('admin.packages.store');
     Route::patch('/packages/{plan}', [AdminPortalController::class, 'updatePackage'])->name('admin.packages.update');

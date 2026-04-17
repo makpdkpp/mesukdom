@@ -42,6 +42,7 @@
                 <ul class="nav nav-pills nav-sidebar flex-column" data-widget="treeview">
                     @if($isAdminRoute)
                         <li class="nav-item"><a href="{{ route('admin.dashboard') }}" class="nav-link"><i class="nav-icon fas fa-chart-line"></i><p>Dashboard Admin</p></a></li>
+                        <li class="nav-item"><a href="{{ route('admin.dbmigration') }}" class="nav-link"><i class="nav-icon fas fa-database"></i><p>DBmigration</p></a></li>
                         <li class="nav-item"><a href="{{ route('admin.packages') }}" class="nav-link"><i class="nav-icon fas fa-boxes"></i><p>Package Management</p></a></li>
                         <li class="nav-item"><a href="{{ route('admin.platform') }}" class="nav-link"><i class="nav-icon fas fa-cogs"></i><p>Platform Admin</p></a></li>
                     @else
@@ -53,6 +54,7 @@
                         <li class="nav-item"><a href="{{ route('app.payments') }}" class="nav-link"><i class="nav-icon fas fa-money-check-alt"></i><p>Payments</p></a></li>
                         <li class="nav-item"><a href="{{ route('app.billing') }}" class="nav-link"><i class="nav-icon fas fa-credit-card"></i><p>Billing</p></a></li>
                         <li class="nav-item"><a href="{{ route('app.line-activity') }}" class="nav-link"><i class="nav-icon fab fa-line"></i><p>LINE Activity</p></a></li>
+                        <li class="nav-item"><a href="{{ route('app.broadcasts') }}" class="nav-link"><i class="nav-icon fas fa-bullhorn"></i><p>Broadcast</p></a></li>
                         <li class="nav-item"><a href="{{ route('app.settings') }}" class="nav-link"><i class="nav-icon fas fa-cog"></i><p>Settings</p></a></li>
                         @can('accessAdminPortal')
                             <li class="nav-item"><a href="{{ route('admin.platform') }}" class="nav-link"><i class="nav-icon fas fa-cogs"></i><p>Platform Admin</p></a></li>
