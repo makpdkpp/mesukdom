@@ -10,6 +10,7 @@ use App\Models\Plan;
 use App\Models\RepairRequest;
 use App\Models\Room;
 use App\Models\Tenant;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Schema;
 
@@ -55,9 +56,10 @@ final class PublicSiteMetrics
 
         $roomsTotal = Room::query()->count();
         $roomsOccupied = Room::query()->where('status', 'occupied')->count();
+        $tenantQuery = $this->tenantQuery();
 
         return [
-            'tenants_total' => Tenant::query()->count(),
+            'tenants_total' => (clone $tenantQuery)->count(),
             'rooms_total' => $roomsTotal,
             'rooms_occupied' => $roomsOccupied,
             'rooms_vacant' => Room::query()->where('status', 'vacant')->count(),
@@ -84,7 +86,7 @@ final class PublicSiteMetrics
             return collect();
         }
 
-        return Tenant::query()
+        return $this->tenantQuery()
             ->withCount([
                 'rooms',
                 'rooms as occupied_rooms_count' => fn ($query) => $query->where('status', 'occupied'),
@@ -146,6 +148,15 @@ final class PublicSiteMetrics
             && Schema::hasTable('rooms')
             && Schema::hasTable('invoices')
             && Schema::hasTable('payments');
+    }
+
+    private function tenantQuery(): Builder
+    {
+        if (! Schema::hasColumn('tenants', 'deleted_at')) {
+            return Tenant::query()->withoutGlobalScopes();
+        }
+
+        return Tenant::query();
     }
 
     private function emptyStats(): array
