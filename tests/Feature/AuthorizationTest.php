@@ -108,6 +108,7 @@ class AuthorizationTest extends TestCase
 
         $response->assertOk();
         $response->assertSeeText('Dashboard Admin');
+        $response->assertSeeText('Tenant');
         $response->assertSeeText('Package Management');
         $response->assertSeeText('Platform Admin');
         $response->assertDontSeeText('Rooms');
@@ -157,6 +158,86 @@ class AuthorizationTest extends TestCase
         $response->assertSeeText('Package Management');
     }
 
+    public function test_support_admin_can_access_tenant_management_page(): void
+    {
+        $admin = User::factory()->create([
+            'role' => 'support_admin',
+        ]);
+
+        $tenant = Tenant::query()->create([
+            'name' => 'Tenant Menu Dorm',
+            'domain' => 'tenant-menu.local',
+            'plan' => 'trial',
+            'status' => 'active',
+        ]);
+
+        $response = $this->actingAs($admin)->get('/admin/tenants');
+
+        $response->assertOk();
+        $response->assertSeeText('Tenant Management');
+        $response->assertSeeText('Tenant Menu Dorm');
+        $response->assertSeeText('Archive');
+    }
+
+    public function test_support_admin_can_filter_deleted_tenants(): void
+    {
+        $admin = User::factory()->create([
+            'role' => 'support_admin',
+        ]);
+
+        $activeTenant = Tenant::query()->create([
+            'name' => 'Active Filter Dorm',
+            'domain' => 'active-filter.local',
+            'plan' => 'trial',
+            'status' => 'active',
+        ]);
+
+        $deletedTenant = Tenant::query()->create([
+            'name' => 'Deleted Filter Dorm',
+            'domain' => 'deleted-filter.local',
+            'plan' => 'trial',
+            'status' => 'active',
+        ]);
+
+        $deletedTenant->delete();
+
+        $response = $this->actingAs($admin)->get('/admin/tenants?status=deleted&q=Deleted');
+
+        $response->assertOk();
+        $response->assertSeeText('Deleted Filter Dorm');
+        $response->assertSeeText('deleted-filter.local');
+        $response->assertDontSeeText('active-filter.local');
+    }
+
+    public function test_support_admin_tenant_management_is_paginated(): void
+    {
+        $admin = User::factory()->create([
+            'role' => 'support_admin',
+        ]);
+
+        Tenant::query()->create([
+            'name' => 'Aardvark Dorm',
+            'domain' => 'aardvark.local',
+            'plan' => 'trial',
+            'status' => 'active',
+        ]);
+
+        foreach (range(1, 11) as $index) {
+            Tenant::query()->create([
+                'name' => sprintf('Paged Dorm %02d', $index),
+                'domain' => sprintf('paged-%02d.local', $index),
+                'plan' => 'trial',
+                'status' => 'active',
+            ]);
+        }
+
+        $response = $this->actingAs($admin)->get('/admin/tenants');
+
+        $response->assertOk();
+        $response->assertSeeText('Aardvark Dorm');
+        $response->assertSee('page=2', false);
+    }
+
     public function test_support_admin_can_create_package_from_package_management(): void
     {
         $admin = User::factory()->create([
@@ -189,6 +270,33 @@ class AuthorizationTest extends TestCase
         $this->assertSame(300, $plan->slipOkMonthlyLimit());
         $this->assertSame(120, $plan->roomsLimit());
         $this->assertTrue($plan->isRecommended());
+    }
+
+    public function test_support_admin_cannot_save_product_id_in_stripe_price_field(): void
+    {
+        $admin = User::factory()->create([
+            'role' => 'support_admin',
+        ]);
+
+        $response = $this->from('/admin/packages')->actingAs($admin)->post('/admin/packages', [
+            'name' => 'Broken Stripe Package',
+            'slug' => 'broken-stripe-package',
+            'price_monthly' => 999,
+            'description' => 'Broken package',
+            'is_active' => 1,
+            'sort_order' => 3,
+            'stripe_price_id' => 'prod_ULOuFwjNQpbvEc',
+            'rooms_limit' => 20,
+            'recommended' => 0,
+            'slipok_enabled' => 0,
+            'slipok_monthly_limit' => 0,
+        ]);
+
+        $response->assertRedirect('/admin/packages');
+        $response->assertSessionHasErrors(['stripe_price_id']);
+        $this->assertDatabaseMissing('plans', [
+            'slug' => 'broken-stripe-package',
+        ]);
     }
 
     public function test_support_admin_can_update_stripe_settings_from_platform_admin(): void

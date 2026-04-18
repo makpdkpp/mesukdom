@@ -158,6 +158,138 @@
                 </div>
             </div>
 
+            <div class="card card-warning">
+                <div class="card-header"><h3 class="card-title"><i class="fas fa-file-invoice-dollar mr-2"></i>Billing Automation</h3></div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-4">
+                            <div class="form-group">
+                                <label>Default Water Fee / Unit</label>
+                                <input name="default_water_fee"
+                                       type="number"
+                                       min="0"
+                                       step="0.01"
+                                       class="form-control @error('default_water_fee') is-invalid @enderror"
+                                       value="{{ old('default_water_fee', $tenant?->default_water_fee ?? 0) }}">
+                                <small class="form-text text-muted">ราคาค่าน้ำต่อ 1 หน่วย</small>
+                                @error('default_water_fee')
+                                    <div class="invalid-feedback">{{ $message }}</div>
+                                @enderror
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="form-group">
+                                <label>Default Electricity Fee / Unit</label>
+                                <input name="default_electricity_fee"
+                                       type="number"
+                                       min="0"
+                                       step="0.01"
+                                       class="form-control @error('default_electricity_fee') is-invalid @enderror"
+                                       value="{{ old('default_electricity_fee', $tenant?->default_electricity_fee ?? 0) }}">
+                                <small class="form-text text-muted">ราคาค่าไฟต่อ 1 หน่วย</small>
+                                @error('default_electricity_fee')
+                                    <div class="invalid-feedback">{{ $message }}</div>
+                                @enderror
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-4">
+                            <div class="form-group">
+                                <label>Utility Entry Reminder Day</label>
+                                <input name="utility_entry_reminder_day"
+                                       type="number"
+                                       min="1"
+                                       max="31"
+                                       class="form-control @error('utility_entry_reminder_day') is-invalid @enderror"
+                                       value="{{ old('utility_entry_reminder_day', $tenant?->utility_entry_reminder_day ?? 25) }}">
+                                <small class="form-text text-muted">วันที่ระบบเตือนเจ้าของให้บันทึกหน่วยค่าน้ำ ค่าไฟ และค่าใช้จ่ายอื่นๆ</small>
+                                @error('utility_entry_reminder_day')
+                                    <div class="invalid-feedback">{{ $message }}</div>
+                                @enderror
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="form-group">
+                                <label>Invoice Generation Day</label>
+                                <input name="invoice_generate_day"
+                                       type="number"
+                                       min="1"
+                                       max="31"
+                                       class="form-control @error('invoice_generate_day') is-invalid @enderror"
+                                       value="{{ old('invoice_generate_day', $tenant?->invoice_generate_day ?? 1) }}">
+                                <small class="form-text text-muted">วันที่ระบบสร้างบิลอัตโนมัติให้ทุกสัญญาที่ active</small>
+                                @error('invoice_generate_day')
+                                    <div class="invalid-feedback">{{ $message }}</div>
+                                @enderror
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="form-group">
+                                <label>Invoice Send Day</label>
+                                <input name="invoice_send_day"
+                                       type="number"
+                                       min="1"
+                                       max="31"
+                                       class="form-control @error('invoice_send_day') is-invalid @enderror"
+                                       value="{{ old('invoice_send_day', $tenant?->invoice_send_day ?? 2) }}">
+                                <small class="form-text text-muted">วันที่ระบบส่งลิงก์บิลให้ผู้เช่า</small>
+                                @error('invoice_send_day')
+                                    <div class="invalid-feedback">{{ $message }}</div>
+                                @enderror
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label>Invoice Send Channel</label>
+                                <select name="invoice_send_channels" class="form-control @error('invoice_send_channels') is-invalid @enderror">
+                                    <option value="line" @selected(old('invoice_send_channels', $tenant?->invoice_send_channels ?? 'line') === 'line')>LINE</option>
+                                    <option value="email" @selected(old('invoice_send_channels', $tenant?->invoice_send_channels ?? 'line') === 'email')>Email</option>
+                                    <option value="both" @selected(old('invoice_send_channels', $tenant?->invoice_send_channels ?? 'line') === 'both')>LINE + Email</option>
+                                </select>
+                                @error('invoice_send_channels')
+                                    <div class="invalid-feedback">{{ $message }}</div>
+                                @enderror
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label>Overdue Reminder Delay</label>
+                                <div class="input-group">
+                                    <input name="overdue_reminder_after_days"
+                                           type="number"
+                                           min="1"
+                                           max="31"
+                                           class="form-control @error('overdue_reminder_after_days') is-invalid @enderror"
+                                           value="{{ old('overdue_reminder_after_days', $tenant?->overdue_reminder_after_days ?? 1) }}">
+                                    <div class="input-group-append"><span class="input-group-text">days overdue</span></div>
+                                    @error('overdue_reminder_after_days')
+                                        <div class="invalid-feedback d-block">{{ $message }}</div>
+                                    @enderror
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-group mb-0">
+                        <label>Overdue Reminder Channel</label>
+                        <select name="overdue_reminder_channels" class="form-control @error('overdue_reminder_channels') is-invalid @enderror">
+                            <option value="line" @selected(old('overdue_reminder_channels', $tenant?->overdue_reminder_channels ?? 'line') === 'line')>LINE</option>
+                            <option value="email" @selected(old('overdue_reminder_channels', $tenant?->overdue_reminder_channels ?? 'line') === 'email')>Email</option>
+                            <option value="both" @selected(old('overdue_reminder_channels', $tenant?->overdue_reminder_channels ?? 'line') === 'both')>LINE + Email</option>
+                        </select>
+                        <small class="form-text text-muted">ใช้ช่องทางนี้เมื่อบิลเลยกำหนดชำระตามจำนวนวันที่ตั้งไว้</small>
+                        @error('overdue_reminder_channels')
+                            <div class="invalid-feedback d-block">{{ $message }}</div>
+                        @enderror
+                    </div>
+                </div>
+            </div>
+
             <div class="mb-4">
                 <button class="btn btn-primary btn-lg"><i class="fas fa-save mr-1"></i> Save Settings</button>
             </div>

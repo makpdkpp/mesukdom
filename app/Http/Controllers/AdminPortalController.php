@@ -226,27 +226,16 @@ final class AdminPortalController extends Controller
 
     public function index(): View
     {
-        $plans = Plan::query()->orderBy('sort_order')->get();
-        $tenants = Tenant::query()->with('subscriptionPlan')->orderBy('name')->get();
         $platformSetting = PlatformSetting::current();
         $stripeReadiness = $platformSetting->stripeReadinessPayload();
+        $plans = Plan::query()->orderBy('sort_order')->get();
         $plansMissingStripePrice = $plans
             ->filter(fn (Plan $plan): bool => filled($plan->getAttribute('is_active')) && blank($plan->stripe_price_id))
             ->values();
-        $usageMap = SlipVerificationUsage::query()
-            ->selectRaw('tenant_id, count(*) as total')
-            ->where('provider', 'slipok')
-            ->where('usage_month', now()->format('Y-m'))
-            ->groupBy('tenant_id')
-            ->get()
-            ->mapWithKeys(fn (SlipVerificationUsage $usage): array => [
-                (int) ($usage->tenant_id ?? 0) => is_numeric($usage->getAttribute('total')) ? (int) $usage->getAttribute('total') : 0,
-            ]);
 
         return view('dashboard.admin', [
             'failedJobs' => Schema::hasTable('failed_jobs') ? (int) DB::table('failed_jobs')->count() : 0,
             'notificationLogs' => NotificationLog::query()->latest()->take(12)->get(),
-            'tenants' => $tenants,
             'plans' => $plans,
             'platformSetting' => $platformSetting,
             'stripeReadiness' => $stripeReadiness,
@@ -255,8 +244,12 @@ final class AdminPortalController extends Controller
                 ->where('provider', 'slipok')
                 ->where('usage_month', now()->format('Y-m'))
                 ->count(),
-            'slipOkUsageByTenant' => $usageMap,
         ]);
+    }
+
+    public function tenants(Request $request): View
+    {
+        return view('dashboard.admin-tenants', $this->tenantManagementPayload($request));
     }
 
     public function packages(): View
@@ -328,7 +321,7 @@ final class AdminPortalController extends Controller
             'description' => ['nullable', 'string', 'max:1000'],
             'is_active' => ['nullable', 'boolean'],
             'sort_order' => ['nullable', 'integer', 'min:0', 'max:9999'],
-            'stripe_price_id' => ['nullable', 'string', 'max:120'],
+            'stripe_price_id' => ['nullable', 'string', 'max:120', 'regex:/^price_[A-Za-z0-9_]+$/'],
             'rooms_limit' => ['required', 'integer', 'min:0', 'max:10000'],
             'recommended' => ['nullable', 'boolean'],
             'slipok_enabled' => ['nullable', 'boolean'],
@@ -368,7 +361,7 @@ final class AdminPortalController extends Controller
             'description' => ['nullable', 'string', 'max:1000'],
             'is_active' => ['nullable', 'boolean'],
             'sort_order' => ['nullable', 'integer', 'min:0', 'max:9999'],
-            'stripe_price_id' => ['nullable', 'string', 'max:120'],
+            'stripe_price_id' => ['nullable', 'string', 'max:120', 'regex:/^price_[A-Za-z0-9_]+$/'],
             'rooms_limit' => ['required', 'integer', 'min:0', 'max:10000'],
             'recommended' => ['nullable', 'boolean'],
             'slipok_enabled' => ['nullable', 'boolean'],
@@ -425,5 +418,82 @@ final class AdminPortalController extends Controller
         ]);
 
         return back()->with('success', "Tenant '{$tenant->name}' moved to {$plan->name}.");
+    }
+
+    public function destroyTenant(Tenant $tenant): RedirectResponse
+    {
+        $tenant->delete();
+
+        return redirect()
+            ->route('admin.tenants')
+            ->with('success', "Tenant '{$tenant->name}' archived.");
+    }
+
+    public function restoreTenant(int $tenantId): RedirectResponse
+    {
+        $tenant = Tenant::onlyTrashed()->findOrFail($tenantId);
+
+        $tenant->restore();
+
+        return redirect()
+            ->route('admin.tenants', ['status' => 'deleted'])
+            ->with('success', "Tenant '{$tenant->name}' restored.");
+    }
+
+    /**
+    * @return array{plans: \Illuminate\Database\Eloquent\Collection<int, Plan>, tenants: \Illuminate\Contracts\Pagination\LengthAwarePaginator<int, Tenant>, slipOkUsageByTenant: \Illuminate\Support\Collection<int, int>, filters: array{q: string, plan_id: string, status: string}}
+     */
+    private function tenantManagementPayload(Request $request): array
+    {
+        $validated = $request->validate([
+            'q' => ['nullable', 'string', 'max:100'],
+            'plan_id' => ['nullable', 'integer', 'exists:plans,id'],
+            'status' => ['nullable', 'in:all,active,pending_checkout,suspended,deleted'],
+        ]);
+
+        $plans = Plan::query()->orderBy('sort_order')->get();
+        $status = (string) ($validated['status'] ?? 'all');
+
+        $tenantsQuery = match ($status) {
+            'deleted' => Tenant::onlyTrashed(),
+            default => Tenant::query(),
+        };
+
+        $tenants = $tenantsQuery
+            ->with('subscriptionPlan')
+            ->withCount('users')
+            ->when(($validated['q'] ?? null) !== null && $validated['q'] !== '', function ($query) use ($validated): void {
+                $query->where(function ($subQuery) use ($validated): void {
+                    $search = '%'.$validated['q'].'%';
+
+                    $subQuery->where('name', 'like', $search)
+                        ->orWhere('domain', 'like', $search);
+                });
+            })
+            ->when(isset($validated['plan_id']), fn ($query): mixed => $query->where('plan_id', (int) $validated['plan_id']))
+            ->when(in_array($status, ['active', 'pending_checkout', 'suspended'], true), fn ($query): mixed => $query->where('status', $status))
+            ->orderBy($status === 'deleted' ? 'deleted_at' : 'name', $status === 'deleted' ? 'desc' : 'asc')
+            ->paginate(10)
+            ->withQueryString();
+        $usageMap = SlipVerificationUsage::query()
+            ->selectRaw('tenant_id, count(*) as total')
+            ->where('provider', 'slipok')
+            ->where('usage_month', now()->format('Y-m'))
+            ->groupBy('tenant_id')
+            ->get()
+            ->mapWithKeys(fn (SlipVerificationUsage $usage): array => [
+                (int) ($usage->tenant_id ?? 0) => is_numeric($usage->getAttribute('total')) ? (int) $usage->getAttribute('total') : 0,
+            ]);
+
+        return [
+            'plans' => $plans,
+            'tenants' => $tenants,
+            'slipOkUsageByTenant' => $usageMap,
+            'filters' => [
+                'q' => (string) ($validated['q'] ?? ''),
+                'plan_id' => isset($validated['plan_id']) ? (string) $validated['plan_id'] : '',
+                'status' => $status,
+            ],
+        ];
     }
 }

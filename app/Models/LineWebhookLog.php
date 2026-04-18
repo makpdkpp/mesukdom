@@ -14,6 +14,7 @@ class LineWebhookLog extends Model
 
     protected $fillable = [
         'tenant_id',
+        'event_hash',
         'event_type',
         'line_user_id',
         'payload',

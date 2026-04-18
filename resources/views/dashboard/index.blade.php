@@ -63,38 +63,6 @@
             </div>
         </div>
 
-        <div class="card">
-            <div class="card-header"><h3 class="card-title">Dormitory Dashboard</h3></div>
-            <div class="card-body">
-                <p class="mb-3">Room Status for {{ $tenant->name ?? 'your dormitory' }}</p>
-                <div class="table-responsive">
-                    <table class="table table-bordered">
-                        <thead>
-                        <tr>
-                            <th>Room</th>
-                            <th>Floor</th>
-                            <th>Type</th>
-                            <th>Price</th>
-                            <th>Status</th>
-                        </tr>
-                        </thead>
-                        <tbody>
-                        @forelse($rooms as $room)
-                            <tr>
-                                <td>{{ $room->room_number }}</td>
-                                <td>{{ $room->floor }}</td>
-                                <td>{{ $room->room_type }}</td>
-                                <td>{{ number_format((float) $room->price, 2) }}</td>
-                                <td><span class="badge badge-{{ $room->status === 'occupied' ? 'success' : ($room->status === 'maintenance' ? 'warning' : 'secondary') }}">{{ ucfirst($room->status) }}</span></td>
-                            </tr>
-                        @empty
-                            <tr><td colspan="5" class="text-center text-muted">No rooms yet</td></tr>
-                        @endforelse
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-        </div>
     </div>
     <div class="col-md-4">
         <div class="card card-outline {{ $slipOkEnabled ? 'card-info' : 'card-secondary' }}">

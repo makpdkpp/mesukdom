@@ -33,14 +33,16 @@ class CreateNewUser implements CreatesNewUsers
 
         return DB::transaction(function () use ($input): User {
             $plan = Plan::query()->findOrFail((int) $input['plan_id']);
+            $isTrialPlan = $plan->slug === 'trial';
 
             $tenant = Tenant::create([
                 'plan_id' => $plan->id,
                 'name' => $input['tenant_name'],
                 'domain' => null,
                 'plan' => $plan->slug,
-                'status' => 'active',
-                'trial_ends_at' => $plan->slug === 'trial' ? now()->addDays(14) : null,
+                'status' => $isTrialPlan ? 'active' : 'pending_checkout',
+                'subscription_status' => $isTrialPlan ? 'trialing' : 'incomplete',
+                'trial_ends_at' => $isTrialPlan ? now()->addDays(14) : null,
             ]);
 
             return User::create([

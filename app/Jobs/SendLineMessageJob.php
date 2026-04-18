@@ -14,6 +14,9 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
+use Illuminate\Support\Facades\Log;
+use RuntimeException;
+use Throwable;
 
 final class SendLineMessageJob implements ShouldQueue
 {
@@ -37,6 +40,14 @@ final class SendLineMessageJob implements ShouldQueue
         $this->onQueue((string) config('queue.line.queue', 'line'));
     }
 
+    /**
+     * @return list<int>
+     */
+    public function backoff(): array
+    {
+        return [60, 180, 600];
+    }
+
     public function handle(LineService $lineService, TenantContext $tenantContext): void
     {
         $tenant = Tenant::query()->find($this->tenantId);
@@ -49,6 +60,10 @@ final class SendLineMessageJob implements ShouldQueue
 
         try {
             $result = $lineService->pushText($tenant, $this->lineUserId, $this->message);
+
+            if (($result['status'] ?? null) === 'failed') {
+                throw new RuntimeException('LINE push request failed.');
+            }
 
             LineMessage::query()->create([
                 'tenant_id' => $tenant->id,
@@ -75,5 +90,31 @@ final class SendLineMessageJob implements ShouldQueue
         } finally {
             $tenantContext->set(null);
         }
+    }
+
+    public function failed(Throwable $e): void
+    {
+        Log::warning('SendLineMessageJob failed', [
+            'tenant_id' => $this->tenantId,
+            'event' => $this->event,
+            'target' => $this->target,
+            'line_user_id' => $this->lineUserId,
+            'customer_id' => $this->customerId,
+            'error' => $e->getMessage(),
+        ]);
+
+        NotificationLog::query()->create([
+            'tenant_id' => $this->tenantId,
+            'channel' => 'line',
+            'event' => $this->event,
+            'target' => $this->target,
+            'message' => $this->message,
+            'status' => 'failed',
+            'payload' => array_merge($this->payload, [
+                'error' => $e->getMessage(),
+                'line_user_id' => $this->lineUserId,
+                'customer_id' => $this->customerId,
+            ]),
+        ]);
     }
 }

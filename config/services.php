@@ -38,6 +38,11 @@ return [
     'line' => [
         'channel_access_token' => env('LINE_CHANNEL_ACCESS_TOKEN'),
         'channel_secret' => env('LINE_CHANNEL_SECRET'),
+        'webhook_rate_limit' => env('LINE_WEBHOOK_RATE_LIMIT', 120),
+    ],
+
+    'stripe' => [
+        'webhook_rate_limit' => env('STRIPE_WEBHOOK_RATE_LIMIT', 60),
     ],
 
 ];

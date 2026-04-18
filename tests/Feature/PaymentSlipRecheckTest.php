@@ -33,6 +33,14 @@ final class PaymentSlipRecheckTest extends TestCase
                 'data' => [
                     'amount' => 5200,
                     'referenceId' => 'recheck-ok-001',
+                    'receiver' => [
+                        'account' => [
+                            'proxy' => [
+                                'type' => 'MSISDN',
+                                'account' => '0812345678',
+                            ],
+                        ],
+                    ],
                 ],
             ], 200),
         ]);
@@ -52,6 +60,7 @@ final class PaymentSlipRecheckTest extends TestCase
             'plan_id' => $plan->id,
             'plan' => $plan->slug,
             'status' => 'active',
+            'promptpay_number' => '0812345678',
         ]);
 
         $user = User::factory()->create([

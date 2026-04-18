@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Jobs\SendLineMessageJob;
+use App\Models\Building;
 use App\Mail\PaymentNotification;
 use App\Models\Contract;
 use App\Models\Customer;
@@ -17,21 +18,25 @@ use App\Models\Plan;
 use App\Models\Room;
 use App\Models\SlipVerificationUsage;
 use App\Models\Tenant;
+use App\Models\UtilityRecord;
 use App\Models\User;
 use App\Services\Line\LineService;
 use App\Services\PromptPayService;
 use App\Services\SlipVerificationService;
 use App\Support\TenantContext;
 use Barryvdh\DomPDF\Facade\Pdf;
+use Illuminate\Database\QueryException;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Str;
+use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
 
@@ -76,7 +81,6 @@ class DashboardController extends Controller
             'stats' => $stats,
             'revenueTrend' => $revenueTrend,
             'revenueTrendMax' => max(1, $revenueTrend->max('total')),
-            'rooms' => Room::query()->orderBy('room_number')->get(),
             'recentInvoices' => Invoice::query()->with(['customer', 'room'])->latest('due_date')->take(5)->get(),
             'subscriptionPlan' => $subscriptionPlan,
             'slipOkEnabled' => $slipOkEnabled,
@@ -87,11 +91,152 @@ class DashboardController extends Controller
         ]);
     }
 
+    public function roomStatus(): View
+    {
+        $tenant = app(TenantContext::class)->tenant();
+        $roomStatusFilter = request()->query('room_status', 'all');
+
+        if (! in_array($roomStatusFilter, ['all', 'vacant', 'unavailable'], true)) {
+            $roomStatusFilter = 'all';
+        }
+
+        $dashboardRoomsQuery = Room::query()->orderBy('room_number');
+
+        if ($roomStatusFilter === 'vacant') {
+            $dashboardRoomsQuery->where('status', 'vacant');
+        } elseif ($roomStatusFilter === 'unavailable') {
+            $dashboardRoomsQuery->where('status', '!=', 'vacant');
+        }
+
+        return view('dashboard.room-status', [
+            'tenant' => $tenant,
+            'dashboardRooms' => $dashboardRoomsQuery->get(),
+            'roomStatusFilter' => $roomStatusFilter,
+        ]);
+    }
+
+    public function buildings(): View
+    {
+        return view('dashboard.buildings', [
+            'buildings' => Building::query()->withCount('rooms')->orderBy('name')->get(),
+        ]);
+    }
+
     public function rooms(): View
     {
         return view('dashboard.rooms', [
-            'rooms' => Room::query()->orderBy('room_number')->get(),
+            'rooms' => Room::query()->with('buildingRecord')->orderBy('building')->orderBy('floor')->orderBy('room_number')->get(),
+            'buildings' => Building::query()->orderBy('name')->get(),
+            'buildingCatalog' => $this->buildingCatalog(),
         ]);
+    }
+
+    public function utilities(Request $request): View
+    {
+        $billingMonth = $this->normalizeBillingMonth((string) $request->query('month', now()->format('Y-m')));
+
+        $contracts = Contract::query()
+            ->with(['customer', 'room'])
+            ->where('status', 'active')
+            ->where('start_date', '<=', $billingMonth.'-31')
+            ->where(function ($query) use ($billingMonth): void {
+                $query->whereNull('end_date')->orWhere('end_date', '>=', $billingMonth.'-01');
+            })
+            ->orderByDesc('id')
+            ->get();
+
+        $utilityRecords = UtilityRecord::query()
+            ->where('billing_month', $billingMonth)
+            ->get()
+            ->keyBy(fn (UtilityRecord $record): string => (string) $record->contract_id);
+
+        return view('dashboard.utility', [
+            'billingMonth' => $billingMonth,
+            'contracts' => $contracts,
+            'utilityRecords' => $utilityRecords,
+            'tenant' => app(TenantContext::class)->tenant(),
+        ]);
+    }
+
+    public function storeUtilityRecord(Request $request): RedirectResponse
+    {
+        $validated = $this->validateUtilityRecord($request);
+        $contract = Contract::query()->with(['customer', 'room'])->findOrFail((int) $validated['contract_id']);
+
+        UtilityRecord::query()->updateOrCreate(
+            [
+                'tenant_id' => app(TenantContext::class)->id(),
+                'contract_id' => $contract->id,
+                'room_id' => $contract->room_id,
+                'billing_month' => $validated['billing_month'],
+            ],
+            [
+                'customer_id' => $contract->customer_id,
+                'water_units' => $validated['water_units'],
+                'electricity_units' => $validated['electricity_units'],
+                'other_amount' => $validated['other_amount'],
+                'other_description' => $validated['other_description'] ?? null,
+            ],
+        );
+
+        return back()->with('status', 'Utility record saved.');
+    }
+
+    public function storeBuilding(Request $request): RedirectResponse
+    {
+        Building::create($this->validateBuilding($request));
+
+        return back()->with('status', 'Building saved successfully.');
+    }
+
+    public function updateBuilding(Request $request, int $building): RedirectResponse
+    {
+        $building = Building::query()->with('rooms')->findOrFail($building);
+        $validated = $this->validateBuilding($request, $building);
+
+        if ($building->rooms->contains(fn (Room $room): bool => $room->floor > $validated['floor_count'])) {
+            throw ValidationException::withMessages([
+                'floor_count' => 'Cannot reduce floor count below the highest existing room floor in this building.',
+            ]);
+        }
+
+        $roomTypeNames = collect($validated['room_types'])->pluck('name');
+        $usedRoomTypes = $building->rooms->pluck('room_type')->filter()->unique();
+        $missingRoomTypes = $usedRoomTypes->diff($roomTypeNames);
+
+        if ($missingRoomTypes->isNotEmpty()) {
+            throw ValidationException::withMessages([
+                'room_types' => 'Cannot remove room types that are still used by existing rooms: '.$missingRoomTypes->implode(', '),
+            ]);
+        }
+
+        $oldName = $building->name;
+        $building->update($validated);
+
+        if ($oldName !== $building->name) {
+            $building->rooms()->update(['building' => $building->name]);
+        }
+
+        foreach ($validated['room_types'] as $roomType) {
+            $building->rooms()
+                ->where('room_type', $roomType['name'])
+                ->update(['price' => $roomType['price']]);
+        }
+
+        return back()->with('status', 'Building updated successfully.');
+    }
+
+    public function destroyBuilding(int $building): RedirectResponse
+    {
+        $building = Building::query()->withCount('rooms')->findOrFail($building);
+
+        if ($building->rooms_count > 0) {
+            return back()->with('error', 'Cannot delete a building that still has rooms.');
+        }
+
+        $building->delete();
+
+        return back()->with('status', 'Building deleted successfully.');
     }
 
     public function storeRoom(Request $request): RedirectResponse
@@ -255,8 +400,23 @@ class DashboardController extends Controller
     {
         return view('dashboard.contracts', [
             'contracts' => Contract::query()->with(['customer', 'room'])->latest()->get(),
-            'customers' => Customer::query()->orderBy('name')->get(),
+            'customers' => Customer::query()->with('room')->orderBy('name')->get(),
             'rooms' => Room::query()->orderBy('room_number')->get(),
+            'customerRoomCatalog' => Customer::query()
+                ->with('room')
+                ->orderBy('name')
+                ->get()
+                ->map(function (Customer $customer): array {
+                    return [
+                        'id' => $customer->id,
+                        'name' => $customer->name,
+                        'room_id' => $customer->room_id,
+                        'room_label' => $customer->room?->room_number,
+                        'room_price' => $customer->room ? round((float) $customer->room->price, 2) : null,
+                    ];
+                })
+                ->values()
+                ->all(),
         ]);
     }
 
@@ -310,6 +470,7 @@ class DashboardController extends Controller
                 ->latest('start_date')
                 ->latest('id')
                 ->get(),
+            'defaultBillingMonth' => now()->format('Y-m'),
         ]);
     }
 
@@ -323,16 +484,18 @@ class DashboardController extends Controller
         /** @var Customer|null $contractCustomer */
         $contractCustomer = $contract->customer;
         $resolvedRoomId = $contractCustomer?->room_id ?: $contract->room_id;
+        $roomFee = $this->resolveInvoiceRoomFee($contract);
 
         $water = (float) ($validated['water_fee'] ?? 0);
         $electricity = (float) ($validated['electricity_fee'] ?? 0);
         $service = (float) ($validated['service_fee'] ?? 0);
-        $total = (float) $contract->monthly_rent + $water + $electricity + $service;
+        $total = $roomFee + $water + $electricity + $service;
 
         $invoice = Invoice::create([
             'contract_id' => $contract->id,
             'customer_id' => $contract->customer_id,
             'room_id' => $resolvedRoomId,
+            'room_fee' => $roomFee,
             'water_fee' => $water,
             'electricity_fee' => $electricity,
             'service_fee' => $service,
@@ -376,7 +539,12 @@ class DashboardController extends Controller
 
         return view('dashboard.payments', [
             'payments' => Payment::query()->with('invoice.customer')->latest('payment_date')->get(),
-            'invoices' => Invoice::query()->with(['customer', 'room'])->latest('due_date')->get(),
+            'invoices' => Invoice::query()
+                ->with(['customer', 'room'])
+                ->where('status', '!=', 'paid')
+                ->whereDoesntHave('payments', fn ($query) => $query->whereIn('status', ['pending', 'approved']))
+                ->latest('due_date')
+                ->get(),
         ]);
     }
 
@@ -418,6 +586,13 @@ class DashboardController extends Controller
     public function storePayment(Request $request, SlipVerificationService $slipVerificationService): RedirectResponse
     {
         $validated = $this->validatePayment($request);
+        $existingPayment = $this->findActivePaymentForInvoice((int) $validated['invoice_id']);
+
+        if ($existingPayment instanceof Payment) {
+            return back()
+                ->withInput()
+                ->with('error', $this->duplicatePaymentMessage($existingPayment));
+        }
 
         if ($request->hasFile('slip')) {
             $tenant = app(TenantContext::class)->tenant();
@@ -502,16 +677,10 @@ class DashboardController extends Controller
             return back()->with('error', 'Only pending payments can be approved.');
         }
 
-        $payment->update([
-            'status' => 'approved',
-            'receipt_no' => Payment::generateReceiptNo((int) $payment->tenant_id),
-        ]);
-        $payment->invoice?->update(['status' => 'paid']);
-
-        $notifiablePayment = $payment->fresh();
+        $notifiablePayment = $this->approvePendingPayment($payment);
 
         if (! $notifiablePayment instanceof Payment) {
-            $notifiablePayment = $payment;
+            return back()->with('error', 'Only pending payments can be approved.');
         }
 
         $this->sendPaymentEmailNotification(
@@ -570,6 +739,14 @@ class DashboardController extends Controller
             'support_contact_name'      => ['nullable', 'string', 'max:255'],
             'support_contact_phone'     => ['nullable', 'string', 'max:50'],
             'support_line_id'           => ['nullable', 'string', 'max:100'],
+            'default_water_fee'         => ['nullable', 'numeric', 'min:0', 'max:999999.99'],
+            'default_electricity_fee'   => ['nullable', 'numeric', 'min:0', 'max:999999.99'],
+            'utility_entry_reminder_day' => ['nullable', 'integer', 'between:1,31'],
+            'invoice_generate_day'      => ['nullable', 'integer', 'between:1,31'],
+            'invoice_send_day'          => ['nullable', 'integer', 'between:1,31'],
+            'invoice_send_channels'     => ['nullable', Rule::in(['line', 'email', 'both'])],
+            'overdue_reminder_after_days' => ['nullable', 'integer', 'between:1,31'],
+            'overdue_reminder_channels' => ['nullable', Rule::in(['line', 'email', 'both'])],
         ]);
 
         $tenant = app(TenantContext::class)->tenant();
@@ -585,6 +762,14 @@ class DashboardController extends Controller
             'support_contact_name'      => $validated['support_contact_name'] ?? null,
             'support_contact_phone'     => $validated['support_contact_phone'] ?? null,
             'support_line_id'           => $validated['support_line_id'] ?? null,
+            'default_water_fee'         => $validated['default_water_fee'] ?? $tenant?->default_water_fee ?? 0,
+            'default_electricity_fee'   => $validated['default_electricity_fee'] ?? $tenant?->default_electricity_fee ?? 0,
+            'utility_entry_reminder_day' => $validated['utility_entry_reminder_day'] ?? $tenant?->utility_entry_reminder_day ?? 25,
+            'invoice_generate_day'      => $validated['invoice_generate_day'] ?? $tenant?->invoice_generate_day ?? 1,
+            'invoice_send_day'          => $validated['invoice_send_day'] ?? $tenant?->invoice_send_day ?? 2,
+            'invoice_send_channels'     => $validated['invoice_send_channels'] ?? $tenant?->invoice_send_channels ?? 'line',
+            'overdue_reminder_after_days' => $validated['overdue_reminder_after_days'] ?? $tenant?->overdue_reminder_after_days ?? 1,
+            'overdue_reminder_channels' => $validated['overdue_reminder_channels'] ?? $tenant?->overdue_reminder_channels ?? 'line',
         ]);
 
         return back()->with('status', 'Settings updated.');
@@ -700,34 +885,58 @@ class DashboardController extends Controller
         }
 
         $request->validate([
-            'slip' => ['required', 'file', 'mimes:jpg,jpeg,png,pdf', 'max:5120'],
+            'slip' => ['required', 'file', 'mimes:jpg,jpeg,png', 'max:5120'],
             'amount' => ['required', 'numeric', 'min:0'],
             'payment_date' => ['required', 'date'],
         ]);
 
+        $existingPayment = $this->findActivePaymentForInvoice($invoice->id);
+
+        if ($existingPayment instanceof Payment && $existingPayment->status === 'approved') {
+            return back()->with('error', 'This invoice already has an approved payment.');
+        }
+
+        if ($existingPayment instanceof Payment
+            && ($existingPayment->status !== 'pending' || $existingPayment->method !== 'slip')) {
+            return back()->with('error', $this->duplicatePaymentMessage($existingPayment));
+        }
+
         $slipPath = $request->file('slip')->store("slips/{$invoice->tenant_id}/resident", 'local');
 
-        $payment = Payment::create([
-            'tenant_id' => $invoice->tenant_id,
-            'invoice_id' => $invoice->id,
-            'amount' => $request->input('amount'),
-            'payment_date' => $request->input('payment_date'),
-            'method' => 'slip',
-            'status' => 'pending',
-            'slip_path' => $slipPath,
-            'notes' => 'Submitted by resident via portal',
-        ]);
+        $payment = $existingPayment instanceof Payment
+            ? $this->refreshResidentSlipPayment($existingPayment, $invoice, $slipPath, $request)
+            : Payment::create([
+                'tenant_id' => $invoice->tenant_id,
+                'invoice_id' => $invoice->id,
+                'amount' => $request->input('amount'),
+                'payment_date' => $request->input('payment_date'),
+                'method' => 'slip',
+                'status' => 'pending',
+                'slip_path' => $slipPath,
+                'notes' => 'Submitted by resident via portal',
+            ]);
 
         $verificationOutcome = $slipVerificationService->verifyPayment($payment);
         $autoApproved = $this->autoApprovePaymentIfSlipVerified($payment);
 
-        $message = 'Slip submitted successfully. SlipOK: '.$verificationOutcome['message'];
+        $message = 'Slip uploaded successfully. SlipOK: '.$verificationOutcome['message'];
 
         if ($autoApproved) {
             $message .= ' Payment auto-approved and invoice marked as paid.';
+
+            return back()->with('status', $message);
         }
 
-        return back()->with('status', $message);
+        if ($verificationOutcome['status'] === 'verified') {
+            return back()->with('status', $message);
+        }
+
+        $message .= sprintf(
+            ' This invoice expects %s THB.',
+            number_format((float) $invoice->total_amount, 2)
+        );
+
+        return back()->with('error', $message);
     }
 
     protected function autoApprovePaymentIfSlipVerified(Payment $payment): bool
@@ -738,19 +947,108 @@ class DashboardController extends Controller
             return false;
         }
 
-        $payment->update([
-            'status' => 'approved',
-            'receipt_no' => $payment->receipt_no ?: Payment::generateReceiptNo((int) $payment->tenant_id),
-        ]);
+        $approvedPayment = $this->approvePendingPayment($payment);
 
-        $payment->invoice?->update(['status' => 'paid']);
+        if (! $approvedPayment instanceof Payment) {
+            return false;
+        }
 
         $this->sendPaymentEmailNotification(
-            $payment->fresh()->loadMissing(['invoice.customer', 'invoice.room']),
+            $approvedPayment->loadMissing(['invoice.customer', 'invoice.room']),
             'payment_approved'
         );
 
         return true;
+    }
+
+    protected function findActivePaymentForInvoice(int $invoiceId): ?Payment
+    {
+        return Payment::query()
+            ->where('invoice_id', $invoiceId)
+            ->whereIn('status', ['pending', 'approved'])
+            ->latest('id')
+            ->first();
+    }
+
+    protected function duplicatePaymentMessage(Payment $payment): string
+    {
+        return $payment->status === 'approved'
+            ? 'This invoice already has an approved payment.'
+            : 'This invoice already has a pending payment. Please review the existing payment instead of creating a new one.';
+    }
+
+    protected function refreshResidentSlipPayment(Payment $payment, Invoice $invoice, string $slipPath, Request $request): Payment
+    {
+        $oldSlipPath = $payment->slip_path;
+
+        $payment->forceFill([
+            'tenant_id' => $invoice->tenant_id,
+            'invoice_id' => $invoice->id,
+            'amount' => $request->input('amount'),
+            'payment_date' => $request->input('payment_date'),
+            'method' => 'slip',
+            'status' => 'pending',
+            'slip_path' => $slipPath,
+            'notes' => 'Re-submitted by resident via portal',
+            'receipt_no' => null,
+            'verification_provider' => null,
+            'verification_status' => null,
+            'verification_note' => null,
+            'verification_qr_code' => null,
+            'verification_payload' => null,
+            'verification_checked_at' => null,
+        ])->save();
+
+        if ($oldSlipPath && $oldSlipPath !== $slipPath && Storage::disk('local')->exists($oldSlipPath)) {
+            Storage::disk('local')->delete($oldSlipPath);
+        }
+
+        return $payment->fresh() ?? $payment;
+    }
+
+    protected function approvePendingPayment(Payment $payment): ?Payment
+    {
+        $maxAttempts = 5;
+
+        for ($attempt = 0; $attempt < $maxAttempts; $attempt++) {
+            try {
+                /** @var Payment|null $approvedPayment */
+                $approvedPayment = DB::transaction(function () use ($payment): ?Payment {
+                    /** @var Payment $lockedPayment */
+                    $lockedPayment = Payment::withoutGlobalScopes()
+                        ->with('invoice')
+                        ->lockForUpdate()
+                        ->findOrFail($payment->id);
+
+                    if ($lockedPayment->status !== 'pending') {
+                        return null;
+                    }
+
+                    $lockedPayment->forceFill([
+                        'status' => 'approved',
+                        'receipt_no' => $lockedPayment->receipt_no ?: Payment::generateReceiptNo((int) $lockedPayment->tenant_id),
+                    ])->save();
+
+                    $lockedPayment->invoice()?->update(['status' => 'paid']);
+
+                    return $lockedPayment->fresh();
+                }, 5);
+
+                return $approvedPayment;
+            } catch (QueryException $exception) {
+                if (! $this->isDuplicateReceiptNoException($exception) || $attempt === $maxAttempts - 1) {
+                    throw $exception;
+                }
+            }
+        }
+
+        return null;
+    }
+
+    protected function isDuplicateReceiptNoException(QueryException $exception): bool
+    {
+        return $exception->getCode() === '23000'
+            && str_contains(strtolower($exception->getMessage()), 'payments_receipt_no_unique');
     }
 
     protected function sendPaymentEmailNotification(Payment $payment, string $event): void
@@ -823,14 +1121,99 @@ class DashboardController extends Controller
 
     protected function validateRoom(Request $request): array
     {
-        return $request->validate([
-            'building' => ['required', 'string', 'max:100'],
+        $validated = $request->validate([
+            'building_id' => ['required', 'integer'],
             'room_number' => ['required', 'string', 'max:50'],
             'floor' => ['required', 'integer', 'min:1'],
             'room_type' => ['required', 'string', 'max:100'],
-            'price' => ['required', 'numeric', 'min:0'],
             'status' => ['required', 'in:vacant,occupied,maintenance'],
         ]);
+
+        $building = Building::query()->findOrFail((int) $validated['building_id']);
+
+        if ((int) $validated['floor'] > $building->floor_count) {
+            throw ValidationException::withMessages([
+                'floor' => 'Selected floor is outside the configured range for this building.',
+            ]);
+        }
+
+        $roomType = collect($building->normalizedRoomTypes())->firstWhere('name', trim((string) $validated['room_type']));
+
+        if (! is_array($roomType)) {
+            throw ValidationException::withMessages([
+                'room_type' => 'Selected room type is not available for this building.',
+            ]);
+        }
+
+        return [
+            'building_id' => $building->id,
+            'building' => $building->name,
+            'room_number' => trim((string) $validated['room_number']),
+            'floor' => (int) $validated['floor'],
+            'room_type' => $roomType['name'],
+            'price' => $roomType['price'],
+            'status' => $validated['status'],
+        ];
+    }
+
+    protected function validateBuilding(Request $request, ?Building $building = null): array
+    {
+        $tenantId = app(TenantContext::class)->id();
+
+        $validated = $request->validate([
+            'name' => [
+                'required',
+                'string',
+                'max:100',
+                Rule::unique('buildings', 'name')
+                    ->where(fn ($query) => $query->where('tenant_id', $tenantId))
+                    ->ignore($building?->id),
+            ],
+            'floor_count' => ['required', 'integer', 'min:1', 'max:100'],
+            'room_types' => ['required', 'array', 'min:1'],
+            'room_types.*.name' => ['required', 'string', 'max:100'],
+            'room_types.*.price' => ['required', 'numeric', 'min:0'],
+        ]);
+
+        $validated['name'] = trim((string) $validated['name']);
+        $validated['room_types'] = $this->normalizeRoomTypes($validated['room_types']);
+
+        if (collect($validated['room_types'])->pluck('name')->unique()->count() !== count($validated['room_types'])) {
+            throw ValidationException::withMessages([
+                'room_types' => 'Room type names must be unique within each building.',
+            ]);
+        }
+
+        return $validated;
+    }
+
+    protected function normalizeRoomTypes(array $roomTypes): array
+    {
+        return collect($roomTypes)
+            ->map(function (array $roomType): array {
+                return [
+                    'name' => trim((string) ($roomType['name'] ?? '')),
+                    'price' => round((float) ($roomType['price'] ?? 0), 2),
+                ];
+            })
+            ->filter(fn (array $roomType): bool => $roomType['name'] !== '')
+            ->values()
+            ->all();
+    }
+
+    protected function buildingCatalog(): array
+    {
+        return Building::query()
+            ->orderBy('name')
+            ->get()
+            ->map(fn (Building $building): array => [
+                'id' => $building->id,
+                'name' => $building->name,
+                'floor_count' => $building->floor_count,
+                'room_types' => $building->normalizedRoomTypes(),
+            ])
+            ->values()
+            ->all();
     }
 
     protected function validateCustomer(Request $request): array
@@ -857,7 +1240,7 @@ class DashboardController extends Controller
     {
         $validated = $request->validate([
             'customer_id' => ['required', 'integer'],
-            'room_id' => ['required', 'integer'],
+            'room_id' => ['nullable', 'integer'],
             'start_date' => ['required', 'date'],
             'end_date' => ['required', 'date', 'after:start_date'],
             'deposit' => ['required', 'numeric', 'min:0'],
@@ -865,14 +1248,46 @@ class DashboardController extends Controller
             'status' => ['required', 'in:active,expired,cancelled'],
         ]);
 
-        $customer = Customer::query()->findOrFail((int) $validated['customer_id']);
-        $room = Room::query()->findOrFail((int) $validated['room_id']);
+        $customer = Customer::query()->with('room')->findOrFail((int) $validated['customer_id']);
+        $resolvedRoomId = $validated['room_id'] ?? $customer->room_id;
+
+        if (! $resolvedRoomId) {
+            throw ValidationException::withMessages([
+                'customer_id' => 'Selected resident does not have an assigned room.',
+            ]);
+        }
+
+        $room = Room::query()->findOrFail((int) $resolvedRoomId);
 
         $validated['customer_id'] = $customer->id;
         $validated['room_id'] = $room->id;
-        $validated['monthly_rent'] = $validated['monthly_rent'] ?? $room->price;
+        $validated['monthly_rent'] = $validated['monthly_rent'] ?? $this->calculateContractRent(
+            $room,
+            (string) $validated['start_date'],
+            (string) $validated['end_date'],
+        );
 
         return $validated;
+    }
+
+    protected function calculateContractRent(Room $room, string $startDate, string $endDate): float
+    {
+        $basePrice = round((float) $room->price, 2);
+        $start = Carbon::parse($startDate)->startOfDay();
+        $end = Carbon::parse($endDate)->startOfDay();
+
+        if ($end->lt($start)) {
+            return $basePrice;
+        }
+
+        if ($start->isSameMonth($end)) {
+            $daysInMonth = max(1, $start->daysInMonth);
+            $coveredDays = $start->diffInDays($end) + 1;
+
+            return round(($basePrice / $daysInMonth) * $coveredDays, 2);
+        }
+
+        return $basePrice;
     }
 
     protected function validateInvoice(Request $request): array
@@ -897,6 +1312,49 @@ class DashboardController extends Controller
         $validated['contract_id'] = $contract->id;
 
         return $validated;
+    }
+
+    protected function validateUtilityRecord(Request $request): array
+    {
+        $validated = $request->validate([
+            'contract_id' => ['required', 'integer'],
+            'billing_month' => ['required', 'date_format:Y-m'],
+            'water_units' => ['nullable', 'numeric', 'min:0'],
+            'electricity_units' => ['nullable', 'numeric', 'min:0'],
+            'other_amount' => ['nullable', 'numeric', 'min:0'],
+            'other_description' => ['nullable', 'string', 'max:255'],
+        ]);
+
+        $contract = Contract::query()->findOrFail((int) $validated['contract_id']);
+
+        if ($contract->status !== 'active') {
+            throw ValidationException::withMessages([
+                'contract_id' => 'Only active contracts can record utility usage.',
+            ]);
+        }
+
+        $validated['contract_id'] = $contract->id;
+        $validated['water_units'] = (float) ($validated['water_units'] ?? 0);
+        $validated['electricity_units'] = (float) ($validated['electricity_units'] ?? 0);
+        $validated['other_amount'] = (float) ($validated['other_amount'] ?? 0);
+
+        return $validated;
+    }
+
+    protected function normalizeBillingMonth(string $value): string
+    {
+        if (preg_match('/^\d{4}-\d{2}$/', $value) !== 1) {
+            return now()->format('Y-m');
+        }
+
+        return $value;
+    }
+
+    protected function resolveInvoiceRoomFee(Contract $contract): float
+    {
+        $roomPrice = (float) ($contract->room?->price ?? 0);
+
+        return $roomPrice > 0 ? $roomPrice : (float) $contract->monthly_rent;
     }
 
     protected function validatePayment(Request $request): array

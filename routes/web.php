@@ -28,6 +28,13 @@ Route::middleware(['auth', 'verified', 'role:owner,staff', 'tenant.active'])->pr
 
 Route::middleware(['auth', 'verified', 'role:owner,staff', 'tenant.active', 'tenant.write'])->prefix('app')->group(function (): void {
     Route::get('/dashboard', [DashboardController::class, 'dashboard'])->name('app.dashboard');
+    Route::get('/room-status', [DashboardController::class, 'roomStatus'])->name('app.room-status');
+    Route::get('/utility', [DashboardController::class, 'utilities'])->name('app.utility');
+    Route::post('/utility', [DashboardController::class, 'storeUtilityRecord'])->name('app.utility.store');
+    Route::get('/buildings', [DashboardController::class, 'buildings'])->name('app.buildings');
+    Route::post('/buildings', [DashboardController::class, 'storeBuilding'])->name('app.buildings.store');
+    Route::put('/buildings/{building}', [DashboardController::class, 'updateBuilding'])->name('app.buildings.update');
+    Route::delete('/buildings/{building}', [DashboardController::class, 'destroyBuilding'])->name('app.buildings.destroy');
 
     Route::get('/rooms', [DashboardController::class, 'rooms'])->name('app.rooms');
     Route::post('/rooms', [DashboardController::class, 'storeRoom'])->name('app.rooms.store');
@@ -74,6 +81,7 @@ Route::middleware(['auth', 'verified', 'role:owner,staff', 'tenant.active', 'ten
 Route::middleware(['auth', 'verified', 'role:super_admin,support_admin'])->prefix('admin')->group(function (): void {
     Route::get('/', [AdminPortalController::class, 'dashboard'])->name('admin.dashboard');
     Route::get('/dbmigration', [AdminPortalController::class, 'dbMigration'])->name('admin.dbmigration');
+    Route::get('/tenants', [AdminPortalController::class, 'tenants'])->name('admin.tenants');
     Route::get('/platform', [AdminPortalController::class, 'index'])->name('admin.platform');
     Route::get('/packages', [AdminPortalController::class, 'packages'])->name('admin.packages');
 
@@ -87,6 +95,8 @@ Route::middleware(['auth', 'verified', 'role:super_admin,support_admin'])->prefi
     Route::post('/stripe/settings', [AdminPortalController::class, 'updateStripeSettings'])->name('admin.stripe.settings.update');
     Route::patch('/plans/{plan}/slipok', [AdminPortalController::class, 'updatePlanSlipOkSettings'])->name('admin.plans.slipok.update');
     Route::patch('/tenants/{tenant}/plan', [AdminPortalController::class, 'updateTenantPlan'])->name('admin.tenants.plan.update');
+    Route::patch('/tenants/{tenantId}/restore', [AdminPortalController::class, 'restoreTenant'])->name('admin.tenants.restore');
+    Route::delete('/tenants/{tenant}', [AdminPortalController::class, 'destroyTenant'])->name('admin.tenants.destroy');
     Route::patch('/tenants/{tenant}/suspend', [DashboardController::class, 'suspendTenant'])->name('admin.tenants.suspend');
     Route::patch('/tenants/{tenant}/unsuspend', [DashboardController::class, 'unsuspendTenant'])->name('admin.tenants.unsuspend');
 });

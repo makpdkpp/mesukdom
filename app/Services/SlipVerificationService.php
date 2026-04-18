@@ -96,7 +96,13 @@ final class SlipVerificationService
     private function applyInvoiceAmountValidation(Payment $payment, array $result): array
     {
         if ($result['status'] !== 'verified') {
-            return [$result['status'], $result['message']];
+            return [$result['status'], $this->normalizeFailureMessage($payment, $result['message'])];
+        }
+
+        $tenant = Tenant::withoutGlobalScopes()->find($payment->tenant_id);
+
+        if (! $tenant instanceof Tenant) {
+            return ['failed', 'SlipOK verification failed: tenant not found for destination validation.'];
         }
 
         $invoice = Invoice::withoutGlobalScopes()->find($payment->invoice_id);
@@ -123,7 +129,43 @@ final class SlipVerificationService
             ];
         }
 
+        if (! $this->matchesExpectedPromptPayDestination($tenant, $result['response'])) {
+            return ['failed', 'Slip receiver mismatch. This slip was not transferred to the tenant PromptPay destination.'];
+        }
+
+        $duplicateReference = $this->findDuplicateSlipReference($payment, $result['response']);
+
+        if ($duplicateReference !== null) {
+            return [
+                'failed',
+                sprintf(
+                    'Duplicate slip reference detected. This transfer reference was already used by payment #%d.',
+                    $duplicateReference->id
+                ),
+            ];
+        }
+
         return [$result['status'], $result['message']];
+    }
+
+    private function normalizeFailureMessage(Payment $payment, string $message): string
+    {
+        $normalized = strtolower(trim($message));
+
+        if (str_contains($normalized, 'slip not found')) {
+            $invoice = Invoice::withoutGlobalScopes()->find($payment->invoice_id);
+
+            if ($invoice instanceof Invoice) {
+                return sprintf(
+                    'SlipOK could not verify this slip. The uploaded image may be for a different transfer or the QR data could not be recognized. Expected invoice amount: %s THB.',
+                    number_format((float) $invoice->total_amount, 2, '.', '')
+                );
+            }
+
+            return 'SlipOK could not verify this slip. The uploaded image may be for a different transfer or the QR data could not be recognized.';
+        }
+
+        return $message;
     }
 
     /**
@@ -151,6 +193,124 @@ final class SlipVerificationService
         }
 
         return null;
+    }
+
+    /**
+     * @param array<string,mixed> $response
+     */
+    private function matchesExpectedPromptPayDestination(Tenant $tenant, array $response): bool
+    {
+        $expected = $this->normalizePromptPayValue($tenant->promptpay_number);
+
+        if ($expected === null) {
+            return true;
+        }
+
+        foreach ($this->receiverDestinationCandidates($response) as $candidate) {
+            if ($this->normalizePromptPayValue($candidate) === $expected) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * @param array<string,mixed> $response
+     * @return list<string>
+     */
+    private function receiverDestinationCandidates(array $response): array
+    {
+        $candidates = [];
+
+        foreach ([
+            'data.receiver.account.proxy.account',
+            'data.receiver.account.bank.account',
+            'receiver.account.proxy.account',
+            'receiver.account.bank.account',
+            'data.receiver.proxy.account',
+            'data.receiver.account.account',
+        ] as $path) {
+            $value = data_get($response, $path);
+
+            if (is_scalar($value)) {
+                $candidates[] = (string) $value;
+            }
+        }
+
+        return array_values(array_unique(array_filter($candidates, static fn (string $value): bool => trim($value) !== '')));
+    }
+
+    private function normalizePromptPayValue(mixed $value): ?string
+    {
+        if (! is_scalar($value)) {
+            return null;
+        }
+
+        $normalized = preg_replace('/\D+/', '', (string) $value);
+
+        return is_string($normalized) && $normalized !== '' ? $normalized : null;
+    }
+
+    /**
+     * @param array<string,mixed> $response
+     */
+    private function findDuplicateSlipReference(Payment $payment, array $response): ?Payment
+    {
+        $references = $this->extractSlipReferences($response);
+
+        if ($references === []) {
+            return null;
+        }
+
+        /** @var Payment|null $duplicate */
+        $duplicate = Payment::withoutGlobalScopes()
+            ->where('id', '!=', $payment->id)
+            ->whereNotNull('verification_payload')
+            ->get()
+            ->first(function (Payment $candidate) use ($references): bool {
+                $payload = $candidate->verification_payload;
+
+                if (! is_array($payload)) {
+                    return false;
+                }
+
+                $candidateReferences = $this->extractSlipReferences($payload);
+
+                return $candidateReferences !== [] && array_intersect($references, $candidateReferences) !== [];
+            });
+
+        return $duplicate;
+    }
+
+    /**
+     * @param array<string,mixed> $response
+     * @return list<string>
+     */
+    private function extractSlipReferences(array $response): array
+    {
+        $references = [];
+
+        foreach ([
+            'data.referenceId',
+            'referenceId',
+            'data.transRef',
+            'transRef',
+            'data.ref1',
+            'ref1',
+        ] as $path) {
+            $value = data_get($response, $path);
+
+            if (is_scalar($value)) {
+                $normalized = trim((string) $value);
+
+                if ($normalized !== '') {
+                    $references[] = strtolower($normalized);
+                }
+            }
+        }
+
+        return array_values(array_unique($references));
     }
 
     private function requiresDecodedQrCode(PlatformSetting $setting): bool

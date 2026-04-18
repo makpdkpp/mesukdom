@@ -2,14 +2,17 @@
 
 namespace Tests\Feature;
 
+use App\Models\Building;
 use App\Models\Contract;
 use App\Models\Customer;
 use App\Models\Invoice;
 use App\Models\Payment;
 use App\Models\Plan;
+use App\Models\PlatformSetting;
 use App\Models\Room;
 use App\Models\SlipVerificationUsage;
 use App\Models\Tenant;
+use App\Models\UtilityRecord;
 use App\Models\User;
 use App\Mail\PaymentNotification;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -51,9 +54,16 @@ class DormitoryFlowTest extends TestCase
             ->get('/app/dashboard');
 
         $response->assertOk();
-        $response->assertSee('Dormitory Dashboard');
-        $response->assertSee('Room Status');
+        $response->assertSee('Revenue Trend');
         $response->assertSee('SlipOK Addon');
+
+        $roomStatusResponse = $this->actingAs($user)
+            ->withSession(['tenant_id' => $tenant->id])
+            ->get('/app/room-status');
+
+        $roomStatusResponse->assertOk();
+        $roomStatusResponse->assertSee('Dormitory Dashboard');
+        $roomStatusResponse->assertSee('Room Status');
     }
 
     public function test_dashboard_shows_slipok_usage_meter_for_current_plan(): void
@@ -156,6 +166,121 @@ class DormitoryFlowTest extends TestCase
         $response->assertDontSee('B-201');
     }
 
+    public function test_utility_page_can_be_opened_and_shows_active_contracts(): void
+    {
+        $tenant = Tenant::create([
+            'name' => 'Utility Dorm',
+            'domain' => 'utility.local',
+            'plan' => 'trial',
+            'status' => 'active',
+        ]);
+
+        $user = User::factory()->create([
+            'tenant_id' => $tenant->id,
+            'role' => 'owner',
+            'email_verified_at' => now(),
+        ]);
+
+        $room = Room::create([
+            'tenant_id' => $tenant->id,
+            'room_number' => 'U-101',
+            'floor' => 1,
+            'room_type' => 'Standard',
+            'price' => 4200,
+            'status' => 'occupied',
+        ]);
+
+        $customer = Customer::create([
+            'tenant_id' => $tenant->id,
+            'room_id' => $room->id,
+            'name' => 'Utility Resident',
+        ]);
+
+        Contract::create([
+            'tenant_id' => $tenant->id,
+            'customer_id' => $customer->id,
+            'room_id' => $room->id,
+            'start_date' => '2026-01-01',
+            'end_date' => '2026-12-31',
+            'deposit' => 4200,
+            'monthly_rent' => 4200,
+            'status' => 'active',
+        ]);
+
+        $response = $this->actingAs($user)
+            ->withSession(['tenant_id' => $tenant->id])
+            ->get('/app/utility?month=2026-04');
+
+        $response->assertOk();
+        $response->assertSee('Utility');
+        $response->assertSee('U-101');
+        $response->assertSee('Utility Resident');
+    }
+
+    public function test_owner_can_store_monthly_utility_record(): void
+    {
+        $tenant = Tenant::create([
+            'name' => 'Utility Save Dorm',
+            'domain' => 'utility-save.local',
+            'plan' => 'trial',
+            'status' => 'active',
+        ]);
+
+        $user = User::factory()->create([
+            'tenant_id' => $tenant->id,
+            'role' => 'owner',
+            'email_verified_at' => now(),
+        ]);
+
+        $room = Room::create([
+            'tenant_id' => $tenant->id,
+            'room_number' => 'US-101',
+            'floor' => 1,
+            'room_type' => 'Standard',
+            'price' => 4300,
+            'status' => 'occupied',
+        ]);
+
+        $customer = Customer::create([
+            'tenant_id' => $tenant->id,
+            'room_id' => $room->id,
+            'name' => 'Utility Save Resident',
+        ]);
+
+        $contract = Contract::create([
+            'tenant_id' => $tenant->id,
+            'customer_id' => $customer->id,
+            'room_id' => $room->id,
+            'start_date' => '2026-01-01',
+            'end_date' => '2026-12-31',
+            'deposit' => 4300,
+            'monthly_rent' => 4300,
+            'status' => 'active',
+        ]);
+
+        $this->actingAs($user)
+            ->withSession(['tenant_id' => $tenant->id])
+            ->post(route('app.utility.store'), [
+                'contract_id' => $contract->id,
+                'billing_month' => '2026-04',
+                'water_units' => 15,
+                'electricity_units' => 25,
+                'other_amount' => 125,
+                'other_description' => 'Late-night parking',
+            ])
+            ->assertRedirect();
+
+        $this->assertDatabaseHas('utility_records', [
+            'tenant_id' => $tenant->id,
+            'contract_id' => $contract->id,
+            'billing_month' => '2026-04',
+            'water_units' => 15,
+            'electricity_units' => 25,
+            'other_amount' => 125,
+            'other_description' => 'Late-night parking',
+        ]);
+    }
+
     public function test_owner_can_update_and_delete_their_room(): void
     {
         $tenant = Tenant::create([
@@ -171,8 +296,20 @@ class DormitoryFlowTest extends TestCase
             'email_verified_at' => now(),
         ]);
 
+        $building = Building::create([
+            'tenant_id' => $tenant->id,
+            'name' => 'North Wing',
+            'floor_count' => 4,
+            'room_types' => [
+                ['name' => 'Standard', 'price' => 3200],
+                ['name' => 'Deluxe', 'price' => 4200],
+            ],
+        ]);
+
         $room = Room::create([
             'tenant_id' => $tenant->id,
+            'building_id' => $building->id,
+            'building' => 'North Wing',
             'room_number' => 'C-101',
             'floor' => 1,
             'room_type' => 'Standard',
@@ -183,11 +320,10 @@ class DormitoryFlowTest extends TestCase
         $updateResponse = $this->actingAs($user)
             ->withSession(['tenant_id' => $tenant->id])
             ->put('/app/rooms/'.$room->id, [
-                'building' => 'North Wing',
+                'building_id' => $building->id,
                 'room_number' => 'C-101A',
                 'floor' => 2,
                 'room_type' => 'Deluxe',
-                'price' => 4200,
                 'status' => 'maintenance',
             ]);
 
@@ -199,6 +335,7 @@ class DormitoryFlowTest extends TestCase
             'room_number' => 'C-101A',
             'floor' => 2,
             'room_type' => 'Deluxe',
+            'price' => 4200,
             'status' => 'maintenance',
         ]);
 
@@ -246,11 +383,10 @@ class DormitoryFlowTest extends TestCase
         $response = $this->actingAs($user)
             ->withSession(['tenant_id' => $tenantA->id])
             ->put('/app/rooms/'.$foreignRoom->id, [
-                'building' => 'Hack Tower',
+                'building_id' => $foreignRoom->building_id,
                 'room_number' => 'HACKED',
                 'floor' => 1,
                 'room_type' => 'Standard',
-                'price' => 1000,
                 'status' => 'occupied',
             ]);
 
@@ -259,6 +395,69 @@ class DormitoryFlowTest extends TestCase
             'id' => $foreignRoom->id,
             'tenant_id' => $tenantB->id,
             'room_number' => 'B-999',
+        ]);
+    }
+
+    public function test_owner_can_manage_buildings_and_room_catalog_for_room_forms(): void
+    {
+        $tenant = Tenant::create([
+            'name' => 'Catalog Dorm',
+            'domain' => 'catalog.local',
+            'plan' => 'trial',
+            'status' => 'active',
+        ]);
+
+        $user = User::factory()->create([
+            'tenant_id' => $tenant->id,
+            'role' => 'owner',
+            'email_verified_at' => now(),
+        ]);
+
+        $buildingResponse = $this->actingAs($user)
+            ->withSession(['tenant_id' => $tenant->id])
+            ->post('/app/buildings', [
+                'name' => 'Tower A',
+                'floor_count' => 5,
+                'room_types' => [
+                    ['name' => 'Standard', 'price' => 3500],
+                    ['name' => 'Deluxe', 'price' => 4800],
+                ],
+            ]);
+
+        $buildingResponse->assertRedirect();
+
+        $building = Building::query()->where('name', 'Tower A')->firstOrFail();
+        $this->assertSame(5, $building->floor_count);
+        $this->assertCount(2, $building->normalizedRoomTypes());
+
+        $roomPageResponse = $this->actingAs($user)
+            ->withSession(['tenant_id' => $tenant->id])
+            ->get('/app/rooms');
+
+        $roomPageResponse->assertOk();
+        $roomPageResponse->assertSee('name="building_id"', false);
+        $roomPageResponse->assertSeeText('Tower A');
+
+        $storeRoomResponse = $this->actingAs($user)
+            ->withSession(['tenant_id' => $tenant->id])
+            ->post('/app/rooms', [
+                'building_id' => $building->id,
+                'room_number' => 'A-501',
+                'floor' => 5,
+                'room_type' => 'Deluxe',
+                'status' => 'occupied',
+            ]);
+
+        $storeRoomResponse->assertRedirect();
+        $this->assertDatabaseHas('rooms', [
+            'tenant_id' => $tenant->id,
+            'building_id' => $building->id,
+            'building' => 'Tower A',
+            'room_number' => 'A-501',
+            'floor' => 5,
+            'room_type' => 'Deluxe',
+            'price' => 4800,
+            'status' => 'occupied',
         ]);
     }
 
@@ -501,6 +700,114 @@ class DormitoryFlowTest extends TestCase
         ]);
     }
 
+    public function test_contract_page_exposes_resident_room_catalog_and_contract_store_uses_resident_room_by_default(): void
+    {
+        $tenant = Tenant::create([
+            'name' => 'Contract Catalog Dorm',
+            'domain' => 'contract-catalog.local',
+            'plan' => 'trial',
+            'status' => 'active',
+        ]);
+
+        $user = User::factory()->create([
+            'tenant_id' => $tenant->id,
+            'role' => 'owner',
+            'email_verified_at' => now(),
+        ]);
+
+        $room = Room::create([
+            'tenant_id' => $tenant->id,
+            'room_number' => 'RC-101',
+            'floor' => 1,
+            'room_type' => 'Standard',
+            'price' => 4200,
+            'status' => 'vacant',
+        ]);
+
+        $customer = Customer::create([
+            'tenant_id' => $tenant->id,
+            'room_id' => $room->id,
+            'name' => 'Catalog Resident',
+        ]);
+
+        $pageResponse = $this->actingAs($user)
+            ->withSession(['tenant_id' => $tenant->id])
+            ->get('/app/contracts');
+
+        $pageResponse->assertOk();
+        $pageResponse->assertSee('customer-room-catalog-data', false);
+        $pageResponse->assertSee('RC-101');
+
+        $storeResponse = $this->actingAs($user)
+            ->withSession(['tenant_id' => $tenant->id])
+            ->post('/app/contracts', [
+                'customer_id' => $customer->id,
+                'start_date' => '2026-03-01',
+                'end_date' => '2026-12-31',
+                'deposit' => 5000,
+                'status' => 'active',
+            ]);
+
+        $storeResponse->assertRedirect();
+        $this->assertDatabaseHas('contracts', [
+            'tenant_id' => $tenant->id,
+            'customer_id' => $customer->id,
+            'room_id' => $room->id,
+            'monthly_rent' => 4200,
+            'status' => 'active',
+        ]);
+    }
+
+    public function test_contract_store_calculates_same_month_rent_from_selected_dates(): void
+    {
+        $tenant = Tenant::create([
+            'name' => 'Prorate Dorm',
+            'domain' => 'prorate.local',
+            'plan' => 'trial',
+            'status' => 'active',
+        ]);
+
+        $user = User::factory()->create([
+            'tenant_id' => $tenant->id,
+            'role' => 'owner',
+            'email_verified_at' => now(),
+        ]);
+
+        $room = Room::create([
+            'tenant_id' => $tenant->id,
+            'room_number' => 'PR-101',
+            'floor' => 1,
+            'room_type' => 'Standard',
+            'price' => 3100,
+            'status' => 'vacant',
+        ]);
+
+        $customer = Customer::create([
+            'tenant_id' => $tenant->id,
+            'room_id' => $room->id,
+            'name' => 'Prorate Resident',
+        ]);
+
+        $response = $this->actingAs($user)
+            ->withSession(['tenant_id' => $tenant->id])
+            ->post('/app/contracts', [
+                'customer_id' => $customer->id,
+                'room_id' => $room->id,
+                'start_date' => '2026-03-10',
+                'end_date' => '2026-03-20',
+                'deposit' => 5000,
+                'status' => 'active',
+            ]);
+
+        $response->assertRedirect();
+        $this->assertDatabaseHas('contracts', [
+            'tenant_id' => $tenant->id,
+            'customer_id' => $customer->id,
+            'room_id' => $room->id,
+            'monthly_rent' => 1100,
+        ]);
+    }
+
     public function test_owner_cannot_update_contract_from_another_tenant(): void
     {
         $tenantA = Tenant::create([
@@ -646,6 +953,87 @@ class DormitoryFlowTest extends TestCase
             'id' => $invoice->id,
             'status' => 'paid',
         ]);
+    }
+
+    public function test_manual_payment_cannot_be_recorded_twice_for_the_same_invoice(): void
+    {
+        $tenant = Tenant::create([
+            'name' => 'Billing Duplicate Guard Dorm',
+            'domain' => 'billing-duplicate-guard.local',
+            'plan' => 'trial',
+            'status' => 'active',
+        ]);
+
+        $user = User::factory()->create([
+            'tenant_id' => $tenant->id,
+            'role' => 'owner',
+            'email_verified_at' => now(),
+        ]);
+
+        $room = Room::create([
+            'tenant_id' => $tenant->id,
+            'room_number' => 'B-102',
+            'floor' => 1,
+            'room_type' => 'Standard',
+            'price' => 4500,
+            'status' => 'occupied',
+        ]);
+
+        $customer = Customer::create([
+            'tenant_id' => $tenant->id,
+            'room_id' => $room->id,
+            'name' => 'Billing Resident',
+        ]);
+
+        $contract = Contract::create([
+            'tenant_id' => $tenant->id,
+            'customer_id' => $customer->id,
+            'room_id' => $room->id,
+            'start_date' => '2026-01-01',
+            'end_date' => '2026-12-31',
+            'deposit' => 5000,
+            'monthly_rent' => 4500,
+            'status' => 'active',
+        ]);
+
+        $invoice = Invoice::create([
+            'tenant_id' => $tenant->id,
+            'contract_id' => $contract->id,
+            'customer_id' => $customer->id,
+            'room_id' => $room->id,
+            'total_amount' => 4500,
+            'water_fee' => 0,
+            'electricity_fee' => 0,
+            'service_fee' => 0,
+            'status' => 'sent',
+            'due_date' => '2026-05-05',
+        ]);
+
+        Payment::create([
+            'tenant_id' => $tenant->id,
+            'invoice_id' => $invoice->id,
+            'amount' => 4500,
+            'payment_date' => '2026-05-01',
+            'method' => 'manual',
+            'status' => 'pending',
+            'notes' => 'Existing pending payment',
+        ]);
+
+        $response = $this->actingAs($user)
+            ->withSession(['tenant_id' => $tenant->id])
+            ->from('/app/payments')
+            ->post('/app/payments', [
+                'invoice_id' => $invoice->id,
+                'amount' => 4500,
+                'payment_date' => '2026-05-01',
+                'method' => 'manual',
+                'status' => 'approved',
+                'notes' => 'Duplicate payment attempt',
+            ]);
+
+        $response->assertRedirect('/app/payments');
+        $response->assertSessionHas('error');
+        $this->assertSame(1, Payment::query()->where('invoice_id', $invoice->id)->count());
     }
 
     public function test_invoice_uses_resident_current_room_when_contract_room_is_outdated(): void
@@ -2125,6 +2513,110 @@ class DormitoryFlowTest extends TestCase
             ->withSession(['tenant_id' => $tenant->id])
             ->patch(route('admin.tenants.suspend', $tenant))
             ->assertForbidden();
+    }
+
+    public function test_admin_can_delete_tenant_and_related_users(): void
+    {
+        $admin = User::factory()->create(['tenant_id' => null, 'role' => 'super_admin', 'email_verified_at' => now()]);
+        $tenant = Tenant::create(['name' => 'Delete Dorm', 'domain' => 'delete.local', 'plan' => 'trial', 'status' => 'active']);
+        $owner = User::factory()->create(['tenant_id' => $tenant->id, 'role' => 'owner', 'email_verified_at' => now()]);
+        $staff = User::factory()->create(['tenant_id' => $tenant->id, 'role' => 'staff', 'email_verified_at' => now()]);
+        $room = Room::withoutGlobalScopes()->create(['tenant_id' => $tenant->id, 'room_number' => 'DEL-101', 'floor' => 1, 'room_type' => 'Standard', 'price' => 4500, 'status' => 'vacant']);
+
+        $this->actingAs($admin)
+            ->delete(route('admin.tenants.destroy', $tenant))
+            ->assertRedirect(route('admin.tenants'));
+
+        $this->assertSoftDeleted('tenants', ['id' => $tenant->id]);
+        $this->assertDatabaseHas('users', ['id' => $owner->id, 'tenant_id' => $tenant->id]);
+        $this->assertDatabaseHas('users', ['id' => $staff->id, 'tenant_id' => $tenant->id]);
+        $this->assertDatabaseHas('rooms', ['id' => $room->id, 'tenant_id' => $tenant->id]);
+    }
+
+    public function test_non_admin_cannot_delete_tenant(): void
+    {
+        $tenant = Tenant::create(['name' => 'Delete Protect Dorm', 'domain' => 'delete-protect.local', 'plan' => 'trial', 'status' => 'active']);
+        $owner = User::factory()->create(['tenant_id' => $tenant->id, 'role' => 'owner', 'email_verified_at' => now()]);
+
+        $this->actingAs($owner)
+            ->withSession(['tenant_id' => $tenant->id])
+            ->delete(route('admin.tenants.destroy', $tenant))
+            ->assertForbidden();
+    }
+
+    public function test_soft_deleted_tenant_users_cannot_access_tenant_portal(): void
+    {
+        $tenant = Tenant::create(['name' => 'Archived Dorm', 'domain' => 'archived.local', 'plan' => 'trial', 'status' => 'active']);
+        $owner = User::factory()->create(['tenant_id' => $tenant->id, 'role' => 'owner', 'email_verified_at' => now()]);
+
+        $tenant->delete();
+
+        $this->actingAs($owner)
+            ->withSession(['tenant_id' => $tenant->id])
+            ->get('/app/dashboard')
+            ->assertForbidden();
+    }
+
+    public function test_checkout_redirects_back_with_error_when_plan_uses_product_id_instead_of_price_id(): void
+    {
+        PlatformSetting::current()->update([
+            'stripe_enabled' => true,
+            'stripe_mode' => 'test',
+            'stripe_publishable_key' => 'pk_test_123',
+            'stripe_secret_key' => 'sk_test_123',
+            'stripe_webhook_secret' => 'whsec_123',
+        ]);
+
+        $tenant = Tenant::create([
+            'name' => 'Misconfigured Billing Dorm',
+            'domain' => 'misconfigured-billing.local',
+            'plan' => 'lite',
+            'status' => 'pending_checkout',
+        ]);
+
+        $plan = Plan::query()->create([
+            'name' => 'Lite',
+            'slug' => 'lite',
+            'price_monthly' => 299,
+            'stripe_price_id' => 'prod_ULOuFwjNQpbvEc',
+            'is_active' => true,
+            'sort_order' => 1,
+        ]);
+
+        $tenant->update(['plan_id' => $plan->id]);
+
+        $owner = User::factory()->create([
+            'tenant_id' => $tenant->id,
+            'role' => 'owner',
+            'email_verified_at' => now(),
+        ]);
+
+        $response = $this->from('/app/billing')
+            ->actingAs($owner)
+            ->withSession(['tenant_id' => $tenant->id])
+            ->post(route('app.billing.checkout'), [
+                'plan_id' => $plan->id,
+            ]);
+
+        $response->assertRedirect('/app/billing');
+        $response->assertSessionHasErrors(['plan_id']);
+    }
+
+    public function test_admin_can_restore_soft_deleted_tenant(): void
+    {
+        $admin = User::factory()->create(['tenant_id' => null, 'role' => 'super_admin', 'email_verified_at' => now()]);
+        $tenant = Tenant::create(['name' => 'Restore Dorm', 'domain' => 'restore.local', 'plan' => 'trial', 'status' => 'active']);
+
+        $tenant->delete();
+
+        $this->actingAs($admin)
+            ->patch(route('admin.tenants.restore', $tenant->id))
+            ->assertRedirect(route('admin.tenants', ['status' => 'deleted']));
+
+        $this->assertDatabaseHas('tenants', [
+            'id' => $tenant->id,
+            'deleted_at' => null,
+        ]);
     }
 
     public function test_resident_invoice_requires_signed_url(): void

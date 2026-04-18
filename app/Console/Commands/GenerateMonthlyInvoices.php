@@ -1,15 +1,18 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Console\Commands;
 
 use App\Models\Contract;
 use App\Models\Invoice;
 use App\Models\Tenant;
+use App\Models\UtilityRecord;
 use App\Support\TenantContext;
 use Illuminate\Console\Command;
 use Illuminate\Support\Carbon;
 
-class GenerateMonthlyInvoices extends Command
+final class GenerateMonthlyInvoices extends Command
 {
     protected $signature = 'invoices:generate-monthly
                             {--month= : Target month in YYYY-MM format (default: current month)}
@@ -19,8 +22,9 @@ class GenerateMonthlyInvoices extends Command
 
     public function handle(): int
     {
-        $month = $this->option('month')
-            ? Carbon::createFromFormat('Y-m', $this->option('month'))->startOfMonth()
+        $manualMonth = $this->option('month');
+        $month = $manualMonth
+            ? Carbon::createFromFormat('Y-m', (string) $manualMonth)->startOfMonth()
             : now()->startOfMonth();
 
         $dryRun = (bool) $this->option('dry-run');
@@ -37,6 +41,10 @@ class GenerateMonthlyInvoices extends Command
         $tenants = Tenant::where('status', 'active')->get();
 
         foreach ($tenants as $tenant) {
+            if (! $manualMonth && ! $tenant->shouldGenerateInvoicesOn(now())) {
+                continue;
+            }
+
             app(TenantContext::class)->set($tenant);
 
             $contracts = Contract::query()
@@ -49,6 +57,11 @@ class GenerateMonthlyInvoices extends Command
                 ->get();
 
             foreach ($contracts as $contract) {
+                $utilityRecord = UtilityRecord::query()
+                    ->where('contract_id', $contract->id)
+                    ->where('billing_month', $month->format('Y-m'))
+                    ->first();
+
                 $alreadyExists = Invoice::withoutGlobalScopes()
                     ->where('tenant_id', $tenant->id)
                     ->where('contract_id', $contract->id)
@@ -61,7 +74,12 @@ class GenerateMonthlyInvoices extends Command
                     continue;
                 }
 
-                $dueDate = $month->copy()->day(min(5, $month->daysInMonth));
+                $roomFee = $this->resolveRoomFee($contract);
+                $waterFee = (float) ($utilityRecord?->water_units ?? 0) * $tenant->defaultWaterFeeAmount();
+                $electricityFee = (float) ($utilityRecord?->electricity_units ?? 0) * $tenant->defaultElectricityFeeAmount();
+                $serviceFee = (float) ($utilityRecord?->other_amount ?? 0);
+                $totalAmount = $roomFee + $waterFee + $electricityFee + $serviceFee;
+                $dueDate = $this->resolveDueDate($tenant, $month);
 
                 if (! $dryRun) {
                     $invoice = Invoice::create([
@@ -69,10 +87,11 @@ class GenerateMonthlyInvoices extends Command
                         'contract_id' => $contract->id,
                         'customer_id' => $contract->customer_id,
                         'room_id' => $contract->room_id,
-                        'total_amount' => (float) $contract->monthly_rent,
-                        'water_fee' => 0,
-                        'electricity_fee' => 0,
-                        'service_fee' => 0,
+                        'room_fee' => $roomFee,
+                        'total_amount' => $totalAmount,
+                        'water_fee' => $waterFee,
+                        'electricity_fee' => $electricityFee,
+                        'service_fee' => $serviceFee,
                         'status' => 'sent',
                         'due_date' => $dueDate->toDateString(),
                     ]);
@@ -82,14 +101,14 @@ class GenerateMonthlyInvoices extends Command
                         $tenant->name,
                         $invoice->invoice_no,
                         $contract->room?->room_number ?? '-',
-                        number_format((float) $contract->monthly_rent, 2)
+                        number_format($totalAmount, 2)
                     ));
                 } else {
                     $this->line(sprintf(
                         '  [%s] Would create invoice for room %s — %s THB (due %s)',
                         $tenant->name,
                         $contract->room?->room_number ?? '-',
-                        number_format((float) $contract->monthly_rent, 2),
+                        number_format($totalAmount, 2),
                         $dueDate->toDateString()
                     ));
                 }
@@ -103,5 +122,21 @@ class GenerateMonthlyInvoices extends Command
         $this->info(sprintf('Done. Created: %d, Skipped (duplicate): %d', $created, $skipped));
 
         return self::SUCCESS;
+    }
+
+    private function resolveRoomFee(Contract $contract): float
+    {
+        $roomPrice = (float) ($contract->room?->price ?? 0);
+
+        return $roomPrice > 0 ? $roomPrice : (float) $contract->monthly_rent;
+    }
+
+    private function resolveDueDate(Tenant $tenant, Carbon $month): Carbon
+    {
+        $generateDay = min($tenant->invoiceGenerateDayOfMonth(), $month->daysInMonth);
+        $sendDay = min($tenant->invoiceSendDayOfMonth(), $month->daysInMonth);
+        $minimumDueDay = max(5, $generateDay + 4, $sendDay + 3);
+
+        return $month->copy()->day(min($minimumDueDay, $month->daysInMonth));
     }
 }

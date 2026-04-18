@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Controllers;
 
 use App\Jobs\SendLineMessageJob;
+use App\Models\Building;
 use App\Models\BroadcastMessage;
 use App\Models\Customer;
 use App\Models\Room;
@@ -21,12 +22,7 @@ class BroadcastController extends Controller
         return view('dashboard.broadcasts', [
             'broadcasts' => BroadcastMessage::query()->with('room')->latest('sent_at')->get(),
             'rooms' => Room::query()->orderBy('building')->orderBy('floor')->orderBy('room_number')->get(),
-            'buildings' => Room::query()
-                ->whereNotNull('building')
-                ->select('building')
-                ->distinct()
-                ->orderBy('building')
-                ->pluck('building'),
+            'buildings' => Building::query()->orderBy('name')->pluck('name'),
         ]);
     }
 

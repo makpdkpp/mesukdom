@@ -28,10 +28,10 @@
             </div>
 
             <table class="table table-bordered">
-                <tr><th>Monthly rent</th><td>{{ number_format((float) $invoice->contract->monthly_rent, 2) }}</td></tr>
+                <tr><th>Room price</th><td>{{ number_format((float) ($invoice->room_fee ?? $invoice->contract->monthly_rent), 2) }}</td></tr>
                 <tr><th>Water fee</th><td>{{ number_format((float) $invoice->water_fee, 2) }}</td></tr>
                 <tr><th>Electricity fee</th><td>{{ number_format((float) $invoice->electricity_fee, 2) }}</td></tr>
-                <tr><th>Service fee</th><td>{{ number_format((float) $invoice->service_fee, 2) }}</td></tr>
+                <tr><th>Other charges</th><td>{{ number_format((float) $invoice->service_fee, 2) }}</td></tr>
             </table>
 
             <h5 class="mt-4">Payment History</h5>
@@ -88,9 +88,10 @@
                             @error('payment_date') <div class="invalid-feedback">{{ $message }}</div> @enderror
                         </div>
                         <div class="form-group">
-                            <label>Payment Slip <span class="text-muted">(jpg/png/pdf, max 5 MB)</span></label>
-                            <input name="slip" type="file" class="form-control-file @error('slip') is-invalid @enderror" accept=".jpg,.jpeg,.png,.pdf" required>
+                            <label>Payment Slip <span class="text-muted">(jpg/png, max 5 MB)</span></label>
+                            <input name="slip" type="file" class="form-control-file @error('slip') is-invalid @enderror" accept=".jpg,.jpeg,.png" required>
                             @error('slip') <div class="invalid-feedback">{{ $message }}</div> @enderror
+                            <small class="form-text text-muted">Use a clear mobile-banking slip image for this invoice amount.</small>
                         </div>
                         <button type="submit" class="btn btn-success">Submit Slip</button>
                     </form>

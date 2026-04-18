@@ -9,6 +9,10 @@ Route::get('/user', function (Request $request) {
     return $request->user();
 })->middleware('auth:sanctum');
 
-Route::post('/line/webhook', LineWebhookController::class)->name('api.line.webhook');
+Route::post('/line/webhook', LineWebhookController::class)
+    ->middleware('throttle:line-webhook')
+    ->name('api.line.webhook');
 
-Route::post('/stripe/webhook', StripeWebhookController::class)->name('api.stripe.webhook');
+Route::post('/stripe/webhook', StripeWebhookController::class)
+    ->middleware('throttle:stripe-webhook')
+    ->name('api.stripe.webhook');

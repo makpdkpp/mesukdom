@@ -17,10 +17,11 @@
                                 </option>
                             @endforeach
                         </select>
+                        <small class="form-text text-muted">Room Price will be used automatically from the selected room.</small>
                     </div>
                     <div class="form-group"><label>Water Fee</label><input name="water_fee" type="number" step="0.01" class="form-control" value="{{ old('water_fee', 0) }}"></div>
                     <div class="form-group"><label>Electricity Fee</label><input name="electricity_fee" type="number" step="0.01" class="form-control" value="{{ old('electricity_fee', 0) }}"></div>
-                    <div class="form-group"><label>Service Fee</label><input name="service_fee" type="number" step="0.01" class="form-control" value="{{ old('service_fee', 0) }}"></div>
+                    <div class="form-group"><label>Other Charges</label><input name="service_fee" type="number" step="0.01" class="form-control" value="{{ old('service_fee', 0) }}"></div>
                     <div class="form-group"><label>Due Date</label><input name="due_date" type="date" class="form-control" value="{{ old('due_date') }}" required></div>
                     <div class="form-group">
                         <label>Status</label>
@@ -45,13 +46,14 @@
             </div>
             <div class="card-body table-responsive p-0">
                 <table class="table table-hover text-nowrap">
-                    <thead><tr><th>No.</th><th>Resident</th><th>Room</th><th>Total</th><th>Due</th><th>Status</th><th class="text-right">Actions</th></tr></thead>
+                    <thead><tr><th>No.</th><th>Resident</th><th>Room</th><th>Room Price</th><th>Total</th><th>Due</th><th>Status</th><th class="text-right">Actions</th></tr></thead>
                     <tbody>
                     @forelse($invoices as $invoice)
                         <tr>
                             <td>{{ $invoice->invoice_no }}</td>
                             <td>{{ $invoice->customer->name ?? '-' }}</td>
                             <td>{{ $invoice->room->room_number ?? '-' }}</td>
+                            <td>{{ number_format((float) ($invoice->room_fee ?? $invoice->contract->monthly_rent ?? 0), 2) }}</td>
                             <td>{{ number_format((float) $invoice->total_amount, 2) }}</td>
                             <td>{{ $invoice->due_date->format('d/m/Y') }}</td>
                             <td>{{ ucfirst($invoice->status) }}</td>
@@ -66,7 +68,7 @@
                             </td>
                         </tr>
                     @empty
-                        <tr><td colspan="7" class="text-center text-muted">No invoices found</td></tr>
+                        <tr><td colspan="8" class="text-center text-muted">No invoices found</td></tr>
                     @endforelse
                     </tbody>
                 </table>

@@ -123,7 +123,7 @@
             </thead>
             <tbody>
                 <tr>
-                    <td>Monthly rent</td>
+                    <td>Room price</td>
                     <td class="text-right">{{ number_format((float) ($invoice->contract->monthly_rent ?? 0), 2) }}</td>
                 </tr>
                 <tr>
@@ -135,7 +135,7 @@
                     <td class="text-right">{{ number_format((float) ($invoice->electricity_fee ?? 0), 2) }}</td>
                 </tr>
                 <tr>
-                    <td>Service fee</td>
+                    <td>Other charges</td>
                     <td class="text-right">{{ number_format((float) ($invoice->service_fee ?? 0), 2) }}</td>
                 </tr>
                 <tr>

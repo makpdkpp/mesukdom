@@ -47,4 +47,9 @@ class Contract extends Model
     {
         return $this->hasMany(Invoice::class);
     }
+
+    public function utilityRecords(): HasMany
+    {
+        return $this->hasMany(UtilityRecord::class);
+    }
 }

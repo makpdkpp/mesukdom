@@ -2,12 +2,14 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Contracts\Encryption\DecryptException;
 use Illuminate\Database\Eloquent\Casts\Attribute;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-use Illuminate\Contracts\Encryption\DecryptException;
+use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Str;
 
@@ -21,12 +23,16 @@ use Illuminate\Support\Str;
  */
 class Tenant extends Model
 {
-    use HasFactory;
+    use HasFactory, SoftDeletes;
 
     protected $fillable = [
         'plan_id',
         'name',
         'domain',
+        'stripe_customer_id',
+        'stripe_subscription_id',
+        'subscription_status',
+        'subscription_current_period_end',
         'promptpay_number',
         'line_channel_id',
         'line_basic_id',
@@ -37,6 +43,14 @@ class Tenant extends Model
         'support_contact_name',
         'support_contact_phone',
         'support_line_id',
+        'default_water_fee',
+        'default_electricity_fee',
+        'utility_entry_reminder_day',
+        'invoice_generate_day',
+        'invoice_send_day',
+        'invoice_send_channels',
+        'overdue_reminder_after_days',
+        'overdue_reminder_channels',
         'plan',
         'status',
         'trial_ends_at',
@@ -46,6 +60,14 @@ class Tenant extends Model
     {
         return [
             'trial_ends_at' => 'date',
+            'subscription_current_period_end' => 'datetime',
+            'default_water_fee' => 'decimal:2',
+            'default_electricity_fee' => 'decimal:2',
+            'utility_entry_reminder_day' => 'integer',
+            'invoice_generate_day' => 'integer',
+            'invoice_send_day' => 'integer',
+            'overdue_reminder_after_days' => 'integer',
+            'deleted_at' => 'datetime',
         ];
     }
 
@@ -244,6 +266,90 @@ class Tenant extends Model
         return 'https://line.me/R/ti/p/'.$basicId;
     }
 
+    public function defaultWaterFeeAmount(): float
+    {
+        return (float) ($this->default_water_fee ?? 0);
+    }
+
+    public function defaultElectricityFeeAmount(): float
+    {
+        return (float) ($this->default_electricity_fee ?? 0);
+    }
+
+    public function utilityEntryReminderDayOfMonth(): int
+    {
+        return max(1, min(31, (int) ($this->utility_entry_reminder_day ?? 25)));
+    }
+
+    public function invoiceGenerateDayOfMonth(): int
+    {
+        return max(1, min(31, (int) ($this->invoice_generate_day ?? 1)));
+    }
+
+    public function invoiceSendDayOfMonth(): int
+    {
+        return max(1, min(31, (int) ($this->invoice_send_day ?? 2)));
+    }
+
+    public function overdueReminderAfterDays(): int
+    {
+        return max(1, (int) ($this->overdue_reminder_after_days ?? 1));
+    }
+
+    /**
+     * @return list<string>
+     */
+    public function invoiceSendChannels(): array
+    {
+        return $this->normalizeNotificationChannels($this->invoice_send_channels, ['line']);
+    }
+
+    /**
+     * @return list<string>
+     */
+    public function overdueReminderChannels(): array
+    {
+        return $this->normalizeNotificationChannels($this->overdue_reminder_channels, ['line']);
+    }
+
+    public function shouldGenerateInvoicesOn(Carbon $date): bool
+    {
+        return $date->day === min($this->invoiceGenerateDayOfMonth(), $date->daysInMonth);
+    }
+
+    public function shouldSendInvoicesOn(Carbon $date): bool
+    {
+        return $date->day === min($this->invoiceSendDayOfMonth(), $date->daysInMonth);
+    }
+
+    public function shouldSendUtilityEntryReminderOn(Carbon $date): bool
+    {
+        return $date->day === min($this->utilityEntryReminderDayOfMonth(), $date->daysInMonth);
+    }
+
+    /**
+     * @param array<int, string> $default
+     * @return list<string>
+     */
+    private function normalizeNotificationChannels(?string $value, array $default): array
+    {
+        $normalized = strtolower(trim((string) $value));
+
+        if ($normalized === '') {
+            return $default;
+        }
+
+        if ($normalized === 'both') {
+            return ['line', 'email'];
+        }
+
+        if (in_array($normalized, ['line', 'email'], true)) {
+            return [$normalized];
+        }
+
+        return $default;
+    }
+
     public function isSuspended(): bool
     {
         return $this->status === 'suspended';
@@ -251,11 +357,13 @@ class Tenant extends Model
 
     public function isTrialExpired(): bool
     {
-        if ($this->trial_ends_at === null) {
+        $trialEndsAt = $this->getAttribute('trial_ends_at');
+
+        if ($trialEndsAt === null || $trialEndsAt === '') {
             return false;
         }
 
-        return $this->trial_ends_at->endOfDay()->isPast();
+        return $this->asDateTime($trialEndsAt)->endOfDay()->isPast();
     }
 
     public function hasActiveSubscription(): bool
@@ -263,9 +371,13 @@ class Tenant extends Model
         return in_array($this->subscription_status, ['active', 'trialing'], true);
     }
 
-    public function canWrite(): bool
+    public function hasPortalAccess(): bool
     {
         if ($this->isSuspended()) {
+            return false;
+        }
+
+        if ($this->status === 'pending_checkout') {
             return false;
         }
 
@@ -273,6 +385,16 @@ class Tenant extends Model
             return true;
         }
 
+        $plan = $this->resolvedPlan();
+        if ($plan && (float) $plan->price_monthly > 0) {
+            return false;
+        }
+
         return ! $this->isTrialExpired();
+    }
+
+    public function canWrite(): bool
+    {
+        return $this->hasPortalAccess();
     }
 }

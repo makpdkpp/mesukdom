@@ -4,16 +4,14 @@ declare(strict_types=1);
 
 namespace Tests\Feature;
 
+use App\Jobs\ProcessWebhookEventJob;
 use App\Jobs\SendLineMessageJob;
 use App\Models\Contract;
 use App\Models\Customer;
-use App\Models\LineWebhookLog;
-use App\Models\NotificationLog;
 use App\Models\Room;
 use App\Models\Tenant;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Queue;
 use Tests\TestCase;
 
@@ -21,9 +19,9 @@ class LineQueueDispatchTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_line_webhook_processes_follow_event_immediately(): void
+    public function test_line_webhook_dispatches_follow_event_to_line_queue(): void
     {
-        Http::fake(['https://api.line.me/*' => Http::response(['ok' => true], 200)]);
+        Queue::fake();
 
         $tenant = Tenant::query()->create([
             'name' => 'Queued Webhook Dorm',
@@ -55,21 +53,10 @@ class LineQueueDispatchTest extends TestCase
             $json
         )->assertOk();
 
-        $this->assertDatabaseHas('line_webhook_logs', [
-            'tenant_id' => $tenant->id,
-            'event_type' => 'follow',
-            'line_user_id' => 'U-demo-user',
-        ]);
-
-        $this->assertDatabaseHas('notification_logs', [
-            'tenant_id' => $tenant->id,
-            'channel' => 'line',
-            'event' => 'follow',
-            'target' => 'U-demo-user',
-            'status' => 'received',
-        ]);
-
-        Http::assertSentCount(1);
+        Queue::assertPushed(ProcessWebhookEventJob::class, function (ProcessWebhookEventJob $job): bool {
+            return $job->queue === config('queue.line.queue', 'line')
+                && $job->connection === config('queue.line.connection');
+        });
     }
 
     public function test_invoice_created_dispatches_line_send_job_to_line_queue(): void

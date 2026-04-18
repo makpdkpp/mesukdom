@@ -2,11 +2,13 @@
 
 namespace Tests\Feature;
 
+use App\Jobs\ProcessWebhookEventJob;
 use App\Models\Customer;
 use App\Models\Tenant;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Queue;
 use Illuminate\Testing\TestResponse;
 use Tests\TestCase;
 
@@ -16,7 +18,7 @@ class LineWebhookTest extends TestCase
 
     public function test_line_webhook_accepts_follow_event_with_valid_signature(): void
     {
-        Http::fake(['https://api.line.me/*' => Http::response(['ok' => true], 200)]);
+        Queue::fake();
 
         $tenant = Tenant::query()->create([
             'name' => 'Dorm A',
@@ -41,23 +43,10 @@ class LineWebhookTest extends TestCase
         $response->assertOk();
         $response->assertJson(['ok' => true]);
 
-        $this->assertDatabaseHas('notification_logs', [
-            'tenant_id' => $tenant->id,
-            'channel' => 'line',
-            'event' => 'follow',
-        ]);
-
-        $this->assertDatabaseHas('line_webhook_logs', [
-            'tenant_id' => $tenant->id,
-            'event_type' => 'follow',
-            'line_user_id' => 'U-demo-user',
-        ]);
-
-        $this->assertDatabaseHas('line_messages', [
-            'tenant_id' => $tenant->id,
-            'direction' => 'outbound',
-            'message_type' => 'template',
-        ]);
+        Queue::assertPushed(ProcessWebhookEventJob::class, function (ProcessWebhookEventJob $job): bool {
+            return $job->queue === config('queue.line.queue', 'line')
+                && $job->connection === config('queue.line.connection');
+        });
     }
 
     public function test_line_webhook_rejects_invalid_signature(): void
@@ -149,9 +138,7 @@ class LineWebhookTest extends TestCase
             ],
         ];
 
-        $response = $this->callLineWebhook($payload, (string) $tenantB->line_channel_secret);
-
-        $response->assertOk();
+        $this->processWebhookEvent($tenantB->id, $payload['events'][0]);
 
         $this->assertDatabaseHas('customers', [
             'id' => $customerB->id,
@@ -209,9 +196,7 @@ class LineWebhookTest extends TestCase
             ],
         ];
 
-        $response = $this->callLineWebhook($payload, (string) $tenant->line_channel_secret);
-
-        $response->assertOk();
+        $this->processWebhookEvent($tenant->id, $payload['events'][0]);
 
         $this->assertDatabaseHas('notification_logs', [
             'tenant_id' => $tenant->id,
@@ -232,6 +217,42 @@ class LineWebhookTest extends TestCase
             'direction' => 'inbound',
             'message_type' => 'postback',
         ]);
+    }
+
+    public function test_process_webhook_event_job_skips_duplicate_line_events(): void
+    {
+        Http::fake(['https://api.line.me/*' => Http::response(['ok' => true], 200)]);
+
+        $tenant = Tenant::query()->create([
+            'name' => 'Dorm Duplicate Guard',
+            'line_channel_secret' => 'tenant-duplicate-secret',
+            'line_channel_access_token' => 'tenant-duplicate-token',
+        ]);
+
+        $event = [
+            'type' => 'follow',
+            'replyToken' => 'reply-token-dup',
+            'source' => [
+                'userId' => 'U-duplicate-user',
+            ],
+        ];
+
+        $this->processWebhookEvent($tenant->id, $event);
+        $this->processWebhookEvent($tenant->id, $event);
+
+        $this->assertSame(1, DB::table('line_webhook_logs')->count());
+        $this->assertSame(1, DB::table('notification_logs')->count());
+        $this->assertSame(1, DB::table('line_messages')->count());
+    }
+
+    /**
+     * @param array<string, mixed> $event
+     */
+    private function processWebhookEvent(int $tenantId, array $event): void
+    {
+        $job = new ProcessWebhookEventJob($tenantId, $event);
+
+        app()->call([$job, 'handle']);
     }
 
     /**

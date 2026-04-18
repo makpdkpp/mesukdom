@@ -32,7 +32,6 @@ class Payment extends Model
     {
         $year = now()->year;
         $last = self::withoutGlobalScopes()
-            ->where('tenant_id', $tenantId)
             ->whereNotNull('receipt_no')
             ->where('receipt_no', 'like', "REC-{$year}-%")
             ->orderByDesc('receipt_no')

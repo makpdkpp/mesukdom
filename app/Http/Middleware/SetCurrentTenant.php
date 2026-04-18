@@ -25,6 +25,10 @@ class SetCurrentTenant
             ? Tenant::query()->find($tenantId)
             : Tenant::query()->orderBy('id')->first();
 
+        if (! $tenant && $request->hasSession() && $request->session()->has('tenant_id')) {
+            $request->session()->forget('tenant_id');
+        }
+
         if ($tenant) {
             app(TenantContext::class)->set($tenant);
             View::share('currentTenant', $tenant);

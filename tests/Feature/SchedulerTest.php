@@ -4,22 +4,45 @@ namespace Tests\Feature;
 
 use App\Console\Commands\ExpireContracts;
 use App\Console\Commands\GenerateMonthlyInvoices;
+use App\Console\Commands\SendInvoiceLinks;
 use App\Console\Commands\SendContractExpiryReminders;
 use App\Console\Commands\SendOverdueWarnings;
 use App\Console\Commands\SendPaymentReminders;
+use App\Console\Commands\SendUtilityFeeEntryReminders;
+use App\Mail\InvoiceLinkNotification;
+use App\Mail\UtilityFeeEntryReminder;
 use App\Models\Contract;
 use App\Models\Customer;
 use App\Models\Invoice;
 use App\Models\NotificationLog;
 use App\Models\Room;
 use App\Models\Tenant;
+use App\Models\UtilityRecord;
 use App\Models\User;
+use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Mail;
 use Tests\TestCase;
 
 class SchedulerTest extends TestCase
 {
     use RefreshDatabase;
+
+    public function test_all_scheduled_commands_are_configured_without_overlapping(): void
+    {
+        $events = app(Schedule::class)->events();
+
+        $this->assertCount(9, $events);
+        $this->assertTrue(collect($events)->every(fn ($event): bool => $event->withoutOverlapping === true));
+    }
+
+    protected function tearDown(): void
+    {
+        Carbon::setTestNow();
+
+        parent::tearDown();
+    }
 
     // ─────────────────────────────────────────────────────────────────────────
     // GenerateMonthlyInvoices
@@ -27,6 +50,8 @@ class SchedulerTest extends TestCase
 
     public function test_generate_monthly_invoices_creates_invoice_for_active_contract(): void
     {
+        Carbon::setTestNow('2026-04-01 08:00:00');
+
         $tenant = Tenant::create(['name' => 'Monthly Dorm', 'domain' => 'monthly.local', 'plan' => 'trial', 'status' => 'active']);
         $room = Room::withoutGlobalScopes()->create(['tenant_id' => $tenant->id, 'room_number' => 'M-101', 'floor' => 1, 'room_type' => 'Standard', 'price' => 5000, 'status' => 'occupied']);
         $customer = Customer::withoutGlobalScopes()->create(['tenant_id' => $tenant->id, 'room_id' => $room->id, 'name' => 'Monthly Resident']);
@@ -47,6 +72,54 @@ class SchedulerTest extends TestCase
             'tenant_id' => $tenant->id,
             'total_amount' => 5000,
             'status' => 'sent',
+        ]);
+    }
+
+    public function test_generate_monthly_invoices_applies_room_price_utility_units_and_other_charges(): void
+    {
+        Carbon::setTestNow('2026-04-01 08:00:00');
+
+        $tenant = Tenant::create([
+            'name' => 'Fees Dorm',
+            'domain' => 'fees.local',
+            'plan' => 'trial',
+            'status' => 'active',
+            'default_water_fee' => 12,
+            'default_electricity_fee' => 7,
+        ]);
+        $room = Room::withoutGlobalScopes()->create(['tenant_id' => $tenant->id, 'room_number' => 'F-101', 'floor' => 1, 'room_type' => 'Standard', 'price' => 5000, 'status' => 'occupied']);
+        $customer = Customer::withoutGlobalScopes()->create(['tenant_id' => $tenant->id, 'room_id' => $room->id, 'name' => 'Fees Resident']);
+        $contract = Contract::withoutGlobalScopes()->create([
+            'tenant_id' => $tenant->id,
+            'customer_id' => $customer->id,
+            'room_id' => $room->id,
+            'start_date' => '2026-01-01',
+            'end_date' => '2026-12-31',
+            'deposit' => 5000,
+            'monthly_rent' => 5000,
+            'status' => 'active',
+        ]);
+        UtilityRecord::withoutGlobalScopes()->create([
+            'tenant_id' => $tenant->id,
+            'contract_id' => $contract->id,
+            'customer_id' => $customer->id,
+            'room_id' => $room->id,
+            'billing_month' => '2026-04',
+            'water_units' => 10,
+            'electricity_units' => 20,
+            'other_amount' => 50,
+            'other_description' => 'Common area',
+        ]);
+
+        $this->artisan(GenerateMonthlyInvoices::class)->assertSuccessful();
+
+        $this->assertDatabaseHas('invoices', [
+            'tenant_id' => $tenant->id,
+            'room_fee' => 5000,
+            'total_amount' => 5310,
+            'water_fee' => 120,
+            'electricity_fee' => 140,
+            'service_fee' => 50,
         ]);
     }
 
@@ -183,6 +256,8 @@ class SchedulerTest extends TestCase
 
     public function test_send_overdue_warnings_logs_notification_for_overdue_invoice(): void
     {
+        Carbon::setTestNow('2026-04-18 10:00:00');
+
         $tenant = Tenant::create(['name' => 'Overdue Dorm', 'domain' => 'overdue.local', 'plan' => 'trial', 'status' => 'active']);
         $room = Room::withoutGlobalScopes()->create(['tenant_id' => $tenant->id, 'room_number' => 'OV-101', 'floor' => 1, 'room_type' => 'Standard', 'price' => 5000, 'status' => 'occupied']);
         $customer = Customer::withoutGlobalScopes()->create(['tenant_id' => $tenant->id, 'room_id' => $room->id, 'name' => 'Overdue Resident']);
@@ -202,6 +277,135 @@ class SchedulerTest extends TestCase
             'tenant_id' => $tenant->id,
             'event' => 'overdue_warning_sent',
             'channel' => 'line',
+        ]);
+    }
+
+    public function test_send_invoice_links_sends_email_on_configured_day(): void
+    {
+        Mail::fake();
+        Carbon::setTestNow('2026-04-02 08:30:00');
+
+        $tenant = Tenant::create([
+            'name' => 'Invoice Mail Dorm',
+            'domain' => 'invoice-mail.local',
+            'plan' => 'trial',
+            'status' => 'active',
+            'invoice_send_day' => 2,
+            'invoice_send_channels' => 'email',
+        ]);
+        $room = Room::withoutGlobalScopes()->create(['tenant_id' => $tenant->id, 'room_number' => 'IM-101', 'floor' => 1, 'room_type' => 'Standard', 'price' => 5000, 'status' => 'occupied']);
+        $customer = Customer::withoutGlobalScopes()->create(['tenant_id' => $tenant->id, 'room_id' => $room->id, 'name' => 'Invoice Resident', 'email' => 'invoice@test.local']);
+        $contract = Contract::withoutGlobalScopes()->create([
+            'tenant_id' => $tenant->id,
+            'customer_id' => $customer->id,
+            'room_id' => $room->id,
+            'start_date' => '2026-01-01',
+            'end_date' => '2026-12-31',
+            'deposit' => 5000,
+            'monthly_rent' => 5000,
+            'status' => 'active',
+        ]);
+        $invoice = Invoice::withoutGlobalScopes()->create([
+            'tenant_id' => $tenant->id,
+            'contract_id' => $contract->id,
+            'customer_id' => $customer->id,
+            'room_id' => $room->id,
+            'total_amount' => 5000,
+            'water_fee' => 0,
+            'electricity_fee' => 0,
+            'service_fee' => 0,
+            'status' => 'sent',
+            'issued_at' => '2026-04-01',
+            'due_date' => '2026-04-05',
+        ]);
+
+        $this->artisan(SendInvoiceLinks::class)->assertSuccessful();
+
+        Mail::assertSent(InvoiceLinkNotification::class, fn ($mail) => $mail->hasTo($customer->email) && $mail->invoice->is($invoice));
+        $this->assertDatabaseHas('notification_logs', [
+            'tenant_id' => $tenant->id,
+            'event' => 'invoice_link_sent',
+            'channel' => 'email',
+            'status' => 'sent',
+        ]);
+    }
+
+    public function test_send_overdue_warnings_can_send_email_notifications(): void
+    {
+        Mail::fake();
+        Carbon::setTestNow('2026-04-18 10:00:00');
+
+        $tenant = Tenant::create([
+            'name' => 'Overdue Email Dorm',
+            'domain' => 'overdue-email.local',
+            'plan' => 'trial',
+            'status' => 'active',
+            'overdue_reminder_channels' => 'email',
+            'overdue_reminder_after_days' => 2,
+        ]);
+        $room = Room::withoutGlobalScopes()->create(['tenant_id' => $tenant->id, 'room_number' => 'OE-101', 'floor' => 1, 'room_type' => 'Standard', 'price' => 5000, 'status' => 'occupied']);
+        $customer = Customer::withoutGlobalScopes()->create(['tenant_id' => $tenant->id, 'room_id' => $room->id, 'name' => 'Overdue Email Resident', 'email' => 'overdue@test.local']);
+        $contract = Contract::withoutGlobalScopes()->create([
+            'tenant_id' => $tenant->id,
+            'customer_id' => $customer->id,
+            'room_id' => $room->id,
+            'start_date' => '2026-01-01',
+            'end_date' => '2026-12-31',
+            'deposit' => 5000,
+            'monthly_rent' => 5000,
+            'status' => 'active',
+        ]);
+        $invoice = Invoice::withoutGlobalScopes()->create([
+            'tenant_id' => $tenant->id,
+            'contract_id' => $contract->id,
+            'customer_id' => $customer->id,
+            'room_id' => $room->id,
+            'total_amount' => 5000,
+            'water_fee' => 0,
+            'electricity_fee' => 0,
+            'service_fee' => 0,
+            'status' => 'sent',
+            'due_date' => now()->subDays(2)->toDateString(),
+        ]);
+
+        $this->artisan(SendOverdueWarnings::class)->assertSuccessful();
+
+        Mail::assertSent(InvoiceLinkNotification::class, fn ($mail) => $mail->hasTo($customer->email) && $mail->invoice->is($invoice) && $mail->notificationType === 'overdue_warning');
+        $this->assertDatabaseHas('notification_logs', [
+            'tenant_id' => $tenant->id,
+            'event' => 'overdue_warning_sent',
+            'channel' => 'email',
+            'status' => 'sent',
+        ]);
+    }
+
+    public function test_send_utility_fee_entry_reminders_emails_tenant_owner_on_configured_day(): void
+    {
+        Mail::fake();
+        Carbon::setTestNow('2026-04-25 07:30:00');
+
+        $tenant = Tenant::create([
+            'name' => 'Utility Reminder Dorm',
+            'domain' => 'utility-reminder.local',
+            'plan' => 'trial',
+            'status' => 'active',
+            'utility_entry_reminder_day' => 25,
+        ]);
+        $owner = User::factory()->create([
+            'tenant_id' => $tenant->id,
+            'role' => 'owner',
+            'email' => 'owner@test.local',
+            'email_verified_at' => now(),
+        ]);
+
+        $this->artisan(SendUtilityFeeEntryReminders::class)->assertSuccessful();
+
+        Mail::assertSent(UtilityFeeEntryReminder::class, fn ($mail) => $mail->hasTo($owner->email) && $mail->tenant->is($tenant));
+        $this->assertDatabaseHas('notification_logs', [
+            'tenant_id' => $tenant->id,
+            'event' => 'utility_fee_entry_reminder_sent',
+            'channel' => 'email',
+            'status' => 'sent',
         ]);
     }
 

@@ -45,14 +45,23 @@ final class ProcessWebhookEventJob implements ShouldQueue
         try {
             $type = (string) data_get($this->event, 'type', 'unknown');
             $userId = (string) data_get($this->event, 'source.userId', 'guest');
-            $result = $webhookHandler->handle($tenant, $this->event);
+            $lineWebhookLog = LineWebhookLog::query()->createOrFirst(
+                [
+                    'tenant_id' => $tenant->id,
+                    'event_hash' => $this->eventHash(),
+                ],
+                [
+                    'event_type' => $type,
+                    'line_user_id' => $userId,
+                    'payload' => $this->event,
+                ]
+            );
 
-            LineWebhookLog::query()->create([
-                'tenant_id' => $tenant->id,
-                'event_type' => $type,
-                'line_user_id' => $userId,
-                'payload' => $this->event,
-            ]);
+            if (! $lineWebhookLog->wasRecentlyCreated) {
+                return;
+            }
+
+            $result = $webhookHandler->handle($tenant, $this->event);
 
             NotificationLog::query()->create([
                 'tenant_id' => $tenant->id,
@@ -66,5 +75,16 @@ final class ProcessWebhookEventJob implements ShouldQueue
         } finally {
             $tenantContext->set(null);
         }
+    }
+
+    private function eventHash(): string
+    {
+        try {
+            $payload = json_encode($this->event, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR);
+        } catch (\JsonException) {
+            $payload = serialize($this->event);
+        }
+
+        return hash('sha256', $payload);
     }
 }

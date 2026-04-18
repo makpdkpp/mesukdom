@@ -22,6 +22,7 @@ class Invoice extends Model
         'room_id',
         'public_id',
         'invoice_no',
+        'room_fee',
         'total_amount',
         'water_fee',
         'electricity_fee',
@@ -36,6 +37,7 @@ class Invoice extends Model
         return [
             'issued_at' => 'date',
             'due_date' => 'date',
+            'room_fee' => 'decimal:2',
             'total_amount' => 'decimal:2',
             'water_fee' => 'decimal:2',
             'electricity_fee' => 'decimal:2',

@@ -8,6 +8,7 @@
             <form method="POST" action="{{ route('app.payments.store') }}" enctype="multipart/form-data">
                 @csrf
                 <div class="card-body">
+                    <p class="text-muted small">Only invoices without an active pending or approved payment are shown here.</p>
                     <div class="form-group">
                         <label>Invoice</label>
                         <select name="invoice_id" class="form-control" required>
@@ -35,6 +36,7 @@
                         </select>
                     </div>
                     <div class="form-group" id="slip-upload-group" style="display:none">
+                        <label>Payment Slip <span class="text-muted">(jpg/png/pdf, max 5 MB)</span></label>
                         <label>Payment Slip <span class="text-muted">(jpg/png/pdf, max 5 MB)</span></label>
                         <input name="slip" type="file" class="form-control-file" accept=".jpg,.jpeg,.png,.pdf">
                         @error('slip') <span class="text-danger small">{{ $message }}</span> @enderror
@@ -82,8 +84,8 @@
                                     default => 'badge-light',
                                 })
                                 <span class="badge {{ $badgeClass }}">{{ ucfirst($verificationStatus) }}</span>
-                                @if($payment->verification_note)
-                                    <div class="small text-muted mt-1" style="max-width:260px;white-space:normal;">{{ $payment->verification_note }}</div>
+                                @if($verificationStatus === 'failed' && $payment->verification_note)
+                                    <div class="small text-danger mt-1" style="max-width:260px;white-space:normal;">{{ $payment->verification_note }}</div>
                                 @endif
                             </td>
                             <td>{{ $payment->payment_date->format('d/m/Y') }}</td>

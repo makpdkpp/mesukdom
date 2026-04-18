@@ -36,6 +36,7 @@
                     <div class="form-group">
                         <label>Stripe Price ID</label>
                         <input type="text" name="stripe_price_id" class="form-control" placeholder="price_xxx">
+                        <small class="form-text text-muted">Use Stripe Price ID เช่น `price_xxx` เท่านั้น ไม่ใช่ Product ID `prod_xxx`.</small>
                     </div>
                 </div>
                 <div class="col-md-12">
@@ -119,7 +120,10 @@
                         <td><input type="text" name="name" class="form-control form-control-sm" value="{{ $plan->name }}" required></td>
                         <td><input type="text" name="slug" class="form-control form-control-sm" value="{{ $plan->slug }}" required></td>
                         <td><input type="number" step="0.01" min="0" name="price_monthly" class="form-control form-control-sm" value="{{ $plan->price_monthly }}" required></td>
-                        <td><input type="text" name="stripe_price_id" class="form-control form-control-sm" value="{{ $plan->stripe_price_id }}"></td>
+                        <td>
+                            <input type="text" name="stripe_price_id" class="form-control form-control-sm" value="{{ $plan->stripe_price_id }}" placeholder="price_xxx">
+                            <small class="text-muted d-block mt-1">Price ID only</small>
+                        </td>
                         <td><input type="number" min="0" name="rooms_limit" class="form-control form-control-sm" value="{{ $plan->roomsLimit() }}" required></td>
                         <td>
                             <input type="hidden" name="recommended" value="0">

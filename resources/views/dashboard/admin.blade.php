@@ -117,66 +117,10 @@
             Package creation/update/edit and SlipOK Addon limits moved to
             <a href="{{ route('admin.packages') }}"><strong>Package Management</strong></a>.
         </div>
-    </div>
-</div>
-
-<div class="card">
-    <div class="card-header"><h3 class="card-title">Tenant Management</h3></div>
-    <div class="card-body table-responsive p-0">
-        <table class="table table-hover text-nowrap">
-            <thead><tr><th>Name</th><th>Domain</th><th>Plan</th><th>SlipOK Usage</th><th>Status</th><th>Actions</th></tr></thead>
-            <tbody>
-            @forelse($tenants as $tenant)
-                @php($subscriptionPlan = $tenant->resolvedPlan())
-                <tr>
-                    <td>{{ $tenant->name }}</td>
-                    <td>{{ $tenant->domain }}</td>
-                    <td>
-                        <form method="POST" action="{{ route('admin.tenants.plan.update', $tenant) }}" class="form-inline">
-                            @csrf @method('PATCH')
-                            <select name="plan_id" class="form-control form-control-sm mr-2">
-                                @foreach($plans as $plan)
-                                    <option value="{{ $plan->id }}" @selected((string) $tenant->plan_id === (string) $plan->id)>{{ $plan->name }}</option>
-                                @endforeach
-                            </select>
-                            <button class="btn btn-xs btn-outline-primary">Update</button>
-                        </form>
-                    </td>
-                    <td>
-                        @php($used = (int) ($slipOkUsageByTenant[$tenant->id] ?? 0))
-                        @php($limit = $subscriptionPlan?->slipOkMonthlyLimit() ?? 0)
-                        @if($subscriptionPlan?->supportsSlipOk())
-                            <span class="badge badge-info">{{ $used }} / {{ $limit > 0 ? $limit : 'Unlimited' }}</span>
-                        @else
-                            <span class="badge badge-secondary">Not included</span>
-                        @endif
-                    </td>
-                    <td>
-                        @if($tenant->status === 'suspended')
-                            <span class="badge badge-danger">Suspended</span>
-                        @else
-                            <span class="badge badge-success">{{ ucfirst($tenant->status) }}</span>
-                        @endif
-                    </td>
-                    <td>
-                        @if($tenant->status === 'suspended')
-                            <form method="POST" action="{{ route('admin.tenants.unsuspend', $tenant) }}" class="d-inline">
-                                @csrf @method('PATCH')
-                                <button class="btn btn-xs btn-success" onclick="return confirm('Reactivate this tenant?')">Unsuspend</button>
-                            </form>
-                        @else
-                            <form method="POST" action="{{ route('admin.tenants.suspend', $tenant) }}" class="d-inline">
-                                @csrf @method('PATCH')
-                                <button class="btn btn-xs btn-danger" onclick="return confirm('Suspend this tenant?')">Suspend</button>
-                            </form>
-                        @endif
-                    </td>
-                </tr>
-            @empty
-                <tr><td colspan="6" class="text-center text-muted">No tenants yet</td></tr>
-            @endforelse
-            </tbody>
-        </table>
+        <div class="alert alert-light border mb-0">
+            Tenant management moved to
+            <a href="{{ route('admin.tenants') }}"><strong>Tenant</strong></a>.
+        </div>
     </div>
 </div>
 
