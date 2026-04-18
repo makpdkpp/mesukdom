@@ -4,14 +4,18 @@ namespace App\Models;
 
 use Illuminate\Contracts\Encryption\DecryptException;
 use Illuminate\Database\Eloquent\Casts\Attribute;
+use Illuminate\Database\Eloquent\Builder as EloquentBuilder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Database\Eloquent\SoftDeletingScope;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Crypt;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
+use Throwable;
 
 /**
  * @property ?string $line_channel_access_token
@@ -24,6 +28,8 @@ use Illuminate\Support\Str;
 class Tenant extends Model
 {
     use HasFactory, SoftDeletes;
+
+    protected static ?bool $hasDeletedAtColumn = null;
 
     protected $fillable = [
         'plan_id',
@@ -69,6 +75,32 @@ class Tenant extends Model
             'overdue_reminder_after_days' => 'integer',
             'deleted_at' => 'datetime',
         ];
+    }
+
+    public function newModelQuery(): EloquentBuilder
+    {
+        $query = parent::newModelQuery();
+
+        if (! static::supportsSoftDeletesColumn()) {
+            return $query->withoutGlobalScope(SoftDeletingScope::class);
+        }
+
+        return $query;
+    }
+
+    private static function supportsSoftDeletesColumn(): bool
+    {
+        if (static::$hasDeletedAtColumn !== null) {
+            return static::$hasDeletedAtColumn;
+        }
+
+        try {
+            static::$hasDeletedAtColumn = Schema::hasColumn((new static())->getTable(), 'deleted_at');
+        } catch (Throwable) {
+            static::$hasDeletedAtColumn = false;
+        }
+
+        return static::$hasDeletedAtColumn;
     }
 
     /**

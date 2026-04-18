@@ -431,6 +431,12 @@ final class AdminPortalController extends Controller
 
     public function restoreTenant(int $tenantId): RedirectResponse
     {
+        if (! Schema::hasColumn('tenants', 'deleted_at')) {
+            return redirect()
+                ->route('admin.tenants')
+                ->with('error', 'Soft delete is unavailable because tenants.deleted_at is missing. Run migrations first.');
+        }
+
         $tenant = Tenant::onlyTrashed()->findOrFail($tenantId);
 
         $tenant->restore();
@@ -453,9 +459,10 @@ final class AdminPortalController extends Controller
 
         $plans = Plan::query()->orderBy('sort_order')->get();
         $status = (string) ($validated['status'] ?? 'all');
+        $hasTenantSoftDeletes = Schema::hasColumn('tenants', 'deleted_at');
 
         $tenantsQuery = match ($status) {
-            'deleted' => Tenant::onlyTrashed(),
+            'deleted' => $hasTenantSoftDeletes ? Tenant::onlyTrashed() : Tenant::query()->whereRaw('1 = 0'),
             default => Tenant::query(),
         };
 
@@ -472,7 +479,7 @@ final class AdminPortalController extends Controller
             })
             ->when(isset($validated['plan_id']), fn ($query): mixed => $query->where('plan_id', (int) $validated['plan_id']))
             ->when(in_array($status, ['active', 'pending_checkout', 'suspended'], true), fn ($query): mixed => $query->where('status', $status))
-            ->orderBy($status === 'deleted' ? 'deleted_at' : 'name', $status === 'deleted' ? 'desc' : 'asc')
+            ->orderBy($status === 'deleted' && $hasTenantSoftDeletes ? 'deleted_at' : 'name', $status === 'deleted' && $hasTenantSoftDeletes ? 'desc' : 'asc')
             ->paginate(10)
             ->withQueryString();
         $usageMap = SlipVerificationUsage::query()
