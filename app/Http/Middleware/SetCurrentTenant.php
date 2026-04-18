@@ -18,12 +18,18 @@ class SetCurrentTenant
             return $next($request);
         }
 
+        $hasDeletedAtColumn = Schema::hasColumn('tenants', 'deleted_at');
+
         $tenantId = $request->user()?->tenant_id
             ?: ($request->integer('tenant') ?: (int) $request->session()->get('tenant_id'));
 
+        $tenantQuery = $hasDeletedAtColumn
+            ? Tenant::query()
+            : Tenant::query()->withoutGlobalScopes();
+
         $tenant = $tenantId
-            ? Tenant::query()->find($tenantId)
-            : Tenant::query()->orderBy('id')->first();
+            ? (clone $tenantQuery)->find($tenantId)
+            : (clone $tenantQuery)->orderBy('id')->first();
 
         if (! $tenant && $request->hasSession() && $request->session()->has('tenant_id')) {
             $request->session()->forget('tenant_id');
