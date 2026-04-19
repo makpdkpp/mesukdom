@@ -123,6 +123,40 @@ class SchedulerTest extends TestCase
         ]);
     }
 
+    public function test_generate_monthly_invoices_can_use_tenant_due_day_in_next_month(): void
+    {
+        Carbon::setTestNow('2026-04-26 08:00:00');
+
+        $tenant = Tenant::create([
+            'name' => 'Next Month Due Dorm',
+            'domain' => 'next-due.local',
+            'plan' => 'trial',
+            'status' => 'active',
+            'invoice_generate_day' => 26,
+            'invoice_send_day' => 26,
+            'invoice_due_day' => 4,
+        ]);
+        $room = Room::withoutGlobalScopes()->create(['tenant_id' => $tenant->id, 'room_number' => 'ND-101', 'floor' => 1, 'room_type' => 'Standard', 'price' => 5000, 'status' => 'occupied']);
+        $customer = Customer::withoutGlobalScopes()->create(['tenant_id' => $tenant->id, 'room_id' => $room->id, 'name' => 'Due Resident']);
+        Contract::withoutGlobalScopes()->create([
+            'tenant_id' => $tenant->id,
+            'customer_id' => $customer->id,
+            'room_id' => $room->id,
+            'start_date' => '2026-01-01',
+            'end_date' => '2026-12-31',
+            'deposit' => 5000,
+            'monthly_rent' => 5000,
+            'status' => 'active',
+        ]);
+
+        $this->artisan(GenerateMonthlyInvoices::class, ['--month' => '2026-04'])->assertSuccessful();
+
+        $this->assertDatabaseHas('invoices', [
+            'tenant_id' => $tenant->id,
+            'due_date' => '2026-05-04 00:00:00',
+        ]);
+    }
+
     public function test_generate_monthly_invoices_skips_duplicate_for_same_month(): void
     {
         $tenant = Tenant::create(['name' => 'Dup Dorm', 'domain' => 'dup.local', 'plan' => 'trial', 'status' => 'active']);

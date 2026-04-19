@@ -201,7 +201,7 @@
                 <div class="card-body">
 
                     <div class="row">
-                        <div class="col-md-4">
+                        <div class="col-md-3">
                             <div class="form-group">
                                 <label>Utility Entry Reminder Day</label>
                                 <input name="utility_entry_reminder_day"
@@ -216,7 +216,7 @@
                                 @enderror
                             </div>
                         </div>
-                        <div class="col-md-4">
+                        <div class="col-md-3">
                             <div class="form-group">
                                 <label>Invoice Generation Day</label>
                                 <input name="invoice_generate_day"
@@ -231,7 +231,7 @@
                                 @enderror
                             </div>
                         </div>
-                        <div class="col-md-4">
+                        <div class="col-md-3">
                             <div class="form-group">
                                 <label>Invoice Send Day</label>
                                 <input name="invoice_send_day"
@@ -242,6 +242,22 @@
                                        value="{{ old('invoice_send_day', $tenant?->invoice_send_day ?? 2) }}">
                                 <small class="form-text text-muted">วันที่ระบบส่งลิงก์บิลให้ผู้เช่า</small>
                                 @error('invoice_send_day')
+                                    <div class="invalid-feedback">{{ $message }}</div>
+                                @enderror
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="form-group">
+                                <label>Invoice Due Day</label>
+                                <input name="invoice_due_day"
+                                       type="number"
+                                       min="1"
+                                       max="31"
+                                       class="form-control @error('invoice_due_day') is-invalid @enderror"
+                                       value="{{ old('invoice_due_day', $tenant?->invoice_due_day) }}"
+                                       placeholder="เช่น 4">
+                                <small class="form-text text-muted">ถ้าระบุ ระบบจะใช้เป็นวันครบกำหนดของเดือนถัดไปสำหรับ tenant นี้</small>
+                                @error('invoice_due_day')
                                     <div class="invalid-feedback">{{ $message }}</div>
                                 @enderror
                             </div>

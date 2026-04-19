@@ -54,6 +54,7 @@ class Tenant extends Model
         'utility_entry_reminder_day',
         'invoice_generate_day',
         'invoice_send_day',
+        'invoice_due_day',
         'invoice_send_channels',
         'overdue_reminder_after_days',
         'overdue_reminder_channels',
@@ -72,6 +73,7 @@ class Tenant extends Model
             'utility_entry_reminder_day' => 'integer',
             'invoice_generate_day' => 'integer',
             'invoice_send_day' => 'integer',
+            'invoice_due_day' => 'integer',
             'overdue_reminder_after_days' => 'integer',
             'deleted_at' => 'datetime',
         ];
@@ -321,6 +323,15 @@ class Tenant extends Model
     public function invoiceSendDayOfMonth(): int
     {
         return max(1, min(31, (int) ($this->invoice_send_day ?? 2)));
+    }
+
+    public function invoiceDueDayOfNextMonth(): ?int
+    {
+        if ($this->invoice_due_day === null) {
+            return null;
+        }
+
+        return max(1, min(31, (int) $this->invoice_due_day));
     }
 
     public function overdueReminderAfterDays(): int

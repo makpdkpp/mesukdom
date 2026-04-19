@@ -133,6 +133,14 @@ final class GenerateMonthlyInvoices extends Command
 
     private function resolveDueDate(Tenant $tenant, Carbon $month): Carbon
     {
+        $configuredDueDay = $tenant->invoiceDueDayOfNextMonth();
+
+        if ($configuredDueDay !== null) {
+            $nextMonth = $month->copy()->addMonthNoOverflow()->startOfMonth();
+
+            return $nextMonth->day(min($configuredDueDay, $nextMonth->daysInMonth));
+        }
+
         $generateDay = min($tenant->invoiceGenerateDayOfMonth(), $month->daysInMonth);
         $sendDay = min($tenant->invoiceSendDayOfMonth(), $month->daysInMonth);
         $minimumDueDay = max(5, $generateDay + 4, $sendDay + 3);
