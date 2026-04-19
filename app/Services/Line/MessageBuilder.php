@@ -43,13 +43,12 @@ final class MessageBuilder
         $dueDate = Carbon::parse((string) $invoice->due_date)->format('d/m/Y');
 
         return sprintf(
-            'บิลล่าสุด %s ห้อง %s ยอด %s บาท ครบกำหนด %s\n%s',
+            'บิลล่าสุด %s ห้อง %s ยอด %s บาท ครบกำหนด %s',
             $invoice->invoice_no,
             $roomNumber,
             number_format((float) $invoice->total_amount, 2),
             $dueDate,
-            $invoice->signedResidentUrl()
-        );
+        )."\n".$invoice->signedResidentUrl();
     }
 
     public function paymentLink(?Invoice $invoice): string
