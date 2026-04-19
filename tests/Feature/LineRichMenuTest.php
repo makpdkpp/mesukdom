@@ -178,6 +178,54 @@ class LineRichMenuTest extends TestCase
         ]);
     }
 
+    public function test_signed_repair_create_page_posts_back_with_valid_signature(): void
+    {
+        $tenant = Tenant::query()->create(['name' => 'Signed Form Dorm', 'status' => 'active']);
+        $room = Room::withoutGlobalScopes()->create([
+            'tenant_id' => $tenant->id,
+            'room_number' => 'C-301',
+            'floor' => 3,
+            'room_type' => 'Standard',
+            'price' => 4500,
+            'status' => 'occupied',
+        ]);
+
+        $customer = Customer::query()->create([
+            'tenant_id' => $tenant->id,
+            'room_id' => $room->id,
+            'name' => 'Signed Form Resident',
+        ]);
+
+        $url = URL::temporarySignedRoute(
+            'resident.line.repair.create',
+            now()->addDay(),
+            ['customer' => $customer->id]
+        );
+
+        $response = $this->get($url)->assertOk();
+        $html = $response->getContent();
+
+        self::assertIsString($html);
+
+        preg_match('/<form[^>]*method="POST"[^>]*action="([^"]+)"/i', $html, $matches);
+        $actionUrl = html_entity_decode($matches[1] ?? '', ENT_QUOTES);
+
+        $this->assertNotSame('', $actionUrl);
+        $this->assertStringContainsString('signature=', $actionUrl);
+
+        $this->post($actionUrl, [
+            'title' => 'ไฟห้องน้ำไม่ติด',
+            'description' => 'สวิตช์เปิดไม่ติดตั้งแต่เมื่อคืน',
+        ])->assertSessionHas('status');
+
+        $this->assertDatabaseHas('repair_requests', [
+            'tenant_id' => $tenant->id,
+            'customer_id' => $customer->id,
+            'title' => 'ไฟห้องน้ำไม่ติด',
+            'status' => 'pending',
+        ]);
+    }
+
     /**
      * @param array<string, mixed> $payload
         * @return TestResponse<\Symfony\Component\HttpFoundation\Response>

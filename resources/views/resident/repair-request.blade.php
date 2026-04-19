@@ -26,7 +26,7 @@
                         <div class="alert alert-danger">{{ $errors->first() }}</div>
                     @endif
 
-                    <form method="POST" action="{{ route('resident.line.repair.store', $customer) }}">
+                    <form method="POST" action="{{ request()->fullUrl() }}">
                         @csrf
                         <div class="form-group">
                             <label>หัวข้อปัญหา</label>
