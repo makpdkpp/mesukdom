@@ -70,6 +70,8 @@ Route::middleware(['auth', 'verified', 'role:owner,staff', 'tenant.active', 'ten
     Route::get('/broadcasts', [BroadcastController::class, 'index'])->name('app.broadcasts');
     Route::post('/broadcasts', [BroadcastController::class, 'store'])->name('app.broadcasts.store');
     Route::get('/line-activity', [DashboardController::class, 'lineActivity'])->name('app.line-activity');
+    Route::get('/repairs', [DashboardController::class, 'repairs'])->name('app.repairs');
+    Route::patch('/repairs/{repairRequest}', [DashboardController::class, 'updateRepairRequest'])->name('app.repairs.update');
 
     Route::get('/settings', [DashboardController::class, 'settings'])->name('app.settings');
     Route::post('/settings', [DashboardController::class, 'updateSettings'])->name('app.settings.update');

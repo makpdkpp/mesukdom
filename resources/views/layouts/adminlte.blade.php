@@ -51,6 +51,7 @@
         @php($isAppInvoicesRoute = request()->routeIs('app.invoices*'))
         @php($isAppPaymentsRoute = request()->routeIs('app.payments*'))
         @php($isAppLineActivityRoute = request()->routeIs('app.line-activity'))
+        @php($isAppRepairsRoute = request()->routeIs('app.repairs*'))
         @php($isAppBroadcastsRoute = request()->routeIs('app.broadcasts*'))
         @php($isAppSettingsRoute = request()->routeIs('app.settings*'))
         <a href="{{ $isAdminRoute ? route('admin.dashboard') : route('app.dashboard') }}" class="brand-link text-center">
@@ -88,6 +89,7 @@
                         <li class="nav-item"><a href="{{ route('app.contracts') }}" class="nav-link {{ $isAppContractsRoute ? 'active' : '' }}"><i class="nav-icon fas fa-file-signature"></i><p>Contracts</p></a></li>
                         <li class="nav-item"><a href="{{ route('app.invoices') }}" class="nav-link {{ $isAppInvoicesRoute ? 'active' : '' }}"><i class="nav-icon fas fa-file-invoice-dollar"></i><p>Invoices</p></a></li>
                         <li class="nav-item"><a href="{{ route('app.payments') }}" class="nav-link {{ $isAppPaymentsRoute ? 'active' : '' }}"><i class="nav-icon fas fa-money-check-alt"></i><p>Payments</p></a></li>
+                        <li class="nav-item"><a href="{{ route('app.repairs') }}" class="nav-link {{ $isAppRepairsRoute ? 'active' : '' }}"><i class="nav-icon fas fa-tools"></i><p>Repairs</p></a></li>
                         <li class="nav-item"><a href="{{ route('app.line-activity') }}" class="nav-link {{ $isAppLineActivityRoute ? 'active' : '' }}"><i class="nav-icon fab fa-line"></i><p>LINE Activity</p></a></li>
                         <li class="nav-item"><a href="{{ route('app.broadcasts') }}" class="nav-link {{ $isAppBroadcastsRoute ? 'active' : '' }}"><i class="nav-icon fas fa-bullhorn"></i><p>Broadcast</p></a></li>
                         <li class="nav-item"><a href="{{ route('app.settings') }}" class="nav-link {{ $isAppSettingsRoute ? 'active' : '' }}"><i class="nav-icon fas fa-cog"></i><p>Settings</p></a></li>

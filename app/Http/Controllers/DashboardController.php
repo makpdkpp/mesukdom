@@ -15,6 +15,7 @@ use App\Models\LineWebhookLog;
 use App\Models\NotificationLog;
 use App\Models\Payment;
 use App\Models\Plan;
+use App\Models\RepairRequest;
 use App\Models\Room;
 use App\Models\SlipVerificationUsage;
 use App\Models\Tenant;
@@ -581,6 +582,41 @@ class DashboardController extends Controller
             'recentLineMessages' => $recentLineMessages,
             'recentLineNotifications' => $recentLineNotifications,
         ]);
+    }
+
+    public function repairs(Request $request): View
+    {
+        $status = (string) $request->query('status', 'open');
+
+        if (! in_array($status, ['all', 'open', 'pending', 'in_progress', 'resolved'], true)) {
+            $status = 'open';
+        }
+
+        $repairs = RepairRequest::query()
+            ->with(['customer', 'room'])
+            ->when($status === 'open', fn ($query) => $query->whereNotIn('status', ['resolved']))
+            ->when(in_array($status, ['pending', 'in_progress', 'resolved'], true), fn ($query) => $query->where('status', $status))
+            ->latest('submitted_at')
+            ->latest('id')
+            ->get();
+
+        return view('dashboard.repairs', [
+            'repairs' => $repairs,
+            'statusFilter' => $status,
+        ]);
+    }
+
+    public function updateRepairRequest(Request $request, RepairRequest $repairRequest): RedirectResponse
+    {
+        $validated = $request->validate([
+            'status' => ['required', Rule::in(['pending', 'in_progress', 'resolved'])],
+        ]);
+
+        $repairRequest->update([
+            'status' => $validated['status'],
+        ]);
+
+        return back()->with('status', 'Repair request updated.');
     }
 
     public function storePayment(Request $request, SlipVerificationService $slipVerificationService): RedirectResponse
