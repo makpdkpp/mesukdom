@@ -158,8 +158,8 @@
                 </div>
             </div>
 
-            <div class="card card-warning">
-                <div class="card-header"><h3 class="card-title"><i class="fas fa-bolt mr-2"></i>Default Utilities</h3></div>
+            <div class="card card-info card-outline">
+                <div class="card-header"><h3 class="card-title"><i class="fas fa-tint mr-2"></i>Default Utilities</h3></div>
                 <div class="card-body">
                     <div class="row">
                         <div class="col-md-6">
