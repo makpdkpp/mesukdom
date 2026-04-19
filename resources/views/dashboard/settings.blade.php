@@ -203,7 +203,7 @@
                     <div class="row">
                         <div class="col-md-3">
                             <div class="form-group">
-                                <label>Utility Entry Reminder Day</label>
+                                <label class="d-block mb-2" style="min-height: 2.2rem; font-size: 0.85rem; line-height: 1.2;">Utility Reminder Day</label>
                                 <input name="utility_entry_reminder_day"
                                        type="number"
                                        min="1"
@@ -218,7 +218,7 @@
                         </div>
                         <div class="col-md-3">
                             <div class="form-group">
-                                <label>Invoice Generation Day</label>
+                                <label class="d-block mb-2" style="min-height: 2.2rem; font-size: 0.85rem; line-height: 1.2;">Invoice Create Day</label>
                                 <input name="invoice_generate_day"
                                        type="number"
                                        min="1"
@@ -233,7 +233,7 @@
                         </div>
                         <div class="col-md-3">
                             <div class="form-group">
-                                <label>Invoice Send Day</label>
+                                <label class="d-block mb-2" style="min-height: 2.2rem; font-size: 0.85rem; line-height: 1.2;">Invoice Send Day</label>
                                 <input name="invoice_send_day"
                                        type="number"
                                        min="1"
@@ -248,7 +248,7 @@
                         </div>
                         <div class="col-md-3">
                             <div class="form-group">
-                                <label>Invoice Due Day</label>
+                                <label class="d-block mb-2" style="min-height: 2.2rem; font-size: 0.85rem; line-height: 1.2;">Invoice Due Day</label>
                                 <input name="invoice_due_day"
                                        type="number"
                                        min="1"
