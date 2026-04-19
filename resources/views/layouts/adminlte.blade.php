@@ -53,6 +53,7 @@
         @php($isAppLineActivityRoute = request()->routeIs('app.line-activity'))
         @php($isAppRepairsRoute = request()->routeIs('app.repairs*'))
         @php($isAppBroadcastsRoute = request()->routeIs('app.broadcasts*'))
+        @php($isAppChatRoute = request()->routeIs('app.chat*'))
         @php($isAppSettingsRoute = request()->routeIs('app.settings*'))
         <a href="{{ $isAdminRoute ? route('admin.dashboard') : route('app.dashboard') }}" class="brand-link text-center">
             <span class="brand-text font-weight-light">{{ $isAdminRoute ? 'MesukDorm' : ($currentTenant->name ?? 'Tenant Portal') }}</span>
@@ -92,6 +93,7 @@
                         <li class="nav-item"><a href="{{ route('app.repairs') }}" class="nav-link {{ $isAppRepairsRoute ? 'active' : '' }}"><i class="nav-icon fas fa-tools"></i><p>Repairs</p></a></li>
                         <li class="nav-item"><a href="{{ route('app.line-activity') }}" class="nav-link {{ $isAppLineActivityRoute ? 'active' : '' }}"><i class="nav-icon fab fa-line"></i><p>LINE Activity</p></a></li>
                         <li class="nav-item"><a href="{{ route('app.broadcasts') }}" class="nav-link {{ $isAppBroadcastsRoute ? 'active' : '' }}"><i class="nav-icon fas fa-bullhorn"></i><p>Broadcast</p></a></li>
+                        <li class="nav-item"><a href="{{ route('app.chat') }}" class="nav-link {{ $isAppChatRoute ? 'active' : '' }}"><i class="nav-icon fas fa-comments"></i><p>Chat</p></a></li>
                         <li class="nav-item"><a href="{{ route('app.settings') }}" class="nav-link {{ $isAppSettingsRoute ? 'active' : '' }}"><i class="nav-icon fas fa-cog"></i><p>Settings</p></a></li>
                         <li class="nav-header">USER MENU</li>
                         <li class="nav-item {{ $isUserMenuOpen ? 'menu-open' : '' }}">
