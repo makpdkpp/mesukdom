@@ -159,10 +159,10 @@
             </div>
 
             <div class="card card-warning">
-                <div class="card-header"><h3 class="card-title"><i class="fas fa-file-invoice-dollar mr-2"></i>Billing Automation</h3></div>
+                <div class="card-header"><h3 class="card-title"><i class="fas fa-bolt mr-2"></i>Default Utilities</h3></div>
                 <div class="card-body">
                     <div class="row">
-                        <div class="col-md-4">
+                        <div class="col-md-6">
                             <div class="form-group">
                                 <label>Default Water Fee / Unit</label>
                                 <input name="default_water_fee"
@@ -177,7 +177,7 @@
                                 @enderror
                             </div>
                         </div>
-                        <div class="col-md-4">
+                        <div class="col-md-6">
                             <div class="form-group">
                                 <label>Default Electricity Fee / Unit</label>
                                 <input name="default_electricity_fee"
@@ -193,6 +193,12 @@
                             </div>
                         </div>
                     </div>
+                </div>
+            </div>
+
+            <div class="card card-warning">
+                <div class="card-header"><h3 class="card-title"><i class="fas fa-file-invoice-dollar mr-2"></i>Billing Automation</h3></div>
+                <div class="card-body">
 
                     <div class="row">
                         <div class="col-md-4">
