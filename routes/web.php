@@ -1,7 +1,6 @@
 <?php
 
 use App\Http\Controllers\BroadcastController;
-use App\Http\Controllers\ChatController;
 use App\Http\Controllers\AdminPortalController;
 use App\Http\Controllers\BillingController;
 use App\Http\Controllers\DashboardController;
@@ -70,8 +69,6 @@ Route::middleware(['auth', 'verified', 'role:owner,staff', 'tenant.active', 'ten
     
     Route::get('/broadcasts', [BroadcastController::class, 'index'])->name('app.broadcasts');
     Route::post('/broadcasts', [BroadcastController::class, 'store'])->name('app.broadcasts.store');
-    Route::get('/chat', [ChatController::class, 'index'])->name('app.chat');
-    Route::post('/chat', [ChatController::class, 'store'])->name('app.chat.store');
     Route::get('/line-activity', [DashboardController::class, 'lineActivity'])->name('app.line-activity');
     Route::get('/repairs', [DashboardController::class, 'repairs'])->name('app.repairs');
     Route::patch('/repairs/{repairRequest}', [DashboardController::class, 'updateRepairRequest'])->name('app.repairs.update');
