@@ -45,6 +45,15 @@ final class LineService
     }
 
     /**
+     * @param array<string,mixed> $flex
+     * @return array<string,mixed>
+     */
+    public function replyFlex(Tenant $tenant, ?string $replyToken, array $flex): array
+    {
+        return $this->replyMessage($tenant, $replyToken, $flex);
+    }
+
+    /**
      * @param array<string, mixed> $message
      * @return array<string, mixed>
      */
@@ -85,6 +94,27 @@ final class LineService
                         'text' => $message,
                     ],
                 ],
+            ]);
+
+        return $this->responsePayload($response);
+    }
+
+    /**
+     * @param array<string,mixed> $flex
+     * @return array<string,mixed>
+     */
+    public function pushFlex(Tenant $tenant, ?string $lineUserId, array $flex): array
+    {
+        $token = $this->resolveAccessToken($tenant);
+
+        if (! $lineUserId || ! $token) {
+            return ['status' => 'skipped'];
+        }
+
+        $response = Http::withToken($token)
+            ->post('https://api.line.me/v2/bot/message/push', [
+                'to' => $lineUserId,
+                'messages' => [$flex],
             ]);
 
         return $this->responsePayload($response);
@@ -158,11 +188,7 @@ final class LineService
             return $tenantToken;
         }
 
-        $fallbackToken = config('services.line.channel_access_token');
-
-        return is_string($fallbackToken) && $fallbackToken !== ''
-            ? $fallbackToken
-            : null;
+        return null;
     }
 
     /**

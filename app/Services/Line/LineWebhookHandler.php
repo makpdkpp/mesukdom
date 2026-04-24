@@ -9,9 +9,11 @@ use App\Models\CustomerLineLink;
 use App\Models\Invoice;
 use App\Models\LineMessage;
 use App\Models\NotificationLog;
+use App\Models\OwnerLineLink;
 use App\Models\Payment;
 use App\Models\Room;
 use App\Models\Tenant;
+use App\Services\OwnerLineLinkService;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\URL;
 
@@ -21,6 +23,10 @@ final class LineWebhookHandler
         private readonly LineService $lineService,
         private readonly CommandRouter $commandRouter,
         private readonly MessageBuilder $messageBuilder,
+        private readonly OwnerLineLinkService $ownerLineLinkService,
+        private readonly OwnerCommandHandler $ownerCommandHandler,
+        private readonly OwnerFlexBuilder $ownerFlexBuilder,
+        private readonly ResidentFlexBuilder $residentFlexBuilder,
     ) {}
 
     /**
@@ -102,6 +108,53 @@ final class LineWebhookHandler
             ];
         }
 
+        if ($fromText && ($ownerLinkMessage = $this->attemptOwnerLink($tenant, $userId, $input)) !== null) {
+            $isSuccess = str_contains($ownerLinkMessage, 'สำเร็จ');
+
+            if ($isSuccess) {
+                $welcomeFlex = $this->ownerFlexBuilder->welcome($tenant->name, route('app.dashboard'));
+                $replyPayload = $this->lineService->replyFlex($tenant, $replyToken, $welcomeFlex);
+                $this->recordOutboundMessage($tenant, $userId, 'flex', $ownerLinkMessage, $replyPayload);
+
+                return [
+                    'message' => 'Owner LINE account linked',
+                    'status' => 'owner_linked',
+                    'payload' => ['reply' => $replyPayload],
+                ];
+            }
+
+            $replyPayload = $this->lineService->replyText($tenant, $replyToken, $ownerLinkMessage);
+            $this->recordOutboundMessage($tenant, $userId, 'text', $ownerLinkMessage, $replyPayload);
+
+            $status = match (true) {
+                str_contains($ownerLinkMessage, 'Platform LINE OA') => 'wrong_scope_admin_token',
+                default => 'invalid_owner_link_token',
+            };
+
+            return [
+                'message' => 'Owner LINE account linked',
+                'status' => $status,
+                'payload' => ['reply' => $replyPayload],
+            ];
+        }
+
+        $ownerCommand = $this->ownerCommandHandler->handle($tenant, $userId, $input, $fromText);
+
+        if (($ownerCommand['handled'] ?? false) === true) {
+            $replyPayload = $ownerCommand['flex'] !== null
+                ? $this->lineService->replyFlex($tenant, $replyToken, $ownerCommand['flex'])
+                : $this->lineService->replyText($tenant, $replyToken, (string) $ownerCommand['message']);
+
+            $outboundMessage = $ownerCommand['message'] ?? ((string) ($ownerCommand['flex']['altText'] ?? 'Owner command reply'));
+            $this->recordOutboundMessage($tenant, $userId, $ownerCommand['flex'] !== null ? 'flex' : 'text', (string) $outboundMessage, $replyPayload);
+
+            return [
+                'message' => (string) ($ownerCommand['message'] ?? 'Owner command handled'),
+                'status' => (string) ($ownerCommand['status'] ?? 'replied'),
+                'payload' => ['reply' => $replyPayload],
+            ];
+        }
+
         if ($fromText && ($linkMessage = $this->attemptLink($tenant, $userId, $input)) !== null) {
             $replyPayload = $this->lineService->replyText($tenant, $replyToken, $linkMessage);
             $this->recordOutboundMessage($tenant, $userId, 'text', $linkMessage, $replyPayload);
@@ -139,6 +192,22 @@ final class LineWebhookHandler
             ? $this->commandRouter->fromText($input)
             : $this->commandRouter->fromPostback($input);
 
+        $flex = $this->buildFlexByCommand($customer, $command);
+
+        if ($flex !== null) {
+            $replyPayload = $this->lineService->replyFlex($tenant, $replyToken, $flex);
+            $this->recordOutboundMessage($tenant, $userId, 'flex', (string) ($flex['altText'] ?? $command), $replyPayload, $customer->id);
+
+            return [
+                'message' => $this->eventMessageByCommand($command),
+                'status' => 'replied',
+                'payload' => [
+                    'command' => $command,
+                    'reply' => $replyPayload,
+                ],
+            ];
+        }
+
         $replyText = $this->buildReplyByCommand($customer, $command);
         $replyPayload = $this->lineService->replyText($tenant, $replyToken, $replyText);
         $this->recordOutboundMessage($tenant, $userId, 'text', $replyText, $replyPayload, $customer->id);
@@ -151,6 +220,43 @@ final class LineWebhookHandler
                 'reply' => $replyPayload,
             ],
         ];
+    }
+
+    /**
+     * @return array<string,mixed>|null
+     */
+    private function buildFlexByCommand(Customer $customer, string $command): ?array
+    {
+        if ($command === 'invoice' || $command === 'pay') {
+            $invoice = Invoice::query()
+                ->where('tenant_id', $customer->tenant_id)
+                ->where('customer_id', $customer->id)
+                ->whereIn('status', ['draft', 'sent', 'overdue'])
+                ->orderByDesc('due_date')
+                ->first();
+
+            return $command === 'invoice'
+                ? $this->residentFlexBuilder->latestInvoice($invoice)
+                : $this->residentFlexBuilder->paymentLinkBubble($invoice);
+        }
+
+        if ($command === 'history') {
+            $invoiceIds = Invoice::query()
+                ->where('tenant_id', $customer->tenant_id)
+                ->where('customer_id', $customer->id)
+                ->pluck('id');
+
+            $payments = Payment::query()
+                ->where('tenant_id', $customer->tenant_id)
+                ->whereIn('invoice_id', $invoiceIds)
+                ->orderByDesc('payment_date')
+                ->limit(10)
+                ->get();
+
+            return $this->residentFlexBuilder->paymentHistory($payments);
+        }
+
+        return null;
     }
 
     private function buildReplyByCommand(Customer $customer, string $command): string
@@ -242,6 +348,29 @@ final class LineWebhookHandler
             'contact' => 'Resident requested owner contact details',
             default => 'Resident sent unsupported command',
         };
+    }
+
+    private function attemptOwnerLink(Tenant $tenant, string $userId, string $text): ?string
+    {
+        $parsed = OwnerLineLinkService::parseInboundToken($text);
+
+        if ($parsed === null || $userId === '') {
+            return null;
+        }
+
+        if ($parsed['scope'] !== OwnerLineLink::SCOPE_TENANT) {
+            return 'รหัส ADMIN ใช้สำหรับผูกผู้ดูแลแพลตฟอร์มผ่าน Platform LINE OA ไม่ใช่ช่องนี้ กรุณาส่งรหัสนี้ไปที่ Platform LINE OA แทน';
+        }
+
+        $token = $parsed['token'];
+
+        $link = $this->ownerLineLinkService->consume(OwnerLineLink::SCOPE_TENANT, $token, $userId, $tenant->id);
+
+        if ($link === null) {
+            return 'รหัสผูกบัญชีเจ้าของไม่ถูกต้องหรือหมดอายุ กรุณาขอรหัสใหม่จากหน้า /app/settings';
+        }
+
+        return 'ผูกบัญชี LINE ของเจ้าของหอสำเร็จ ระบบจะส่งการแจ้งเตือนผ่านช่องทางนี้';
     }
 
     private function attemptLink(Tenant $tenant, string $userId, string $text): ?string

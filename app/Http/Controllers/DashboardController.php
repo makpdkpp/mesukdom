@@ -24,6 +24,7 @@ use App\Models\User;
 use App\Services\Line\LineService;
 use App\Services\PromptPayService;
 use App\Services\SlipVerificationService;
+use App\Support\SettingAuditLogger;
 use App\Support\TenantContext;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Database\QueryException;
@@ -759,8 +760,16 @@ class DashboardController extends Controller
 
     public function settings(): View
     {
+        $tenant = app(TenantContext::class)->tenant();
+        /** @var \App\Models\User $user */
+        $user = auth()->user();
+        $linkService = app(\App\Services\OwnerLineLinkService::class);
+
         return view('dashboard.settings', [
-            'tenant' => app(TenantContext::class)->tenant(),
+            'tenant' => $tenant,
+            'ownerActiveLink' => $linkService->findActiveTokenFor($user, \App\Models\OwnerLineLink::SCOPE_TENANT),
+            'ownerLinkTtlMinutes' => \App\Services\OwnerLineLinkService::TTL_MINUTES,
+            'platformDefaults' => \App\Models\PlatformSetting::current(),
         ]);
     }
 
@@ -784,18 +793,61 @@ class DashboardController extends Controller
             'invoice_send_channels'     => ['nullable', Rule::in(['line', 'email', 'both'])],
             'overdue_reminder_after_days' => ['nullable', 'integer', 'between:1,31'],
             'overdue_reminder_channels' => ['nullable', Rule::in(['line', 'email', 'both'])],
+            'notify_owner_payment_received' => ['nullable', Rule::in(['inherit', 'on', 'off'])],
+            'notify_owner_utility_reminder_day' => ['nullable', Rule::in(['inherit', 'on', 'off'])],
+            'notify_owner_invoice_create_day' => ['nullable', Rule::in(['inherit', 'on', 'off'])],
+            'notify_owner_invoice_send_day' => ['nullable', Rule::in(['inherit', 'on', 'off'])],
+            'notify_owner_overdue_digest' => ['nullable', Rule::in(['inherit', 'on', 'off'])],
+            'notify_owner_channels' => ['nullable', Rule::in(['inherit', 'line', 'email', 'both'])],
         ]);
 
         $tenant = app(TenantContext::class)->tenant();
         $webhookUrl = route('api.line.webhook');
+        $lineChannelAccessToken = filled($validated['line_channel_access_token'] ?? null)
+            ? $validated['line_channel_access_token']
+            : $tenant?->line_channel_access_token;
+        $lineChannelSecret = filled($validated['line_channel_secret'] ?? null)
+            ? $validated['line_channel_secret']
+            : $tenant?->line_channel_secret;
+        $before = $tenant?->only([
+            'promptpay_number',
+            'line_channel_id',
+            'line_basic_id',
+            'line_webhook_url',
+            'support_contact_name',
+            'support_contact_phone',
+            'support_line_id',
+            'notify_owner_payment_received',
+            'notify_owner_utility_reminder_day',
+            'notify_owner_invoice_create_day',
+            'notify_owner_invoice_send_day',
+            'notify_owner_overdue_digest',
+            'notify_owner_channels',
+        ]) ?? [];
+
+        $after = [
+            'promptpay_number' => $validated['promptpay_number'] ?? null,
+            'line_channel_id' => $validated['line_channel_id'] ?? null,
+            'line_basic_id' => $validated['line_basic_id'] ?? null,
+            'line_webhook_url' => $webhookUrl,
+            'support_contact_name' => $validated['support_contact_name'] ?? null,
+            'support_contact_phone' => $validated['support_contact_phone'] ?? null,
+            'support_line_id' => $validated['support_line_id'] ?? null,
+            'notify_owner_payment_received' => $this->notifyOverrideToBool($validated['notify_owner_payment_received'] ?? null),
+            'notify_owner_utility_reminder_day' => $this->notifyOverrideToBool($validated['notify_owner_utility_reminder_day'] ?? null),
+            'notify_owner_invoice_create_day' => $this->notifyOverrideToBool($validated['notify_owner_invoice_create_day'] ?? null),
+            'notify_owner_invoice_send_day' => $this->notifyOverrideToBool($validated['notify_owner_invoice_send_day'] ?? null),
+            'notify_owner_overdue_digest' => $this->notifyOverrideToBool($validated['notify_owner_overdue_digest'] ?? null),
+            'notify_owner_channels' => $this->notifyChannelOverride($validated['notify_owner_channels'] ?? null),
+        ];
 
         $tenant?->update([
             'promptpay_number'          => $validated['promptpay_number'] ?? null,
             'line_channel_id'           => $validated['line_channel_id'] ?? null,
             'line_basic_id'             => $validated['line_basic_id'] ?? null,
             'line_webhook_url'          => $webhookUrl,
-            'line_channel_access_token' => $validated['line_channel_access_token'] ?? null,
-            'line_channel_secret'       => $validated['line_channel_secret'] ?? null,
+            'line_channel_access_token' => $lineChannelAccessToken,
+            'line_channel_secret'       => $lineChannelSecret,
             'support_contact_name'      => $validated['support_contact_name'] ?? null,
             'support_contact_phone'     => $validated['support_contact_phone'] ?? null,
             'support_line_id'           => $validated['support_line_id'] ?? null,
@@ -808,7 +860,17 @@ class DashboardController extends Controller
             'invoice_send_channels'     => $validated['invoice_send_channels'] ?? $tenant?->invoice_send_channels ?? 'line',
             'overdue_reminder_after_days' => $validated['overdue_reminder_after_days'] ?? $tenant?->overdue_reminder_after_days ?? 1,
             'overdue_reminder_channels' => $validated['overdue_reminder_channels'] ?? $tenant?->overdue_reminder_channels ?? 'line',
+            'notify_owner_payment_received' => $this->notifyOverrideToBool($validated['notify_owner_payment_received'] ?? null),
+            'notify_owner_utility_reminder_day' => $this->notifyOverrideToBool($validated['notify_owner_utility_reminder_day'] ?? null),
+            'notify_owner_invoice_create_day' => $this->notifyOverrideToBool($validated['notify_owner_invoice_create_day'] ?? null),
+            'notify_owner_invoice_send_day' => $this->notifyOverrideToBool($validated['notify_owner_invoice_send_day'] ?? null),
+            'notify_owner_overdue_digest' => $this->notifyOverrideToBool($validated['notify_owner_overdue_digest'] ?? null),
+            'notify_owner_channels' => $this->notifyChannelOverride($validated['notify_owner_channels'] ?? null),
         ]);
+
+        /** @var User|null $actor */
+        $actor = auth()->user();
+        SettingAuditLogger::log('tenant_settings', $tenant?->id, $actor, $before, $after);
 
         return back()->with('status', 'Settings updated.');
     }
@@ -1072,6 +1134,10 @@ class DashboardController extends Controller
                     return $lockedPayment->fresh();
                 }, 5);
 
+                if ($approvedPayment instanceof Payment) {
+                    $this->notifyOwnerPaymentReceived($approvedPayment);
+                }
+
                 return $approvedPayment;
             } catch (QueryException $exception) {
                 if (! $this->isDuplicateReceiptNoException($exception) || $attempt === $maxAttempts - 1) {
@@ -1153,7 +1219,8 @@ class DashboardController extends Controller
             $message,
             $customer?->name,
             $customer?->id,
-            ['invoice_id' => $invoice->id]
+            ['invoice_id' => $invoice->id],
+            app(\App\Services\Line\ResidentFlexBuilder::class)->invoiceLink($invoice, 'บิล '.$invoice->invoice_no.' '.$event),
         );
     }
 
@@ -1456,5 +1523,91 @@ class DashboardController extends Controller
                 'total' => round($total, 2),
             ];
         });
+    }
+
+    public function createOwnerLineLink(): RedirectResponse
+    {
+        /** @var \App\Models\User $user */
+        $user = auth()->user();
+        abort_unless($user->canAccessTenantPortal(), 403);
+
+        $link = app(\App\Services\OwnerLineLinkService::class)
+            ->createForUser($user, \App\Models\OwnerLineLink::SCOPE_TENANT);
+
+        $tenant = app(TenantContext::class)->tenant();
+
+        return back()->with('owner_line_link', [
+            'token' => $link->link_token,
+            'expires_at' => $link->expired_at->format('d/m/Y H:i'),
+            'add_friend_url' => $tenant?->lineAddFriendUrl(),
+            'instruction' => 'เพิ่มเพื่อน LINE OA ของหอแล้วพิมพ์ข้อความ: OWNER:'.$link->link_token,
+        ]);
+    }
+
+    public function unlinkOwnerLine(): RedirectResponse
+    {
+        /** @var \App\Models\User $user */
+        $user = auth()->user();
+        abort_unless($user->canAccessTenantPortal(), 403);
+
+        app(\App\Services\OwnerLineLinkService::class)
+            ->unlink($user, \App\Models\OwnerLineLink::SCOPE_TENANT);
+
+        return back()->with('status', 'ยกเลิกการผูก LINE ของเจ้าของหอเรียบร้อย');
+    }
+
+    /**
+     * Map tri-state owner-notification override (inherit/on/off) to nullable boolean.
+     */
+    private function notifyOverrideToBool(?string $value): ?bool
+    {
+        return match ($value) {
+            'on' => true,
+            'off' => false,
+            default => null,
+        };
+    }
+
+    private function notifyChannelOverride(?string $value): ?string
+    {
+        return in_array($value, ['line', 'email', 'both'], true) ? $value : null;
+    }
+
+    private function notifyOwnerPaymentReceived(Payment $payment): void
+    {
+        $tenant = $payment->tenant_id ? Tenant::withoutGlobalScopes()->find($payment->tenant_id) : null;
+
+        if (! $tenant instanceof Tenant) {
+            return;
+        }
+
+        $payment->loadMissing(['invoice.customer', 'invoice.room']);
+        $message = app(\App\Services\Line\MessageBuilder::class)->ownerPaymentReceived($payment);
+
+        $paidAt = $payment->payment_date instanceof \Illuminate\Support\Carbon
+            ? $payment->payment_date->format('d/m/Y')
+            : \Illuminate\Support\Carbon::parse((string) $payment->payment_date)->format('d/m/Y');
+
+        $flex = app(\App\Services\Line\OwnerFlexBuilder::class)->paymentReceived(
+            $tenant->name,
+            [
+                'customer' => (string) ($payment->invoice?->customer?->name ?? '-'),
+                'room' => (string) ($payment->invoice?->room?->room_number ?? '-'),
+                'amount' => (float) $payment->amount,
+                'date' => $paidAt,
+                'status' => (string) $payment->status,
+            ],
+            route('app.payments'),
+        );
+
+        \App\Support\OwnerNotifier::pushLineToOwners(
+            $tenant,
+            'payment_received',
+            $message,
+            ['payment_id' => $payment->id, 'invoice_id' => $payment->invoice_id],
+            $payment->invoice?->customer_id,
+            null,
+            $flex,
+        );
     }
 }

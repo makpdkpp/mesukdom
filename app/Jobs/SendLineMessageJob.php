@@ -26,6 +26,7 @@ final class SendLineMessageJob implements ShouldQueue
 
     /**
      * @param array<string, mixed> $payload
+     * @param array<string, mixed>|null $flex
      */
     public function __construct(
         private readonly int $tenantId,
@@ -35,6 +36,7 @@ final class SendLineMessageJob implements ShouldQueue
         private readonly ?string $target = null,
         private readonly ?int $customerId = null,
         private readonly array $payload = [],
+        private readonly ?array $flex = null,
     ) {
         $this->onConnection((string) config('queue.line.connection', config('queue.default', 'database')));
         $this->onQueue((string) config('queue.line.queue', 'line'));
@@ -59,7 +61,9 @@ final class SendLineMessageJob implements ShouldQueue
         $tenantContext->set($tenant);
 
         try {
-            $result = $lineService->pushText($tenant, $this->lineUserId, $this->message);
+            $result = $this->flex !== null
+                ? $lineService->pushFlex($tenant, $this->lineUserId, $this->flex)
+                : $lineService->pushText($tenant, $this->lineUserId, $this->message);
 
             if (($result['status'] ?? null) === 'failed') {
                 throw new RuntimeException('LINE push request failed.');
@@ -69,9 +73,10 @@ final class SendLineMessageJob implements ShouldQueue
                 'tenant_id' => $tenant->id,
                 'customer_id' => $this->customerId,
                 'direction' => 'outbound',
-                'message_type' => 'text',
+                'message_type' => $this->flex !== null ? 'flex' : 'text',
                 'payload' => [
                     'message' => $this->message,
+                    'flex' => $this->flex,
                     'response' => $result,
                     'event' => $this->event,
                 ],
@@ -98,8 +103,8 @@ final class SendLineMessageJob implements ShouldQueue
             'tenant_id' => $this->tenantId,
             'event' => $this->event,
             'target' => $this->target,
-            'line_user_id' => $this->lineUserId,
             'customer_id' => $this->customerId,
+            'status' => 'failed',
             'error' => $e->getMessage(),
         ]);
 
@@ -108,11 +113,10 @@ final class SendLineMessageJob implements ShouldQueue
             'channel' => 'line',
             'event' => $this->event,
             'target' => $this->target,
-            'message' => $this->message,
+            'message' => '[redacted]',
             'status' => 'failed',
             'payload' => array_merge($this->payload, [
                 'error' => $e->getMessage(),
-                'line_user_id' => $this->lineUserId,
                 'customer_id' => $this->customerId,
             ]),
         ]);

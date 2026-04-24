@@ -11,6 +11,7 @@ use App\Models\Invoice;
 use App\Models\NotificationLog;
 use App\Models\Room;
 use App\Models\Tenant;
+use App\Services\Line\ResidentFlexBuilder;
 use App\Support\TenantContext;
 use Illuminate\Console\Command;
 use Illuminate\Support\Carbon;
@@ -28,6 +29,7 @@ final class SendOverdueWarnings extends Command
         Invoice::markDueInvoicesAsOverdue();
 
         $sent = 0;
+        $overdueDigestByTenant = [];
 
         foreach (Tenant::query()->where('status', 'active')->get() as $tenant) {
             app(TenantContext::class)->set($tenant);
@@ -41,10 +43,20 @@ final class SendOverdueWarnings extends Command
                 ->whereDate('due_date', '<=', $cutoffDate)
                 ->get();
 
+            $overdueDigestByTenant[$tenant->id] = collect();
+
             foreach ($invoices as $invoice) {
                 $room = $invoice->room_id ? Room::query()->find($invoice->room_id) : null;
                 $customer = $invoice->customer_id ? Customer::query()->find($invoice->customer_id) : null;
                 $dueDate = Carbon::parse((string) $invoice->due_date)->format('d/m/Y');
+                $daysOverdue = (int) max(0, now()->diffInDays(Carbon::parse((string) $invoice->due_date), false) * -1);
+
+                $overdueDigestByTenant[$tenant->id]->push([
+                    'customer' => $customer?->name ?? '-',
+                    'room' => $room?->room_number ?? '-',
+                    'amount' => (float) $invoice->total_amount,
+                    'days_overdue' => $daysOverdue,
+                ]);
 
                 $alreadySentToday = NotificationLog::query()
                     ->where('tenant_id', $tenant->id)
@@ -80,7 +92,8 @@ final class SendOverdueWarnings extends Command
                             $message,
                             $customer->name,
                             $customer->id,
-                            ['invoice_id' => $invoice->id]
+                            ['invoice_id' => $invoice->id],
+                            app(ResidentFlexBuilder::class)->overdueWarning($invoice, $daysOverdue, 'บิล '.$invoice->invoice_no.' ค้างชำระ'),
                         );
 
                         $sent++;
@@ -116,6 +129,27 @@ final class SendOverdueWarnings extends Command
         }
 
         app(TenantContext::class)->set(null);
+
+        // Owner LINE digest per tenant (once per day, only if there are overdue items)
+        foreach ($overdueDigestByTenant as $tenantId => $entries) {
+            if ($entries->isEmpty()) {
+                continue;
+            }
+            $tenant = Tenant::query()->find($tenantId);
+            if (! $tenant) {
+                continue;
+            }
+            \App\Support\OwnerNotifier::pushLineToOwners(
+                $tenant,
+                'overdue_digest',
+                app(\App\Services\Line\MessageBuilder::class)->ownerOverdueDigest($tenant->name, $entries, route('app.invoices')),
+                ['count' => $entries->count(), 'day' => today()->toDateString()],
+                null,
+                'overdue_digest:'.today()->toDateString(),
+                app(\App\Services\Line\OwnerFlexBuilder::class)->overdueDigest($tenant->name, $entries, route('app.invoices')),
+            );
+        }
+
         $this->info('Done. Overdue warnings queued: '.$sent);
 
         return self::SUCCESS;
