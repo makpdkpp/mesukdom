@@ -33,6 +33,12 @@ class User extends Authenticatable implements MustVerifyEmail
         'email',
         'password',
         'role',
+        'line_user_id',
+        'line_user_id_hash',
+        'line_linked_at',
+        'platform_line_user_id',
+        'platform_line_user_id_hash',
+        'platform_line_linked_at',
     ];
 
     /**
@@ -66,7 +72,27 @@ class User extends Authenticatable implements MustVerifyEmail
         return [
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
+            'line_linked_at' => 'datetime',
+            'platform_line_linked_at' => 'datetime',
         ];
+    }
+
+    /**
+     * @return \Illuminate\Database\Eloquent\Relations\HasMany<OwnerLineLink, $this>
+     */
+    public function ownerLineLinks(): \Illuminate\Database\Eloquent\Relations\HasMany
+    {
+        return $this->hasMany(OwnerLineLink::class);
+    }
+
+    public function hasLinkedTenantLine(): bool
+    {
+        return $this->line_user_id !== null && $this->line_linked_at !== null;
+    }
+
+    public function hasLinkedPlatformLine(): bool
+    {
+        return $this->platform_line_user_id !== null && $this->platform_line_linked_at !== null;
     }
 
     public function hasRole(string $role): bool

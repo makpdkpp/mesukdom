@@ -20,6 +20,18 @@ use Illuminate\Support\Facades\Crypt;
  * @property ?string $stripe_publishable_key
  * @property ?string $stripe_secret_key
  * @property ?string $stripe_webhook_secret
+ * @property ?string $platform_line_channel_id
+ * @property ?string $platform_line_basic_id
+ * @property ?string $platform_line_channel_access_token
+ * @property ?string $platform_line_channel_secret
+ * @property ?string $platform_line_webhook_url
+ * @property bool $default_notify_owner_payment_received
+ * @property bool $default_notify_owner_utility_reminder_day
+ * @property bool $default_notify_owner_invoice_create_day
+ * @property bool $default_notify_owner_invoice_send_day
+ * @property bool $default_notify_owner_overdue_digest
+ * @property string $default_notify_owner_channels
+ * @property bool $platform_line_owner_broadcast_enabled
  */
 final class PlatformSetting extends Model
 {
@@ -34,6 +46,18 @@ final class PlatformSetting extends Model
         'stripe_publishable_key',
         'stripe_secret_key',
         'stripe_webhook_secret',
+        'platform_line_channel_id',
+        'platform_line_basic_id',
+        'platform_line_channel_access_token',
+        'platform_line_channel_secret',
+        'platform_line_webhook_url',
+        'default_notify_owner_payment_received',
+        'default_notify_owner_utility_reminder_day',
+        'default_notify_owner_invoice_create_day',
+        'default_notify_owner_invoice_send_day',
+        'default_notify_owner_overdue_digest',
+        'default_notify_owner_channels',
+        'platform_line_owner_broadcast_enabled',
     ];
 
     protected function casts(): array
@@ -42,6 +66,12 @@ final class PlatformSetting extends Model
             'slipok_enabled' => 'boolean',
             'slipok_timeout_seconds' => 'integer',
             'stripe_enabled' => 'boolean',
+            'default_notify_owner_payment_received' => 'boolean',
+            'default_notify_owner_utility_reminder_day' => 'boolean',
+            'default_notify_owner_invoice_create_day' => 'boolean',
+            'default_notify_owner_invoice_send_day' => 'boolean',
+            'default_notify_owner_overdue_digest' => 'boolean',
+            'platform_line_owner_broadcast_enabled' => 'boolean',
         ];
     }
 
@@ -88,6 +118,35 @@ final class PlatformSetting extends Model
             get: fn (mixed $value): ?string => $this->decryptNullableString($value),
             set: fn (mixed $value): ?string => $this->encryptNullableString($value),
         );
+    }
+
+    /**
+     * @return Attribute<?string, ?string>
+     */
+    protected function platformLineChannelAccessToken(): Attribute
+    {
+        return Attribute::make(
+            get: fn (mixed $value): ?string => $this->decryptNullableString($value),
+            set: fn (mixed $value): ?string => $this->encryptNullableString($value),
+        );
+    }
+
+    /**
+     * @return Attribute<?string, ?string>
+     */
+    protected function platformLineChannelSecret(): Attribute
+    {
+        return Attribute::make(
+            get: fn (mixed $value): ?string => $this->decryptNullableString($value),
+            set: fn (mixed $value): ?string => $this->encryptNullableString($value),
+        );
+    }
+
+    public function hasPlatformLineCredentials(): bool
+    {
+        return filled($this->platform_line_channel_id)
+            && filled($this->platform_line_channel_access_token)
+            && filled($this->platform_line_channel_secret);
     }
 
     public function hasSlipOkCredentials(): bool
