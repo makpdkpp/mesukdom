@@ -23,6 +23,7 @@ final class SendInvoiceLinks extends Command
     {
         $sent = 0;
         $today = now();
+        $sentByTenant = [];
 
         foreach (Tenant::query()->where('status', 'active')->get() as $tenant) {
             if (! $tenant->shouldSendInvoicesOn($today)) {
@@ -30,6 +31,7 @@ final class SendInvoiceLinks extends Command
             }
 
             app(TenantContext::class)->set($tenant);
+            $sentByTenant[$tenant->id] = 0;
 
             $invoices = Invoice::query()
                 ->with(['customer', 'room'])
@@ -76,6 +78,7 @@ final class SendInvoiceLinks extends Command
                             ['invoice_id' => $invoice->id]
                         );
                         $sent++;
+                        $sentByTenant[$tenant->id]++;
 
                         continue;
                     }
@@ -106,6 +109,25 @@ final class SendInvoiceLinks extends Command
                     ]);
                 }
             }
+        }
+
+        // Owner LINE notification per tenant
+        foreach ($sentByTenant as $tenantId => $countSent) {
+            if ($countSent <= 0) {
+                continue;
+            }
+            $tenant = Tenant::query()->find($tenantId);
+            if (! $tenant) {
+                continue;
+            }
+            \App\Support\OwnerNotifier::pushLineToOwners(
+                $tenant,
+                'invoice_send_day',
+                app(\App\Services\Line\MessageBuilder::class)->ownerInvoiceSendDay($tenant->name, $countSent, route('app.invoices')),
+                ['count' => $countSent, 'day' => $today->toDateString()],
+                null,
+                'invoice_send_day:'.$today->toDateString(),
+            );
         }
 
         app(TenantContext::class)->set(null);

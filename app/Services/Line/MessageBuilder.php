@@ -130,4 +130,81 @@ final class MessageBuilder
     {
         return "คำสั่งที่รองรับ:\n- บิล\n- จ่าย\n- ประวัติ\n- แจ้งซ่อม\n- ประกาศ\n- ติดต่อเจ้าของ\n- LINK ABC123 หรือกดปุ่มยืนยันห้องพักใน LINE";
     }
+
+    public function ownerPaymentReceived(Payment $payment): string
+    {
+        $invoice = $payment->invoice;
+        $customer = $invoice?->customer;
+        $room = $invoice?->room;
+        $paidAt = $payment->payment_date instanceof Carbon
+            ? $payment->payment_date->format('d/m/Y')
+            : Carbon::parse((string) $payment->payment_date)->format('d/m/Y');
+
+        return sprintf(
+            "✅ มีการชำระเงิน\nผู้เช่า: %s\nห้อง: %s\nยอด: %s บาท\nวันที่: %s\nสถานะ: %s",
+            $customer?->name ?? '-',
+            $room?->room_number ?? '-',
+            number_format((float) $payment->amount, 2),
+            $paidAt,
+            $payment->status,
+        );
+    }
+
+    public function ownerUtilityDay(string $tenantName, string $url): string
+    {
+        return sprintf(
+            "📋 วันบันทึกค่าน้ำ-ไฟประจำเดือน (%s)\nกรุณาบันทึกค่ามิเตอร์ก่อนสร้างบิลรอบนี้\n%s",
+            $tenantName,
+            $url,
+        );
+    }
+
+    public function ownerInvoiceCreateDay(string $tenantName, int $created, string $url): string
+    {
+        return sprintf(
+            "🧾 สร้างใบแจ้งหนี้ประจำเดือน (%s)\nสร้างทั้งหมด %d รายการ\n%s",
+            $tenantName,
+            $created,
+            $url,
+        );
+    }
+
+    public function ownerInvoiceSendDay(string $tenantName, int $sent, string $url): string
+    {
+        return sprintf(
+            "📨 ส่งใบแจ้งหนี้ให้ผู้เช่า (%s)\nส่งทั้งหมด %d รายการ\n%s",
+            $tenantName,
+            $sent,
+            $url,
+        );
+    }
+
+    /**
+     * @param  Collection<int, array{customer:string, room:string, amount:float, days_overdue:int}>  $entries
+     */
+    public function ownerOverdueDigest(string $tenantName, Collection $entries, string $url): string
+    {
+        if ($entries->isEmpty()) {
+            return sprintf("✅ ไม่มีบิลค้างชำระ (%s)", $tenantName);
+        }
+
+        $lines = ['⚠️ สรุปบิลค้างชำระ ('.$tenantName.')'];
+        foreach ($entries->take(10) as $entry) {
+            $lines[] = sprintf(
+                '- ห้อง %s | %s | %s บาท | เลย %d วัน',
+                $entry['room'],
+                $entry['customer'],
+                number_format($entry['amount'], 2),
+                $entry['days_overdue'],
+            );
+        }
+
+        if ($entries->count() > 10) {
+            $lines[] = sprintf('… และอีก %d รายการ', $entries->count() - 10);
+        }
+
+        $lines[] = $url;
+
+        return implode("\n", $lines);
+    }
 }

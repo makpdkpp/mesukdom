@@ -1092,6 +1092,10 @@ class DashboardController extends Controller
                     return $lockedPayment->fresh();
                 }, 5);
 
+                if ($approvedPayment instanceof Payment) {
+                    $this->notifyOwnerPaymentReceived($approvedPayment);
+                }
+
                 return $approvedPayment;
             } catch (QueryException $exception) {
                 if (! $this->isDuplicateReceiptNoException($exception) || $attempt === $maxAttempts - 1) {
@@ -1524,5 +1528,25 @@ class DashboardController extends Controller
     private function notifyChannelOverride(?string $value): ?string
     {
         return in_array($value, ['line', 'email', 'both'], true) ? $value : null;
+    }
+
+    private function notifyOwnerPaymentReceived(Payment $payment): void
+    {
+        $tenant = $payment->tenant_id ? Tenant::withoutGlobalScopes()->find($payment->tenant_id) : null;
+
+        if (! $tenant instanceof Tenant) {
+            return;
+        }
+
+        $payment->loadMissing(['invoice.customer', 'invoice.room']);
+        $message = app(\App\Services\Line\MessageBuilder::class)->ownerPaymentReceived($payment);
+
+        \App\Support\OwnerNotifier::pushLineToOwners(
+            $tenant,
+            'payment_received',
+            $message,
+            ['payment_id' => $payment->id, 'invoice_id' => $payment->invoice_id],
+            $payment->invoice?->customer_id,
+        );
     }
 }

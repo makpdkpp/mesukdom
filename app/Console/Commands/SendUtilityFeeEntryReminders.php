@@ -80,6 +80,16 @@ final class SendUtilityFeeEntryReminders extends Command
                     'payload' => ['user_id' => $owner->id],
                 ]);
             }
+
+            // Owner LINE notification (per-tenant, once per day)
+            \App\Support\OwnerNotifier::pushLineToOwners(
+                $tenant,
+                'utility_reminder_day',
+                app(\App\Services\Line\MessageBuilder::class)->ownerUtilityDay($tenant->name, route('app.utility')),
+                ['day' => $today->toDateString()],
+                null,
+                'utility_reminder_day:'.$today->toDateString(),
+            );
         }
 
         app(TenantContext::class)->set(null);

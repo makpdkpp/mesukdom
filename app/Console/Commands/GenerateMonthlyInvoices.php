@@ -37,6 +37,7 @@ final class GenerateMonthlyInvoices extends Command
 
         $created = 0;
         $skipped = 0;
+        $createdByTenant = [];
 
         $tenants = Tenant::where('status', 'active')->get();
 
@@ -46,6 +47,7 @@ final class GenerateMonthlyInvoices extends Command
             }
 
             app(TenantContext::class)->set($tenant);
+            $createdByTenant[$tenant->id] = $createdByTenant[$tenant->id] ?? 0;
 
             $contracts = Contract::query()
                 ->where('status', 'active')
@@ -114,6 +116,28 @@ final class GenerateMonthlyInvoices extends Command
                 }
 
                 $created++;
+                $createdByTenant[$tenant->id] = ($createdByTenant[$tenant->id] ?? 0) + 1;
+            }
+        }
+
+        // Owner LINE notification per tenant (only when not dry-run)
+        if (! $dryRun) {
+            foreach ($createdByTenant as $tenantId => $countCreated) {
+                if ($countCreated <= 0) {
+                    continue;
+                }
+                $tenant = Tenant::query()->find($tenantId);
+                if (! $tenant) {
+                    continue;
+                }
+                \App\Support\OwnerNotifier::pushLineToOwners(
+                    $tenant,
+                    'invoice_create_day',
+                    app(\App\Services\Line\MessageBuilder::class)->ownerInvoiceCreateDay($tenant->name, $countCreated, route('app.invoices')),
+                    ['count' => $countCreated, 'month' => $month->format('Y-m')],
+                    null,
+                    'invoice_create_day:'.$month->format('Y-m'),
+                );
             }
         }
 
