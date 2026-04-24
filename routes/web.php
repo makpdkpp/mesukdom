@@ -82,6 +82,7 @@ Route::middleware(['auth', 'verified', 'role:owner,staff', 'tenant.active', 'ten
 
 Route::middleware(['auth', 'verified', 'role:super_admin,support_admin'])->prefix('admin')->group(function (): void {
     Route::get('/', [AdminPortalController::class, 'dashboard'])->name('admin.dashboard');
+    Route::get('/profile', [AdminPortalController::class, 'profile'])->name('admin.profile');
     Route::get('/dbmigration', [AdminPortalController::class, 'dbMigration'])->name('admin.dbmigration');
     Route::get('/tenants', [AdminPortalController::class, 'tenants'])->name('admin.tenants');
     Route::get('/platform', [AdminPortalController::class, 'index'])->name('admin.platform');
