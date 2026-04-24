@@ -38,7 +38,8 @@
     <aside class="main-sidebar sidebar-dark-primary elevation-4">
         @php($isAdminRoute = request()->routeIs('admin.*'))
         @php($currentUser = auth()->user())
-        @php($isProfileRoute = request()->routeIs('profile.show'))
+        @php($profileRouteName = $isAdminRoute ? 'admin.profile' : 'profile.show')
+        @php($isProfileRoute = request()->routeIs('profile.show', 'admin.profile'))
         @php($isBillingRoute = request()->routeIs('app.billing*'))
         @php($isUserMenuOpen = $isProfileRoute || $isBillingRoute)
         @php($isAppDashboardRoute = request()->routeIs('app.dashboard'))
@@ -81,6 +82,30 @@
                         <li class="nav-item"><a href="{{ route('admin.platform') }}" class="nav-link {{ request()->routeIs('admin.platform') ? 'active' : '' }}"><i class="nav-icon fas fa-cogs"></i><p>Platform Admin</p></a></li>
                         <li class="nav-item"><a href="{{ route('admin.notifications') }}" class="nav-link {{ request()->routeIs('admin.notifications*') ? 'active' : '' }}"><i class="nav-icon fas fa-bell"></i><p>Notification Defaults</p></a></li>
                         <li class="nav-item"><a href="{{ route('admin.platform-line') }}" class="nav-link {{ request()->routeIs('admin.platform-line*') ? 'active' : '' }}"><i class="nav-icon fab fa-line"></i><p>Platform LINE</p></a></li>
+                        <li class="nav-header">USER MENU</li>
+                        <li class="nav-item {{ $isProfileRoute ? 'menu-open' : '' }}">
+                            <a href="#" class="nav-link {{ $isProfileRoute ? 'active' : '' }}">
+                                <i class="nav-icon fas fa-user-circle"></i>
+                                <p>
+                                    Account
+                                    <i class="right fas fa-angle-left"></i>
+                                </p>
+                            </a>
+                            <ul class="nav nav-treeview">
+                                <li class="nav-item">
+                                    <a href="{{ route($profileRouteName) }}#profile-information" class="nav-link {{ $isProfileRoute ? 'active' : '' }}">
+                                        <i class="far fa-id-badge nav-icon"></i>
+                                        <p>Profile</p>
+                                    </a>
+                                </li>
+                                <li class="nav-item">
+                                    <a href="{{ route($profileRouteName) }}#update-password" class="nav-link {{ $isProfileRoute ? 'active' : '' }}">
+                                        <i class="fas fa-key nav-icon"></i>
+                                        <p>Change Password</p>
+                                    </a>
+                                </li>
+                            </ul>
+                        </li>
                     @else
                         <li class="nav-item"><a href="{{ route('app.dashboard') }}" class="nav-link {{ $isAppDashboardRoute ? 'active' : '' }}"><i class="nav-icon fas fa-chart-pie"></i><p>Dashboard</p></a></li>
                         <li class="nav-item"><a href="{{ route('app.room-status') }}" class="nav-link {{ $isAppRoomStatusRoute ? 'active' : '' }}"><i class="nav-icon fas fa-th-large"></i><p>Room Status</p></a></li>
@@ -106,13 +131,13 @@
                             </a>
                             <ul class="nav nav-treeview">
                                 <li class="nav-item">
-                                    <a href="{{ route('profile.show') }}#profile-information" class="nav-link {{ $isProfileRoute ? 'active' : '' }}">
+                                    <a href="{{ route($profileRouteName) }}#profile-information" class="nav-link {{ $isProfileRoute ? 'active' : '' }}">
                                         <i class="far fa-id-badge nav-icon"></i>
                                         <p>Profile</p>
                                     </a>
                                 </li>
                                 <li class="nav-item">
-                                    <a href="{{ route('profile.show') }}#update-password" class="nav-link {{ $isProfileRoute ? 'active' : '' }}">
+                                    <a href="{{ route($profileRouteName) }}#update-password" class="nav-link {{ $isProfileRoute ? 'active' : '' }}">
                                         <i class="fas fa-key nav-icon"></i>
                                         <p>Change Password</p>
                                     </a>

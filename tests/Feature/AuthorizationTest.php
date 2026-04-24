@@ -111,6 +111,9 @@ class AuthorizationTest extends TestCase
         $response->assertSeeText('Tenant');
         $response->assertSeeText('Package Management');
         $response->assertSeeText('Platform Admin');
+        $response->assertSeeText('USER MENU');
+        $response->assertSeeText('Profile');
+        $response->assertSeeText('Change Password');
         $response->assertDontSeeText('Rooms');
         $response->assertDontSeeText('Residents');
         $response->assertDontSeeText('Contracts');
@@ -349,6 +352,22 @@ class AuthorizationTest extends TestCase
         $response = $this->actingAs($admin)->get('/app/dashboard');
 
         $response->assertForbidden();
+    }
+
+    public function test_super_admin_can_access_admin_profile_without_billing_menu(): void
+    {
+        $admin = User::factory()->create([
+            'role' => 'super_admin',
+        ]);
+
+        $response = $this->actingAs($admin)->get('/admin/profile');
+
+        $response->assertOk();
+        $response->assertSeeText('Account Profile');
+        $response->assertSeeText('Admin Console');
+        $response->assertSeeText('Profile Information');
+        $response->assertSeeText('Change Password');
+        $response->assertDontSeeText('Billing');
     }
 
     public function test_unverified_owner_is_redirected_to_email_verification_before_tenant_dashboard(): void

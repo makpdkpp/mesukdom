@@ -60,6 +60,15 @@ final class AdminPortalController extends Controller
         ]);
     }
 
+    public function profile(): View
+    {
+        return view('profile.show', [
+            'isAdminProfile' => true,
+            'profileRouteName' => 'admin.profile',
+            'showBillingLink' => false,
+        ]);
+    }
+
     public function migrate(Request $request): RedirectResponse
     {
         $token = (string) $request->input('migrate_token', '');
