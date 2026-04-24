@@ -31,6 +31,9 @@
 
 @section('content')
     @php($user = auth()->user())
+    @php($isAdminProfile = $isAdminProfile ?? request()->routeIs('admin.*'))
+    @php($showBillingLink = $showBillingLink ?? ! $isAdminProfile)
+    @php($profileRouteName = $profileRouteName ?? 'profile.show')
 
     <div class="profile-adminlte-page">
         <div class="row">
@@ -49,18 +52,27 @@
                         <p class="text-muted text-center mb-3">{{ $user?->email ?? '' }}</p>
 
                         <ul class="list-group list-group-unbordered mb-3">
-                            <li class="list-group-item">
-                                <b>Tenant</b>
-                                <span class="float-right">{{ $currentTenant->name ?? 'Demo Tenant' }}</span>
-                            </li>
+                            @if ($isAdminProfile)
+                                <li class="list-group-item">
+                                    <b>Workspace</b>
+                                    <span class="float-right">Admin Console</span>
+                                </li>
+                            @else
+                                <li class="list-group-item">
+                                    <b>Tenant</b>
+                                    <span class="float-right">{{ $currentTenant->name ?? 'Demo Tenant' }}</span>
+                                </li>
+                            @endif
                             <li class="list-group-item">
                                 <b>Role</b>
                                 <span class="float-right text-capitalize">{{ $user?->role ?? 'user' }}</span>
                             </li>
-                            <li class="list-group-item">
-                                <b>Billing</b>
-                                <a href="{{ route('app.billing') }}" class="float-right">Open</a>
-                            </li>
+                            @if ($showBillingLink)
+                                <li class="list-group-item">
+                                    <b>Billing</b>
+                                    <a href="{{ route('app.billing') }}" class="float-right">Open</a>
+                                </li>
+                            @endif
                         </ul>
                     </div>
                 </div>
@@ -70,22 +82,22 @@
                         <h3 class="card-title">Account Menu</h3>
                     </div>
                     <div class="list-group list-group-flush">
-                        <a href="#profile-information" class="list-group-item list-group-item-action">
+                        <a href="{{ route($profileRouteName) }}#profile-information" class="list-group-item list-group-item-action">
                             <i class="far fa-id-badge mr-2 text-primary"></i>Profile Information
                         </a>
-                        <a href="#update-password" class="list-group-item list-group-item-action">
+                        <a href="{{ route($profileRouteName) }}#update-password" class="list-group-item list-group-item-action">
                             <i class="fas fa-key mr-2 text-primary"></i>Change Password
                         </a>
                         @if (Laravel\Fortify\Features::canManageTwoFactorAuthentication())
-                            <a href="#two-factor-authentication" class="list-group-item list-group-item-action">
+                            <a href="{{ route($profileRouteName) }}#two-factor-authentication" class="list-group-item list-group-item-action">
                                 <i class="fas fa-shield-alt mr-2 text-primary"></i>Two-Factor Authentication
                             </a>
                         @endif
-                        <a href="#browser-sessions" class="list-group-item list-group-item-action">
+                        <a href="{{ route($profileRouteName) }}#browser-sessions" class="list-group-item list-group-item-action">
                             <i class="fas fa-laptop mr-2 text-primary"></i>Browser Sessions
                         </a>
                         @if (Laravel\Jetstream\Jetstream::hasAccountDeletionFeatures())
-                            <a href="#delete-account" class="list-group-item list-group-item-action text-danger">
+                            <a href="{{ route($profileRouteName) }}#delete-account" class="list-group-item list-group-item-action text-danger">
                                 <i class="fas fa-user-times mr-2"></i>Delete Account
                             </a>
                         @endif
