@@ -60,6 +60,23 @@ class AuthenticationTest extends TestCase
         $response->assertRedirect('/admin');
     }
 
+    public function test_super_admin_users_do_not_follow_tenant_intended_url_after_login(): void
+    {
+        $user = User::factory()->create([
+            'role' => 'super_admin',
+            'email_verified_at' => now(),
+        ]);
+
+        $response = $this->withSession(['url.intended' => '/app/dashboard'])
+            ->post('/login', [
+                'email' => $user->email,
+                'password' => 'password',
+            ]);
+
+        $this->assertAuthenticated();
+        $response->assertRedirect('/admin');
+    }
+
     public function test_owner_users_are_redirected_to_tenant_dashboard_after_login(): void
     {
         $tenant = Tenant::create([
@@ -79,6 +96,31 @@ class AuthenticationTest extends TestCase
             'email' => $user->email,
             'password' => 'password',
         ]);
+
+        $this->assertAuthenticated();
+        $response->assertRedirect('/app/dashboard');
+    }
+
+    public function test_owner_users_do_not_follow_admin_intended_url_after_login(): void
+    {
+        $tenant = Tenant::create([
+            'name' => 'Redirect Dorm',
+            'domain' => 'redirect-owner.local',
+            'plan' => 'trial',
+            'status' => 'active',
+        ]);
+
+        $user = User::factory()->create([
+            'tenant_id' => $tenant->id,
+            'role' => 'owner',
+            'email_verified_at' => now(),
+        ]);
+
+        $response = $this->withSession(['url.intended' => '/admin'])
+            ->post('/login', [
+                'email' => $user->email,
+                'password' => 'password',
+            ]);
 
         $this->assertAuthenticated();
         $response->assertRedirect('/app/dashboard');
