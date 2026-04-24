@@ -759,8 +759,16 @@ class DashboardController extends Controller
 
     public function settings(): View
     {
+        $tenant = app(TenantContext::class)->tenant();
+        /** @var \App\Models\User $user */
+        $user = auth()->user();
+        $linkService = app(\App\Services\OwnerLineLinkService::class);
+
         return view('dashboard.settings', [
-            'tenant' => app(TenantContext::class)->tenant(),
+            'tenant' => $tenant,
+            'ownerActiveLink' => $linkService->findActiveTokenFor($user, \App\Models\OwnerLineLink::SCOPE_TENANT),
+            'ownerLinkTtlMinutes' => \App\Services\OwnerLineLinkService::TTL_MINUTES,
+            'platformDefaults' => \App\Models\PlatformSetting::current(),
         ]);
     }
 
@@ -784,6 +792,12 @@ class DashboardController extends Controller
             'invoice_send_channels'     => ['nullable', Rule::in(['line', 'email', 'both'])],
             'overdue_reminder_after_days' => ['nullable', 'integer', 'between:1,31'],
             'overdue_reminder_channels' => ['nullable', Rule::in(['line', 'email', 'both'])],
+            'notify_owner_payment_received' => ['nullable', Rule::in(['inherit', 'on', 'off'])],
+            'notify_owner_utility_reminder_day' => ['nullable', Rule::in(['inherit', 'on', 'off'])],
+            'notify_owner_invoice_create_day' => ['nullable', Rule::in(['inherit', 'on', 'off'])],
+            'notify_owner_invoice_send_day' => ['nullable', Rule::in(['inherit', 'on', 'off'])],
+            'notify_owner_overdue_digest' => ['nullable', Rule::in(['inherit', 'on', 'off'])],
+            'notify_owner_channels' => ['nullable', Rule::in(['inherit', 'line', 'email', 'both'])],
         ]);
 
         $tenant = app(TenantContext::class)->tenant();
@@ -808,6 +822,12 @@ class DashboardController extends Controller
             'invoice_send_channels'     => $validated['invoice_send_channels'] ?? $tenant?->invoice_send_channels ?? 'line',
             'overdue_reminder_after_days' => $validated['overdue_reminder_after_days'] ?? $tenant?->overdue_reminder_after_days ?? 1,
             'overdue_reminder_channels' => $validated['overdue_reminder_channels'] ?? $tenant?->overdue_reminder_channels ?? 'line',
+            'notify_owner_payment_received' => $this->notifyOverrideToBool($validated['notify_owner_payment_received'] ?? null),
+            'notify_owner_utility_reminder_day' => $this->notifyOverrideToBool($validated['notify_owner_utility_reminder_day'] ?? null),
+            'notify_owner_invoice_create_day' => $this->notifyOverrideToBool($validated['notify_owner_invoice_create_day'] ?? null),
+            'notify_owner_invoice_send_day' => $this->notifyOverrideToBool($validated['notify_owner_invoice_send_day'] ?? null),
+            'notify_owner_overdue_digest' => $this->notifyOverrideToBool($validated['notify_owner_overdue_digest'] ?? null),
+            'notify_owner_channels' => $this->notifyChannelOverride($validated['notify_owner_channels'] ?? null),
         ]);
 
         return back()->with('status', 'Settings updated.');
@@ -1456,5 +1476,53 @@ class DashboardController extends Controller
                 'total' => round($total, 2),
             ];
         });
+    }
+
+    public function createOwnerLineLink(): RedirectResponse
+    {
+        /** @var \App\Models\User $user */
+        $user = auth()->user();
+        abort_unless($user->canAccessTenantPortal(), 403);
+
+        $link = app(\App\Services\OwnerLineLinkService::class)
+            ->createForUser($user, \App\Models\OwnerLineLink::SCOPE_TENANT);
+
+        $tenant = app(TenantContext::class)->tenant();
+
+        return back()->with('owner_line_link', [
+            'token' => $link->link_token,
+            'expires_at' => $link->expired_at->format('d/m/Y H:i'),
+            'add_friend_url' => $tenant?->lineAddFriendUrl(),
+            'instruction' => 'เพิ่มเพื่อน LINE OA ของหอแล้วพิมพ์ข้อความ: OWNER:'.$link->link_token,
+        ]);
+    }
+
+    public function unlinkOwnerLine(): RedirectResponse
+    {
+        /** @var \App\Models\User $user */
+        $user = auth()->user();
+        abort_unless($user->canAccessTenantPortal(), 403);
+
+        app(\App\Services\OwnerLineLinkService::class)
+            ->unlink($user, \App\Models\OwnerLineLink::SCOPE_TENANT);
+
+        return back()->with('status', 'ยกเลิกการผูก LINE ของเจ้าของหอเรียบร้อย');
+    }
+
+    /**
+     * Map tri-state owner-notification override (inherit/on/off) to nullable boolean.
+     */
+    private function notifyOverrideToBool(?string $value): ?bool
+    {
+        return match ($value) {
+            'on' => true,
+            'off' => false,
+            default => null,
+        };
+    }
+
+    private function notifyChannelOverride(?string $value): ?string
+    {
+        return in_array($value, ['line', 'email', 'both'], true) ? $value : null;
     }
 }

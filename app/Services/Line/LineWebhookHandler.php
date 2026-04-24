@@ -9,9 +9,11 @@ use App\Models\CustomerLineLink;
 use App\Models\Invoice;
 use App\Models\LineMessage;
 use App\Models\NotificationLog;
+use App\Models\OwnerLineLink;
 use App\Models\Payment;
 use App\Models\Room;
 use App\Models\Tenant;
+use App\Services\OwnerLineLinkService;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\URL;
 
@@ -21,6 +23,7 @@ final class LineWebhookHandler
         private readonly LineService $lineService,
         private readonly CommandRouter $commandRouter,
         private readonly MessageBuilder $messageBuilder,
+        private readonly OwnerLineLinkService $ownerLineLinkService,
     ) {}
 
     /**
@@ -99,6 +102,17 @@ final class LineWebhookHandler
                 'message' => 'LINE message received without text',
                 'status' => 'received',
                 'payload' => [],
+            ];
+        }
+
+        if ($fromText && ($ownerLinkMessage = $this->attemptOwnerLink($tenant, $userId, $input)) !== null) {
+            $replyPayload = $this->lineService->replyText($tenant, $replyToken, $ownerLinkMessage);
+            $this->recordOutboundMessage($tenant, $userId, 'text', $ownerLinkMessage, $replyPayload);
+
+            return [
+                'message' => 'Owner LINE account linked',
+                'status' => str_contains($ownerLinkMessage, 'สำเร็จ') ? 'owner_linked' : 'invalid_owner_link_token',
+                'payload' => ['reply' => $replyPayload],
             ];
         }
 
@@ -242,6 +256,27 @@ final class LineWebhookHandler
             'contact' => 'Resident requested owner contact details',
             default => 'Resident sent unsupported command',
         };
+    }
+
+    private function attemptOwnerLink(Tenant $tenant, string $userId, string $text): ?string
+    {
+        $token = OwnerLineLinkService::normalizeInboundToken($text);
+
+        if ($token === null || $userId === '') {
+            return null;
+        }
+
+        $link = $this->ownerLineLinkService->consume(OwnerLineLink::SCOPE_TENANT, $token, $userId);
+
+        if ($link === null) {
+            return 'รหัสผูกบัญชีเจ้าของไม่ถูกต้องหรือหมดอายุ กรุณาขอรหัสใหม่จากหน้า /app/settings';
+        }
+
+        if ($link->tenant_id !== null && $link->tenant_id !== $tenant->id) {
+            return 'รหัสนี้ไม่ตรงกับหอพักของช่องทาง LINE OA นี้';
+        }
+
+        return 'ผูกบัญชี LINE ของเจ้าของหอสำเร็จ ระบบจะส่งการแจ้งเตือนผ่านช่องทางนี้';
     }
 
     private function attemptLink(Tenant $tenant, string $userId, string $text): ?string

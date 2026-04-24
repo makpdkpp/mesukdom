@@ -259,6 +259,39 @@ final class AdminPortalController extends Controller
         ]);
     }
 
+    public function notifications(): View
+    {
+        return view('dashboard.admin-notifications', [
+            'platformSetting' => PlatformSetting::current(),
+        ]);
+    }
+
+    public function updateNotifications(Request $request): RedirectResponse
+    {
+        $validated = $request->validate([
+            'default_notify_owner_payment_received'      => ['nullable'],
+            'default_notify_owner_utility_reminder_day'  => ['nullable'],
+            'default_notify_owner_invoice_create_day'    => ['nullable'],
+            'default_notify_owner_invoice_send_day'      => ['nullable'],
+            'default_notify_owner_overdue_digest'        => ['nullable'],
+            'default_notify_owner_channels'              => ['required', \Illuminate\Validation\Rule::in(['line', 'email', 'both'])],
+            'platform_line_owner_broadcast_enabled'      => ['nullable'],
+        ]);
+
+        $setting = PlatformSetting::current();
+        $setting->fill([
+            'default_notify_owner_payment_received'      => (bool) ($validated['default_notify_owner_payment_received'] ?? false),
+            'default_notify_owner_utility_reminder_day'  => (bool) ($validated['default_notify_owner_utility_reminder_day'] ?? false),
+            'default_notify_owner_invoice_create_day'    => (bool) ($validated['default_notify_owner_invoice_create_day'] ?? false),
+            'default_notify_owner_invoice_send_day'      => (bool) ($validated['default_notify_owner_invoice_send_day'] ?? false),
+            'default_notify_owner_overdue_digest'        => (bool) ($validated['default_notify_owner_overdue_digest'] ?? false),
+            'default_notify_owner_channels'              => $validated['default_notify_owner_channels'],
+            'platform_line_owner_broadcast_enabled'      => (bool) ($validated['platform_line_owner_broadcast_enabled'] ?? false),
+        ])->save();
+
+        return back()->with('success', 'อัปเดตค่าเริ่มต้นการแจ้งเตือนเรียบร้อย');
+    }
+
     public function updateSlipOkSettings(Request $request): RedirectResponse
     {
         $validated = $request->validate([

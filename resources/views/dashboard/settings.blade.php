@@ -312,10 +312,113 @@
                 </div>
             </div>
 
+            {{-- การแจ้งเตือนเจ้าของหอ --}}
+            @php
+                $platformDefaults = $platformDefaults ?? \App\Models\PlatformSetting::current();
+                $notifyEvents = [
+                    'payment_received'      => ['ผู้เช่าชำระเงินสำเร็จ', 'ส่งทันทีหลังเจ้าของอนุมัติ slip หรือบันทึกการชำระ'],
+                    'utility_reminder_day'  => ['วันแจ้งเตือนบันทึกค่าน้ำ-ไฟ', 'ตามวันใน Utility Entry Reminder Day'],
+                    'invoice_create_day'    => ['วันสร้างใบแจ้งหนี้ประจำเดือน', 'ตามวันใน Invoice Generate Day'],
+                    'invoice_send_day'      => ['วันส่งใบแจ้งหนี้ให้ผู้เช่า', 'ตามวันใน Invoice Send Day'],
+                    'overdue_digest'        => ['สรุปบิลค้างชำระประจำวัน', 'ส่งรายการผู้ค้างชำระ ≤10 รายการต่อวัน'],
+                ];
+                $overrideToValue = function (?bool $v): string {
+                    if ($v === null) return 'inherit';
+                    return $v ? 'on' : 'off';
+                };
+            @endphp
+            <div class="card card-outline card-warning mb-4">
+                <div class="card-header"><h3 class="card-title"><i class="fas fa-bell mr-2"></i>การแจ้งเตือนเจ้าของหอ (LINE)</h3></div>
+                <div class="card-body">
+                    <p class="text-muted small mb-3">
+                        เลือก <strong>"ใช้ค่าจากแอดมิน"</strong> เพื่อใช้ default จากระบบ. ถ้าเลือก เปิด/ปิด จะ override เฉพาะหอนี้.
+                    </p>
+                    @foreach($notifyEvents as $eventKey => [$label, $hint])
+                        @php
+                            $current = old("notify_owner_{$eventKey}", $overrideToValue($tenant?->{"notify_owner_{$eventKey}"}));
+                            $defaultEnabled = (bool) ($platformDefaults->{"default_notify_owner_{$eventKey}"} ?? true);
+                        @endphp
+                        <div class="form-group row align-items-center mb-2">
+                            <label class="col-md-5 col-form-label mb-0">
+                                {{ $label }}
+                                <small class="d-block text-muted">{{ $hint }}</small>
+                            </label>
+                            <div class="col-md-7">
+                                <select name="notify_owner_{{ $eventKey }}" class="form-control form-control-sm">
+                                    <option value="inherit" @selected($current === 'inherit')>ใช้ค่าจากแอดมิน ({{ $defaultEnabled ? 'เปิด' : 'ปิด' }})</option>
+                                    <option value="on"      @selected($current === 'on')>เปิดเฉพาะหอนี้</option>
+                                    <option value="off"     @selected($current === 'off')>ปิดเฉพาะหอนี้</option>
+                                </select>
+                            </div>
+                        </div>
+                    @endforeach
+
+                    @php
+                        $channelCurrent = old('notify_owner_channels', $tenant?->notify_owner_channels ?? 'inherit') ?: 'inherit';
+                        $channelDefault = (string) ($platformDefaults->default_notify_owner_channels ?? 'line');
+                    @endphp
+                    <div class="form-group row align-items-center mb-0">
+                        <label class="col-md-5 col-form-label mb-0">ช่องทางการแจ้งเตือน</label>
+                        <div class="col-md-7">
+                            <select name="notify_owner_channels" class="form-control form-control-sm">
+                                <option value="inherit" @selected($channelCurrent === 'inherit')>ใช้ค่าจากแอดมิน ({{ $channelDefault }})</option>
+                                <option value="line"    @selected($channelCurrent === 'line')>LINE</option>
+                                <option value="email"   @selected($channelCurrent === 'email')>Email</option>
+                                <option value="both"    @selected($channelCurrent === 'both')>LINE + Email</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             <div class="mb-4">
                 <button class="btn btn-primary btn-lg"><i class="fas fa-save mr-1"></i> Save Settings</button>
             </div>
         </form>
+
+        {{-- ผูก LINE ของเจ้าของหอ --}}
+        <div class="card card-outline card-success mb-4">
+            <div class="card-header"><h3 class="card-title"><i class="fab fa-line mr-2"></i>ผูก LINE ของเจ้าของหอ (สำหรับรับการแจ้งเตือน)</h3></div>
+            <div class="card-body">
+                @if(auth()->user()?->hasLinkedTenantLine())
+                    <div class="d-flex align-items-center justify-content-between mb-2">
+                        <div>
+                            <span class="badge badge-success"><i class="fas fa-check"></i> ผูกแล้ว</span>
+                            <small class="text-muted ml-2">ผูกเมื่อ {{ auth()->user()->line_linked_at?->format('d/m/Y H:i') }}</small>
+                        </div>
+                        <form method="POST" action="{{ route('app.owner-line.unlink') }}">
+                            @csrf
+                            <button class="btn btn-outline-danger btn-sm" onclick="return confirm('ยกเลิกการผูก LINE?')"><i class="fas fa-unlink mr-1"></i> ยกเลิกการผูก</button>
+                        </form>
+                    </div>
+                @elseif(session('owner_line_link'))
+                    @php($linkInfo = session('owner_line_link'))
+                    <div class="alert alert-warning mb-2">
+                        <h5 class="mb-2"><i class="fas fa-key mr-1"></i> รหัสผูก LINE: <code class="h4">OWNER:{{ $linkInfo['token'] }}</code></h5>
+                        <p class="mb-1">{{ $linkInfo['instruction'] }}</p>
+                        <small>หมดอายุ: {{ $linkInfo['expires_at'] }}</small>
+                        @if(!empty($linkInfo['add_friend_url']))
+                            <div class="mt-2">
+                                <a href="{{ $linkInfo['add_friend_url'] }}" target="_blank" class="btn btn-success btn-sm"><i class="fab fa-line mr-1"></i> เพิ่มเพื่อน LINE OA</a>
+                            </div>
+                        @endif
+                    </div>
+                @elseif($ownerActiveLink ?? null)
+                    <div class="alert alert-info mb-2">
+                        <small>มีรหัสผูกที่ยังไม่ได้ใช้: <code>OWNER:{{ $ownerActiveLink->link_token }}</code> (หมดอายุ {{ $ownerActiveLink->expired_at->format('d/m/Y H:i') }})</small>
+                    </div>
+                @else
+                    <p class="text-muted small mb-2">กดปุ่มด้านล่างเพื่อสร้างรหัส 6 หลัก แล้วพิมพ์ลง LINE OA ของหอเพื่อผูก LINE ของคุณ (เจ้าของหอ) สำหรับรับการแจ้งเตือน</p>
+                @endif
+                <form method="POST" action="{{ route('app.owner-line.link-token') }}">
+                    @csrf
+                    <button class="btn btn-success" @disabled(auth()->user()?->hasLinkedTenantLine())>
+                        <i class="fas fa-link mr-1"></i>
+                        @if(auth()->user()?->hasLinkedTenantLine()) ผูกแล้ว @else สร้างรหัสผูก LINE ({{ $ownerLinkTtlMinutes ?? 30 }} นาที) @endif
+                    </button>
+                </form>
+            </div>
+        </div>
 
         <form method="POST" action="{{ route('app.settings.line-rich-menu.sync') }}" class="mb-4">
             @csrf

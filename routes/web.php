@@ -77,6 +77,9 @@ Route::middleware(['auth', 'verified', 'role:owner,staff', 'tenant.active', 'ten
     Route::post('/settings', [DashboardController::class, 'updateSettings'])->name('app.settings.update');
     Route::post('/settings/line-rich-menu/sync', [DashboardController::class, 'syncLineRichMenu'])->name('app.settings.line-rich-menu.sync');
 
+    Route::post('/owner-line/link-token', [DashboardController::class, 'createOwnerLineLink'])->name('app.owner-line.link-token');
+    Route::post('/owner-line/unlink', [DashboardController::class, 'unlinkOwnerLine'])->name('app.owner-line.unlink');
+
     Route::get('/invoices/{invoice}/promptpay-qr', [DashboardController::class, 'promptpayQr'])->name('app.invoices.promptpay-qr');
 });
 
@@ -86,6 +89,9 @@ Route::middleware(['auth', 'verified', 'role:super_admin,support_admin'])->prefi
     Route::get('/tenants', [AdminPortalController::class, 'tenants'])->name('admin.tenants');
     Route::get('/platform', [AdminPortalController::class, 'index'])->name('admin.platform');
     Route::get('/packages', [AdminPortalController::class, 'packages'])->name('admin.packages');
+
+    Route::get('/notifications', [AdminPortalController::class, 'notifications'])->name('admin.notifications');
+    Route::post('/notifications', [AdminPortalController::class, 'updateNotifications'])->name('admin.notifications.update');
 
     Route::post('/maintenance/migrate', [AdminPortalController::class, 'migrate'])->name('admin.maintenance.migrate');
     Route::post('/maintenance/rollback', [AdminPortalController::class, 'rollback'])->name('admin.maintenance.rollback');
