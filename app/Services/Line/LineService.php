@@ -100,6 +100,27 @@ final class LineService
     }
 
     /**
+     * @param array<string,mixed> $flex
+     * @return array<string,mixed>
+     */
+    public function pushFlex(Tenant $tenant, ?string $lineUserId, array $flex): array
+    {
+        $token = $this->resolveAccessToken($tenant);
+
+        if (! $lineUserId || ! $token) {
+            return ['status' => 'skipped'];
+        }
+
+        $response = Http::withToken($token)
+            ->post('https://api.line.me/v2/bot/message/push', [
+                'to' => $lineUserId,
+                'messages' => [$flex],
+            ]);
+
+        return $this->responsePayload($response);
+    }
+
+    /**
      * @return array<string, mixed>
      */
     public function syncResidentRichMenu(Tenant $tenant): array

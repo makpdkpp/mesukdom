@@ -17,6 +17,7 @@ final class OwnerNotifier
      * after checking the cascading preference and channel selection.
      *
      * @param  array<string, mixed>  $payload
+     * @param  array<string, mixed>|null $flex Optional Flex Message payload to send instead of plain text.
      * @return int Number of jobs dispatched.
      */
     public static function pushLineToOwners(
@@ -26,6 +27,7 @@ final class OwnerNotifier
         array $payload = [],
         ?int $customerId = null,
         ?string $idempotencyKey = null,
+        ?array $flex = null,
     ): int {
         if (! OwnerNotificationPreferences::enabled($tenant, $event)) {
             return 0;
@@ -58,6 +60,7 @@ final class OwnerNotifier
                     'user:'.$owner->id,
                     $customerId,
                     array_merge($payload, ['idempotency_key' => $idempotencyKey]),
+                    $flex,
                 )->delay(now()->addSeconds($chunkIndex * 2));
                 $count++;
             }

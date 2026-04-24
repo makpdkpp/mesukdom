@@ -40,8 +40,8 @@ final class PlatformLineWebhookHandler
                 ? trim((string) data_get($event, 'message.text', ''))
                 : trim((string) data_get($event, 'postback.data', ''));
 
-            $token = OwnerLineLinkService::normalizeInboundToken($input);
-            if ($token === null || $userId === '') {
+            $parsed = OwnerLineLinkService::parseInboundToken($input);
+            if ($parsed === null || $userId === '') {
                 $reply = $this->platformLineService->replyText($replyToken, 'คำสั่งที่รองรับ: ADMIN:XXXXXX');
 
                 return [
@@ -51,6 +51,18 @@ final class PlatformLineWebhookHandler
                 ];
             }
 
+            if ($parsed['scope'] !== OwnerLineLink::SCOPE_PLATFORM) {
+                $message = 'รหัส OWNER ใช้สำหรับผูกเจ้าของหอผ่าน LINE OA ของหอ ไม่ใช่ช่องนี้ กรุณาส่งรหัสนี้ไปที่ LINE OA ของหอแทน';
+                $reply = $this->platformLineService->replyText($replyToken, $message);
+
+                return [
+                    'message' => $message,
+                    'status' => 'wrong_scope_owner_token',
+                    'payload' => ['reply' => $reply],
+                ];
+            }
+
+            $token = $parsed['token'];
             $link = $this->ownerLineLinkService->consume(OwnerLineLink::SCOPE_PLATFORM, $token, $userId);
             $message = $link === null
                 ? 'รหัสผูก Platform LINE ไม่ถูกต้องหรือหมดอายุแล้ว'

@@ -73,11 +73,7 @@ final class OwnerLineLinkService
             return null;
         }
 
-        if ($this->tooManyAttempts($scope, $token)) {
-            return null;
-        }
-
-        return DB::transaction(function () use ($scope, $token, $lineUserId, $tenantId): ?OwnerLineLink {
+        $link = DB::transaction(function () use ($scope, $token, $lineUserId, $tenantId): ?OwnerLineLink {
             /** @var ?OwnerLineLink $link */
             $query = OwnerLineLink::query()
                 ->where('scope', $scope)
@@ -124,6 +120,18 @@ final class OwnerLineLinkService
 
             return $link->fresh();
         });
+
+        if ($link === null) {
+            if ($this->tooManyAttempts($scope, $token)) {
+                return null;
+            }
+
+            return null;
+        }
+
+        $this->clearAttempts($scope, $token);
+
+        return $link;
     }
 
     public function unlink(User $owner, string $scope): void
@@ -160,12 +168,31 @@ final class OwnerLineLinkService
 
     public static function normalizeInboundToken(string $text): ?string
     {
-        // Accept: "OWNER:ABC123", "OWNER ABC123", "ผูกเจ้าของ ABC123"
-        if (! preg_match('/^(?:owner|admin|ผูกเจ้าของ|ผูกแอดมิน)\s*[:\-]?\s*([A-Z0-9]{'.self::TOKEN_LENGTH.',})$/iu', trim($text), $m)) {
+        $parsed = self::parseInboundToken($text);
+
+        return $parsed['token'] ?? null;
+    }
+
+    /**
+     * Parse an inbound LINE message into a scope + token. Returns null if it doesn't look like a link command.
+     *
+     * @return array{scope:string,token:string}|null
+     */
+    public static function parseInboundToken(string $text): ?array
+    {
+        if (! preg_match('/^(owner|admin|ผูกเจ้าของ|ผูกแอดมิน)\s*[:\-]?\s*([A-Z0-9]{'.self::TOKEN_LENGTH.',})$/iu', trim($text), $m)) {
             return null;
         }
 
-        return strtoupper((string) $m[1]);
+        $prefix = mb_strtolower((string) $m[1]);
+        $scope = in_array($prefix, ['admin', 'ผูกแอดมิน'], true)
+            ? OwnerLineLink::SCOPE_PLATFORM
+            : OwnerLineLink::SCOPE_TENANT;
+
+        return [
+            'scope' => $scope,
+            'token' => strtoupper((string) $m[2]),
+        ];
     }
 
     private function normalizeScope(string $scope): string
@@ -193,7 +220,7 @@ final class OwnerLineLinkService
 
     private function tooManyAttempts(string $scope, string $token): bool
     {
-        $cacheKey = sprintf('owner-link-attempts:%s:%s', $scope, $token);
+        $cacheKey = $this->attemptsCacheKey($scope, $token);
 
         if (RateLimiter::tooManyAttempts($cacheKey, 5)) {
             return true;
@@ -202,5 +229,15 @@ final class OwnerLineLinkService
         RateLimiter::hit($cacheKey, 60);
 
         return false;
+    }
+
+    private function clearAttempts(string $scope, string $token): void
+    {
+        RateLimiter::clear($this->attemptsCacheKey($scope, $token));
+    }
+
+    private function attemptsCacheKey(string $scope, string $token): string
+    {
+        return sprintf('owner-link-attempts:%s:%s', $scope, $token);
     }
 }

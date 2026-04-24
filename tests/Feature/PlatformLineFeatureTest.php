@@ -10,13 +10,23 @@ use App\Models\OwnerLineLink;
 use App\Models\PlatformSetting;
 use App\Models\Tenant;
 use App\Models\User;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\Queue;
 use Tests\TestCase;
 
 final class PlatformLineFeatureTest extends TestCase
 {
     use RefreshDatabase;
+
+    public function test_line_user_id_columns_use_text_storage_for_encrypted_values(): void
+    {
+        $columns = collect(DB::select("PRAGMA table_info('users')"))->keyBy('name');
+
+        self::assertSame('TEXT', strtoupper((string) $columns['line_user_id']->type));
+        self::assertSame('TEXT', strtoupper((string) $columns['platform_line_user_id']->type));
+    }
 
     public function test_platform_webhook_rejects_invalid_signature(): void
     {
@@ -129,6 +139,47 @@ final class PlatformLineFeatureTest extends TestCase
         $job = new ProcessPlatformWebhookEventJob([
             'type' => 'message',
             'replyToken' => 'reply-platform-consume',
+            'source' => ['userId' => 'U-platform-linked'],
+            'message' => ['type' => 'text', 'text' => 'ADMIN:ABC123'],
+        ]);
+
+        app()->call([$job, 'handle']);
+
+        $admin->refresh();
+
+        self::assertSame('U-platform-linked', $admin->platform_line_user_id);
+        $this->assertDatabaseHas('notification_logs', [
+            'channel' => 'line:platform',
+            'status' => 'platform_linked',
+        ]);
+    }
+
+    public function test_platform_owner_link_can_still_be_consumed_after_limiter_threshold_when_token_is_valid(): void
+    {
+        PlatformSetting::current()->update([
+            'platform_line_channel_secret' => 'platform-secret',
+        ]);
+
+        $admin = User::factory()->create([
+            'role' => 'super_admin',
+            'email_verified_at' => now(),
+        ]);
+
+        OwnerLineLink::query()->create([
+            'tenant_id' => null,
+            'user_id' => $admin->id,
+            'scope' => OwnerLineLink::SCOPE_PLATFORM,
+            'link_token' => 'ABC123',
+            'expired_at' => now()->addMinutes(30),
+        ]);
+
+        for ($attempt = 0; $attempt < 5; $attempt++) {
+            RateLimiter::hit('owner-link-attempts:platform:ABC123', 60);
+        }
+
+        $job = new ProcessPlatformWebhookEventJob([
+            'type' => 'message',
+            'replyToken' => 'reply-platform-consume-limited',
             'source' => ['userId' => 'U-platform-linked'],
             'message' => ['type' => 'text', 'text' => 'ADMIN:ABC123'],
         ]);

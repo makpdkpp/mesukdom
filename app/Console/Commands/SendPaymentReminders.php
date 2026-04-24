@@ -9,6 +9,7 @@ use App\Models\Customer;
 use App\Models\Invoice;
 use App\Models\Room;
 use App\Models\Tenant;
+use App\Services\Line\ResidentFlexBuilder;
 use App\Support\TenantContext;
 use Illuminate\Console\Command;
 use Illuminate\Support\Carbon;
@@ -74,7 +75,8 @@ class SendPaymentReminders extends Command
             $message,
             $customer?->name,
             $customer?->id,
-            ['invoice_id' => $invoice->id]
+            ['invoice_id' => $invoice->id],
+            app(ResidentFlexBuilder::class)->paymentReminder($invoice, 'แจ้งเตือนบิล '.$invoice->invoice_no.' ใกล้ครบกำหนด'),
         );
 
         $this->line(sprintf(

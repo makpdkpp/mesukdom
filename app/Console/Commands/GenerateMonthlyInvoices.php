@@ -137,6 +137,7 @@ final class GenerateMonthlyInvoices extends Command
                     ['count' => $countCreated, 'month' => $month->format('Y-m')],
                     null,
                     'invoice_create_day:'.$month->format('Y-m'),
+                    app(\App\Services\Line\OwnerFlexBuilder::class)->invoiceCreateDay($tenant->name, $countCreated, route('app.invoices')),
                 );
             }
         }

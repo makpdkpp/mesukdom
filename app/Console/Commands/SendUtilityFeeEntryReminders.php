@@ -89,6 +89,7 @@ final class SendUtilityFeeEntryReminders extends Command
                 ['day' => $today->toDateString()],
                 null,
                 'utility_reminder_day:'.$today->toDateString(),
+                app(\App\Services\Line\OwnerFlexBuilder::class)->utilityReminderDay($tenant->name, route('app.utility')),
             );
         }
 

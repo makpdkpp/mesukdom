@@ -11,6 +11,7 @@ use App\Models\Invoice;
 use App\Models\NotificationLog;
 use App\Models\Room;
 use App\Models\Tenant;
+use App\Services\Line\ResidentFlexBuilder;
 use App\Support\TenantContext;
 use Illuminate\Console\Command;
 use Illuminate\Support\Carbon;
@@ -91,7 +92,8 @@ final class SendOverdueWarnings extends Command
                             $message,
                             $customer->name,
                             $customer->id,
-                            ['invoice_id' => $invoice->id]
+                            ['invoice_id' => $invoice->id],
+                            app(ResidentFlexBuilder::class)->overdueWarning($invoice, $daysOverdue, 'บิล '.$invoice->invoice_no.' ค้างชำระ'),
                         );
 
                         $sent++;
@@ -144,6 +146,7 @@ final class SendOverdueWarnings extends Command
                 ['count' => $entries->count(), 'day' => today()->toDateString()],
                 null,
                 'overdue_digest:'.today()->toDateString(),
+                app(\App\Services\Line\OwnerFlexBuilder::class)->overdueDigest($tenant->name, $entries, route('app.invoices')),
             );
         }
 

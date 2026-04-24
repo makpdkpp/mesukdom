@@ -9,6 +9,7 @@ use App\Mail\InvoiceLinkNotification;
 use App\Models\Invoice;
 use App\Models\NotificationLog;
 use App\Models\Tenant;
+use App\Services\Line\ResidentFlexBuilder;
 use App\Support\TenantContext;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Mail;
@@ -75,7 +76,8 @@ final class SendInvoiceLinks extends Command
                             $message,
                             $customer->name,
                             $customer->id,
-                            ['invoice_id' => $invoice->id]
+                            ['invoice_id' => $invoice->id],
+                            app(ResidentFlexBuilder::class)->invoiceLink($invoice, 'บิล '.$invoice->invoice_no.' พร้อมชำระแล้ว'),
                         );
                         $sent++;
                         $sentByTenant[$tenant->id]++;
@@ -127,6 +129,7 @@ final class SendInvoiceLinks extends Command
                 ['count' => $countSent, 'day' => $today->toDateString()],
                 null,
                 'invoice_send_day:'.$today->toDateString(),
+                app(\App\Services\Line\OwnerFlexBuilder::class)->invoiceSendDay($tenant->name, $countSent, route('app.invoices')),
             );
         }
 

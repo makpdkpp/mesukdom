@@ -8,6 +8,7 @@ use App\Models\PlatformSetting;
 use App\Models\Tenant;
 use App\Models\User;
 use App\Services\Line\LineService;
+use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
@@ -143,6 +144,63 @@ final class LineSettingsSecurityTest extends TestCase
         self::assertNotNull($stored);
         $this->assertNotSame('legacy-plain-token', $stored->line_channel_access_token);
         $this->assertNotSame('legacy-plain-secret', $stored->line_channel_secret);
+    }
+
+    public function test_owner_settings_update_preserves_existing_line_credentials_when_fields_are_omitted(): void
+    {
+        $tenant = Tenant::query()->create([
+            'name' => 'Preserve Dorm',
+            'domain' => 'preserve.local',
+            'plan' => 'trial',
+            'status' => 'active',
+            'line_channel_access_token' => 'existing-tenant-token',
+            'line_channel_secret' => 'existing-tenant-secret',
+        ]);
+
+        $user = User::factory()->create([
+            'tenant_id' => $tenant->id,
+            'role' => 'owner',
+            'email_verified_at' => now(),
+        ]);
+
+        $this->actingAs($user)
+            ->withSession(['tenant_id' => $tenant->id])
+            ->post(route('app.settings.update'), [
+                'support_contact_name' => 'Still Owner',
+            ])
+            ->assertRedirect();
+
+        $tenant->refresh();
+
+        $this->assertSame('existing-tenant-token', $tenant->line_channel_access_token);
+        $this->assertSame('existing-tenant-secret', $tenant->line_channel_secret);
+    }
+
+    public function test_owner_link_expiry_is_displayed_in_application_timezone(): void
+    {
+        Carbon::setTestNow(Carbon::create(2026, 4, 24, 14, 3, 0, 'Asia/Bangkok'));
+
+        $tenant = Tenant::query()->create([
+            'name' => 'Timezone Dorm',
+            'domain' => 'timezone.local',
+            'plan' => 'trial',
+            'status' => 'active',
+        ]);
+
+        $user = User::factory()->create([
+            'tenant_id' => $tenant->id,
+            'role' => 'owner',
+            'email_verified_at' => now(),
+        ]);
+
+        $response = $this->actingAs($user)
+            ->withSession(['tenant_id' => $tenant->id])
+            ->post(route('app.owner-line.link-token'));
+
+        $response->assertRedirect();
+        $response->assertSessionHas('owner_line_link', function (array $link): bool {
+            return $link['expires_at'] === '24/04/2026 14:33';
+        });
     }
 
     public function test_line_service_does_not_fallback_to_env_token_when_tenant_token_is_missing(): void

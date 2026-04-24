@@ -803,6 +803,12 @@ class DashboardController extends Controller
 
         $tenant = app(TenantContext::class)->tenant();
         $webhookUrl = route('api.line.webhook');
+        $lineChannelAccessToken = filled($validated['line_channel_access_token'] ?? null)
+            ? $validated['line_channel_access_token']
+            : $tenant?->line_channel_access_token;
+        $lineChannelSecret = filled($validated['line_channel_secret'] ?? null)
+            ? $validated['line_channel_secret']
+            : $tenant?->line_channel_secret;
         $before = $tenant?->only([
             'promptpay_number',
             'line_channel_id',
@@ -840,8 +846,8 @@ class DashboardController extends Controller
             'line_channel_id'           => $validated['line_channel_id'] ?? null,
             'line_basic_id'             => $validated['line_basic_id'] ?? null,
             'line_webhook_url'          => $webhookUrl,
-            'line_channel_access_token' => $validated['line_channel_access_token'] ?? null,
-            'line_channel_secret'       => $validated['line_channel_secret'] ?? null,
+            'line_channel_access_token' => $lineChannelAccessToken,
+            'line_channel_secret'       => $lineChannelSecret,
             'support_contact_name'      => $validated['support_contact_name'] ?? null,
             'support_contact_phone'     => $validated['support_contact_phone'] ?? null,
             'support_line_id'           => $validated['support_line_id'] ?? null,
@@ -1213,7 +1219,8 @@ class DashboardController extends Controller
             $message,
             $customer?->name,
             $customer?->id,
-            ['invoice_id' => $invoice->id]
+            ['invoice_id' => $invoice->id],
+            app(\App\Services\Line\ResidentFlexBuilder::class)->invoiceLink($invoice, 'บิล '.$invoice->invoice_no.' '.$event),
         );
     }
 
@@ -1577,12 +1584,30 @@ class DashboardController extends Controller
         $payment->loadMissing(['invoice.customer', 'invoice.room']);
         $message = app(\App\Services\Line\MessageBuilder::class)->ownerPaymentReceived($payment);
 
+        $paidAt = $payment->payment_date instanceof \Illuminate\Support\Carbon
+            ? $payment->payment_date->format('d/m/Y')
+            : \Illuminate\Support\Carbon::parse((string) $payment->payment_date)->format('d/m/Y');
+
+        $flex = app(\App\Services\Line\OwnerFlexBuilder::class)->paymentReceived(
+            $tenant->name,
+            [
+                'customer' => (string) ($payment->invoice?->customer?->name ?? '-'),
+                'room' => (string) ($payment->invoice?->room?->room_number ?? '-'),
+                'amount' => (float) $payment->amount,
+                'date' => $paidAt,
+                'status' => (string) $payment->status,
+            ],
+            route('app.payments'),
+        );
+
         \App\Support\OwnerNotifier::pushLineToOwners(
             $tenant,
             'payment_received',
             $message,
             ['payment_id' => $payment->id, 'invoice_id' => $payment->invoice_id],
             $payment->invoice?->customer_id,
+            null,
+            $flex,
         );
     }
 }
