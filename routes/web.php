@@ -60,10 +60,10 @@ Route::middleware(['auth', 'verified', 'role:owner,staff', 'tenant.active', 'ten
     Route::post('/invoices/{invoice}/remind', [DashboardController::class, 'remindInvoice'])->name('app.invoices.remind');
 
     Route::get('/payments', [DashboardController::class, 'payments'])->name('app.payments');
-    Route::post('/payments', [DashboardController::class, 'storePayment'])->name('app.payments.store');
+    Route::post('/payments', [DashboardController::class, 'storePayment'])->middleware('api.monitor')->name('app.payments.store');
     Route::get('/payments/{payment}/receipt', [DashboardController::class, 'downloadReceiptPdf'])->name('app.payments.receipt');
     Route::get('/payments/{payment}/slip', [DashboardController::class, 'viewSlip'])->name('app.payments.slip');
-    Route::patch('/payments/{payment}/recheck-slip', [DashboardController::class, 'recheckPaymentSlip'])->name('app.payments.recheck-slip');
+    Route::patch('/payments/{payment}/recheck-slip', [DashboardController::class, 'recheckPaymentSlip'])->middleware('api.monitor')->name('app.payments.recheck-slip');
     Route::patch('/payments/{payment}/approve', [DashboardController::class, 'approvePayment'])->name('app.payments.approve');
     Route::patch('/payments/{payment}/reject', [DashboardController::class, 'rejectPayment'])->name('app.payments.reject');
     
@@ -85,6 +85,7 @@ Route::middleware(['auth', 'verified', 'role:owner,staff', 'tenant.active', 'ten
 
 Route::middleware(['auth', 'verified', 'role:super_admin,support_admin'])->prefix('admin')->group(function (): void {
     Route::get('/', [AdminPortalController::class, 'dashboard'])->name('admin.dashboard');
+    Route::get('/api-monitor', [AdminPortalController::class, 'apiMonitor'])->name('admin.api-monitor');
     Route::get('/profile', [AdminPortalController::class, 'profile'])->name('admin.profile');
     Route::get('/dbmigration', [AdminPortalController::class, 'dbMigration'])->name('admin.dbmigration');
     Route::get('/tenants', [AdminPortalController::class, 'tenants'])->name('admin.tenants');
@@ -122,4 +123,4 @@ Route::middleware('signed')->group(function (): void {
     Route::get('/resident/line/repair/{customer}', [ResidentSupportController::class, 'createRepairRequest'])->name('resident.line.repair.create');
     Route::post('/resident/line/repair/{customer}', [ResidentSupportController::class, 'storeRepairRequest'])->name('resident.line.repair.store');
 });
-Route::post('/resident/invoices/{invoice:public_id}/pay-slip', [DashboardController::class, 'residentPaySlip'])->name('resident.invoice.pay-slip');
+Route::post('/resident/invoices/{invoice:public_id}/pay-slip', [DashboardController::class, 'residentPaySlip'])->middleware('api.monitor')->name('resident.invoice.pay-slip');

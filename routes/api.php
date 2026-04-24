@@ -11,13 +11,13 @@ Route::get('/user', function (Request $request) {
 })->middleware('auth:sanctum');
 
 Route::post('/line/webhook', LineWebhookController::class)
-    ->middleware('throttle:line-webhook')
+    ->middleware(['api.monitor', 'throttle:line-webhook'])
     ->name('api.line.webhook');
 
 Route::post('/line/platform-webhook', PlatformLineWebhookController::class)
-    ->middleware('throttle:line-webhook')
+    ->middleware(['api.monitor', 'throttle:line-webhook'])
     ->name('api.line.platform-webhook');
 
 Route::post('/stripe/webhook', StripeWebhookController::class)
-    ->middleware('throttle:stripe-webhook')
+    ->middleware(['api.monitor', 'throttle:stripe-webhook'])
     ->name('api.stripe.webhook');

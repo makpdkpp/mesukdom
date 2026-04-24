@@ -14,6 +14,7 @@ use App\Models\SlipVerificationUsage;
 use App\Models\Tenant;
 use App\Models\User;
 use App\Services\OwnerLineLinkService;
+use App\Support\ApiMonitorMetrics;
 use App\Support\SettingAuditLogger;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -67,6 +68,11 @@ final class AdminPortalController extends Controller
             'profileRouteName' => 'admin.profile',
             'showBillingLink' => false,
         ]);
+    }
+
+    public function apiMonitor(ApiMonitorMetrics $metrics): View
+    {
+        return view('dashboard.admin-api-monitor', $metrics->dashboardPayload());
     }
 
     public function migrate(Request $request): RedirectResponse

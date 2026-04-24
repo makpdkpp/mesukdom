@@ -45,4 +45,10 @@ return [
         'webhook_rate_limit' => env('STRIPE_WEBHOOK_RATE_LIMIT', 60),
     ],
 
+    'api_monitor' => [
+        'enabled' => env('API_MONITOR_ENABLED', true),
+        'redis_connection' => env('API_MONITOR_REDIS_CONNECTION', 'default'),
+        'log_channel' => env('API_MONITOR_LOG_CHANNEL', 'stack'),
+    ],
+
 ];

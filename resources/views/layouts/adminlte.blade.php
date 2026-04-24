@@ -76,6 +76,7 @@
                 <ul class="nav nav-pills nav-sidebar flex-column" data-widget="treeview">
                     @if($isAdminRoute)
                         <li class="nav-item"><a href="{{ route('admin.dashboard') }}" class="nav-link {{ request()->routeIs('admin.dashboard') ? 'active' : '' }}"><i class="nav-icon fas fa-chart-line"></i><p>Dashboard Admin</p></a></li>
+                        <li class="nav-item"><a href="{{ route('admin.api-monitor') }}" class="nav-link {{ request()->routeIs('admin.api-monitor') ? 'active' : '' }}"><i class="nav-icon fas fa-wave-square"></i><p>API Monitor</p></a></li>
                         <li class="nav-item"><a href="{{ route('admin.dbmigration') }}" class="nav-link {{ request()->routeIs('admin.dbmigration') ? 'active' : '' }}"><i class="nav-icon fas fa-database"></i><p>DBmigration</p></a></li>
                         <li class="nav-item"><a href="{{ route('admin.tenants') }}" class="nav-link {{ request()->routeIs('admin.tenants*') ? 'active' : '' }}"><i class="nav-icon fas fa-building"></i><p>Tenant</p></a></li>
                         <li class="nav-item"><a href="{{ route('admin.packages') }}" class="nav-link {{ request()->routeIs('admin.packages*') ? 'active' : '' }}"><i class="nav-icon fas fa-boxes"></i><p>Package Management</p></a></li>

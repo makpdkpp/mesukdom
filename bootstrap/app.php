@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Middleware\CheckTenantActive;
+use App\Http\Middleware\CaptureApiMetrics;
 use App\Http\Middleware\EnsureTenantCanWrite;
 use App\Http\Middleware\EnsureUserHasRole;
 use App\Http\Middleware\SetCurrentTenant;
@@ -30,6 +31,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->alias([
             'auth' => \Illuminate\Auth\Middleware\Authenticate::class,
             'verified' => \Illuminate\Auth\Middleware\EnsureEmailIsVerified::class,
+            'api.monitor' => CaptureApiMetrics::class,
             'role' => EnsureUserHasRole::class,
             'tenant.active' => CheckTenantActive::class,
             'tenant.write' => EnsureTenantCanWrite::class,

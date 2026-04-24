@@ -108,6 +108,7 @@ class AuthorizationTest extends TestCase
 
         $response->assertOk();
         $response->assertSeeText('Dashboard Admin');
+        $response->assertSeeText('API Monitor');
         $response->assertSeeText('Tenant');
         $response->assertSeeText('Package Management');
         $response->assertSeeText('Platform Admin');
@@ -341,6 +342,20 @@ class AuthorizationTest extends TestCase
         $response->assertSeeText('API Usage');
         $response->assertSeeText('Notification Logs');
         $response->assertSeeText('Payment Logs');
+    }
+
+    public function test_support_admin_can_access_api_monitor_page(): void
+    {
+        $admin = User::factory()->create([
+            'role' => 'support_admin',
+        ]);
+
+        $response = $this->actingAs($admin)->get('/admin/api-monitor');
+
+        $response->assertOk();
+        $response->assertSeeText('API Monitoring Overview');
+        $response->assertSeeText('Endpoint Metrics');
+        $response->assertSeeText('Prometheus Ready');
     }
 
     public function test_support_admin_cannot_access_tenant_portal_routes(): void
