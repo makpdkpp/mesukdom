@@ -98,8 +98,8 @@ final class SendLineMessageJob implements ShouldQueue
             'tenant_id' => $this->tenantId,
             'event' => $this->event,
             'target' => $this->target,
-            'line_user_id' => $this->lineUserId,
             'customer_id' => $this->customerId,
+            'status' => 'failed',
             'error' => $e->getMessage(),
         ]);
 
@@ -108,11 +108,10 @@ final class SendLineMessageJob implements ShouldQueue
             'channel' => 'line',
             'event' => $this->event,
             'target' => $this->target,
-            'message' => $this->message,
+            'message' => '[redacted]',
             'status' => 'failed',
             'payload' => array_merge($this->payload, [
                 'error' => $e->getMessage(),
-                'line_user_id' => $this->lineUserId,
                 'customer_id' => $this->customerId,
             ]),
         ]);

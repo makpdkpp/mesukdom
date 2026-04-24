@@ -24,6 +24,7 @@ final class LineWebhookHandler
         private readonly CommandRouter $commandRouter,
         private readonly MessageBuilder $messageBuilder,
         private readonly OwnerLineLinkService $ownerLineLinkService,
+        private readonly OwnerCommandHandler $ownerCommandHandler,
     ) {}
 
     /**
@@ -112,6 +113,23 @@ final class LineWebhookHandler
             return [
                 'message' => 'Owner LINE account linked',
                 'status' => str_contains($ownerLinkMessage, 'สำเร็จ') ? 'owner_linked' : 'invalid_owner_link_token',
+                'payload' => ['reply' => $replyPayload],
+            ];
+        }
+
+        $ownerCommand = $this->ownerCommandHandler->handle($tenant, $userId, $input, $fromText);
+
+        if (($ownerCommand['handled'] ?? false) === true) {
+            $replyPayload = $ownerCommand['flex'] !== null
+                ? $this->lineService->replyFlex($tenant, $replyToken, $ownerCommand['flex'])
+                : $this->lineService->replyText($tenant, $replyToken, (string) $ownerCommand['message']);
+
+            $outboundMessage = $ownerCommand['message'] ?? ((string) ($ownerCommand['flex']['altText'] ?? 'Owner command reply'));
+            $this->recordOutboundMessage($tenant, $userId, $ownerCommand['flex'] !== null ? 'flex' : 'text', (string) $outboundMessage, $replyPayload);
+
+            return [
+                'message' => (string) ($ownerCommand['message'] ?? 'Owner command handled'),
+                'status' => (string) ($ownerCommand['status'] ?? 'replied'),
                 'payload' => ['reply' => $replyPayload],
             ];
         }
@@ -266,14 +284,10 @@ final class LineWebhookHandler
             return null;
         }
 
-        $link = $this->ownerLineLinkService->consume(OwnerLineLink::SCOPE_TENANT, $token, $userId);
+        $link = $this->ownerLineLinkService->consume(OwnerLineLink::SCOPE_TENANT, $token, $userId, $tenant->id);
 
         if ($link === null) {
             return 'รหัสผูกบัญชีเจ้าของไม่ถูกต้องหรือหมดอายุ กรุณาขอรหัสใหม่จากหน้า /app/settings';
-        }
-
-        if ($link->tenant_id !== null && $link->tenant_id !== $tenant->id) {
-            return 'รหัสนี้ไม่ตรงกับหอพักของช่องทาง LINE OA นี้';
         }
 
         return 'ผูกบัญชี LINE ของเจ้าของหอสำเร็จ ระบบจะส่งการแจ้งเตือนผ่านช่องทางนี้';

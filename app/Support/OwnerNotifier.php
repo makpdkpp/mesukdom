@@ -48,17 +48,19 @@ final class OwnerNotifier
             ->get(['id', 'line_user_id']);
 
         $count = 0;
-        foreach ($owners as $owner) {
-            SendLineMessageJob::dispatch(
-                $tenant->id,
-                'owner_'.$event,
-                $owner->line_user_id,
-                $message,
-                'user:'.$owner->id,
-                $customerId,
-                array_merge($payload, ['idempotency_key' => $idempotencyKey]),
-            );
-            $count++;
+        foreach ($owners->chunk(50) as $chunkIndex => $chunk) {
+            foreach ($chunk as $owner) {
+                SendLineMessageJob::dispatch(
+                    $tenant->id,
+                    'owner_'.$event,
+                    $owner->line_user_id,
+                    $message,
+                    'user:'.$owner->id,
+                    $customerId,
+                    array_merge($payload, ['idempotency_key' => $idempotencyKey]),
+                )->delay(now()->addSeconds($chunkIndex * 2));
+                $count++;
+            }
         }
 
         return $count;

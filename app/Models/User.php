@@ -3,10 +3,14 @@
 namespace App\Models;
 
 use Illuminate\Contracts\Auth\MustVerifyEmail;
+use Illuminate\Contracts\Encryption\DecryptException;
 use Database\Factories\UserFactory;
+use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Illuminate\Support\Facades\Crypt;
 use Laravel\Fortify\TwoFactorAuthenticatable;
 use Laravel\Jetstream\HasProfilePhoto;
 use Laravel\Sanctum\HasApiTokens;
@@ -78,11 +82,46 @@ class User extends Authenticatable implements MustVerifyEmail
     }
 
     /**
+     * @return Attribute<?string, ?string>
+     */
+    protected function lineUserId(): Attribute
+    {
+        return $this->encryptedNullableStringAttribute();
+    }
+
+    /**
+     * @return Attribute<?string, ?string>
+     */
+    protected function platformLineUserId(): Attribute
+    {
+        return $this->encryptedNullableStringAttribute();
+    }
+
+    /**
+     * @return Attribute<?string, ?string>
+     */
+    protected function encryptedNullableStringAttribute(): Attribute
+    {
+        return Attribute::make(
+            get: fn (mixed $value): ?string => $this->decryptAttributeValue($value),
+            set: fn (mixed $value): ?string => $this->encryptAttributeValue($value),
+        );
+    }
+
+    /**
      * @return \Illuminate\Database\Eloquent\Relations\HasMany<OwnerLineLink, $this>
      */
     public function ownerLineLinks(): \Illuminate\Database\Eloquent\Relations\HasMany
     {
         return $this->hasMany(OwnerLineLink::class);
+    }
+
+    /**
+     * @return BelongsTo<Tenant, $this>
+     */
+    public function tenant(): BelongsTo
+    {
+        return $this->belongsTo(Tenant::class);
     }
 
     public function hasLinkedTenantLine(): bool
@@ -115,5 +154,35 @@ class User extends Authenticatable implements MustVerifyEmail
     public function canAccessAdminPortal(): bool
     {
         return $this->hasAnyRole(['super_admin', 'support_admin']);
+    }
+
+    private function decryptAttributeValue(mixed $value): ?string
+    {
+        if ($value === null || $value === '') {
+            return null;
+        }
+
+        if (! is_string($value)) {
+            return null;
+        }
+
+        try {
+            return Crypt::decryptString($value);
+        } catch (DecryptException) {
+            return $value;
+        }
+    }
+
+    private function encryptAttributeValue(mixed $value): ?string
+    {
+        if ($value === null || $value === '') {
+            return null;
+        }
+
+        if (! is_scalar($value)) {
+            return null;
+        }
+
+        return Crypt::encryptString((string) $value);
     }
 }

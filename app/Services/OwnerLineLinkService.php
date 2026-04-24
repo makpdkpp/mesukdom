@@ -5,10 +5,9 @@ declare(strict_types=1);
 namespace App\Services;
 
 use App\Models\OwnerLineLink;
-use App\Models\Tenant;
 use App\Models\User;
-use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\RateLimiter;
 
 final class OwnerLineLinkService
 {
@@ -40,10 +39,32 @@ final class OwnerLineLinkService
         });
     }
 
+    public function findConsumable(string $scope, string $token, ?int $tenantId = null): ?OwnerLineLink
+    {
+        $scope = $this->normalizeScope($scope);
+        $token = strtoupper(trim($token));
+
+        if ($token === '') {
+            return null;
+        }
+
+        $query = OwnerLineLink::query()
+            ->where('scope', $scope)
+            ->where('link_token', $token)
+            ->whereNull('used_at')
+            ->where('expired_at', '>', now());
+
+        if ($tenantId !== null) {
+            $query->where('tenant_id', $tenantId);
+        }
+
+        return $query->first();
+    }
+
     /**
      * Consume a token + bind LINE user id on the user. Returns null on invalid/expired.
      */
-    public function consume(string $scope, string $token, string $lineUserId): ?OwnerLineLink
+    public function consume(string $scope, string $token, string $lineUserId, ?int $tenantId = null): ?OwnerLineLink
     {
         $scope = $this->normalizeScope($scope);
         $token = strtoupper(trim($token));
@@ -52,13 +73,23 @@ final class OwnerLineLinkService
             return null;
         }
 
-        return DB::transaction(function () use ($scope, $token, $lineUserId): ?OwnerLineLink {
+        if ($this->tooManyAttempts($scope, $token)) {
+            return null;
+        }
+
+        return DB::transaction(function () use ($scope, $token, $lineUserId, $tenantId): ?OwnerLineLink {
             /** @var ?OwnerLineLink $link */
-            $link = OwnerLineLink::query()
+            $query = OwnerLineLink::query()
                 ->where('scope', $scope)
                 ->where('link_token', $token)
                 ->whereNull('used_at')
-                ->where('expired_at', '>', now())
+                ->where('expired_at', '>', now());
+
+            if ($tenantId !== null) {
+                $query->where('tenant_id', $tenantId);
+            }
+
+            $link = $query
                 ->lockForUpdate()
                 ->first();
 
@@ -158,5 +189,18 @@ final class OwnerLineLinkService
             ->exists());
 
         return $token;
+    }
+
+    private function tooManyAttempts(string $scope, string $token): bool
+    {
+        $cacheKey = sprintf('owner-link-attempts:%s:%s', $scope, $token);
+
+        if (RateLimiter::tooManyAttempts($cacheKey, 5)) {
+            return true;
+        }
+
+        RateLimiter::hit($cacheKey, 60);
+
+        return false;
     }
 }

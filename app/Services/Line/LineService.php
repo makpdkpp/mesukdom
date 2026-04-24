@@ -45,6 +45,15 @@ final class LineService
     }
 
     /**
+     * @param array<string,mixed> $flex
+     * @return array<string,mixed>
+     */
+    public function replyFlex(Tenant $tenant, ?string $replyToken, array $flex): array
+    {
+        return $this->replyMessage($tenant, $replyToken, $flex);
+    }
+
+    /**
      * @param array<string, mixed> $message
      * @return array<string, mixed>
      */
@@ -158,11 +167,7 @@ final class LineService
             return $tenantToken;
         }
 
-        $fallbackToken = config('services.line.channel_access_token');
-
-        return is_string($fallbackToken) && $fallbackToken !== ''
-            ? $fallbackToken
-            : null;
+        return null;
     }
 
     /**

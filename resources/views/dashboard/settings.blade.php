@@ -394,7 +394,10 @@
                 @elseif(session('owner_line_link'))
                     @php($linkInfo = session('owner_line_link'))
                     <div class="alert alert-warning mb-2">
-                        <h5 class="mb-2"><i class="fas fa-key mr-1"></i> รหัสผูก LINE: <code class="h4">OWNER:{{ $linkInfo['token'] }}</code></h5>
+                        <h5 class="mb-2"><i class="fas fa-key mr-1"></i> รหัสผูก LINE:</h5>
+                        <div class="d-inline-flex align-items-center px-3 py-2 rounded" style="background:#1f2937; border:2px solid #f59e0b;">
+                            <code class="mb-0 h4 font-weight-bold" style="color:#fef3c7; letter-spacing:0.08em; background:transparent;">OWNER:{{ $linkInfo['token'] }}</code>
+                        </div>
                         <p class="mb-1">{{ $linkInfo['instruction'] }}</p>
                         <small>หมดอายุ: {{ $linkInfo['expires_at'] }}</small>
                         @if(!empty($linkInfo['add_friend_url']))
@@ -405,7 +408,11 @@
                     </div>
                 @elseif($ownerActiveLink ?? null)
                     <div class="alert alert-info mb-2">
-                        <small>มีรหัสผูกที่ยังไม่ได้ใช้: <code>OWNER:{{ $ownerActiveLink->link_token }}</code> (หมดอายุ {{ $ownerActiveLink->expired_at->format('d/m/Y H:i') }})</small>
+                        <small class="d-block mb-2">มีรหัสผูกที่ยังไม่ได้ใช้:</small>
+                        <div class="d-inline-flex align-items-center px-3 py-2 rounded" style="background:#0f172a; border:2px solid #38bdf8;">
+                            <code class="mb-0 h5 font-weight-bold" style="color:#e0f2fe; letter-spacing:0.08em; background:transparent;">OWNER:{{ $ownerActiveLink->link_token }}</code>
+                        </div>
+                        <small class="d-block mt-2">หมดอายุ {{ $ownerActiveLink->expired_at->format('d/m/Y H:i') }}</small>
                     </div>
                 @else
                     <p class="text-muted small mb-2">กดปุ่มด้านล่างเพื่อสร้างรหัส 6 หลัก แล้วพิมพ์ลง LINE OA ของหอเพื่อผูก LINE ของคุณ (เจ้าของหอ) สำหรับรับการแจ้งเตือน</p>

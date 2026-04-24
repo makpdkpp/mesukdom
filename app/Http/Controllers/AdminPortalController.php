@@ -4,13 +4,17 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers;
 
+use App\Jobs\SendPlatformLineMessageJob;
 use App\Models\NotificationLog;
+use App\Models\OwnerLineLink;
 use App\Models\Payment;
 use App\Models\Plan;
 use App\Models\PlatformSetting;
 use App\Models\SlipVerificationUsage;
 use App\Models\Tenant;
 use App\Models\User;
+use App\Services\OwnerLineLinkService;
+use App\Support\SettingAuditLogger;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Artisan;
@@ -279,6 +283,25 @@ final class AdminPortalController extends Controller
         ]);
 
         $setting = PlatformSetting::current();
+        $before = $setting->only([
+            'default_notify_owner_payment_received',
+            'default_notify_owner_utility_reminder_day',
+            'default_notify_owner_invoice_create_day',
+            'default_notify_owner_invoice_send_day',
+            'default_notify_owner_overdue_digest',
+            'default_notify_owner_channels',
+            'platform_line_owner_broadcast_enabled',
+        ]);
+        $after = [
+            'default_notify_owner_payment_received' => (bool) ($validated['default_notify_owner_payment_received'] ?? false),
+            'default_notify_owner_utility_reminder_day' => (bool) ($validated['default_notify_owner_utility_reminder_day'] ?? false),
+            'default_notify_owner_invoice_create_day' => (bool) ($validated['default_notify_owner_invoice_create_day'] ?? false),
+            'default_notify_owner_invoice_send_day' => (bool) ($validated['default_notify_owner_invoice_send_day'] ?? false),
+            'default_notify_owner_overdue_digest' => (bool) ($validated['default_notify_owner_overdue_digest'] ?? false),
+            'default_notify_owner_channels' => $validated['default_notify_owner_channels'],
+            'platform_line_owner_broadcast_enabled' => (bool) ($validated['platform_line_owner_broadcast_enabled'] ?? false),
+        ];
+
         $setting->fill([
             'default_notify_owner_payment_received'      => (bool) ($validated['default_notify_owner_payment_received'] ?? false),
             'default_notify_owner_utility_reminder_day'  => (bool) ($validated['default_notify_owner_utility_reminder_day'] ?? false),
@@ -289,7 +312,139 @@ final class AdminPortalController extends Controller
             'platform_line_owner_broadcast_enabled'      => (bool) ($validated['platform_line_owner_broadcast_enabled'] ?? false),
         ])->save();
 
+        /** @var User|null $actor */
+        $actor = auth()->user();
+        SettingAuditLogger::log('platform_notification_defaults', null, $actor, $before, $after);
+
         return back()->with('success', 'อัปเดตค่าเริ่มต้นการแจ้งเตือนเรียบร้อย');
+    }
+
+    public function platformLine(): View
+    {
+        /** @var User $user */
+        $user = auth()->user();
+        $linkService = app(OwnerLineLinkService::class);
+
+        return view('dashboard.admin-platform-line', [
+            'platformSetting' => PlatformSetting::current(),
+            'platformActiveLink' => $linkService->findActiveTokenFor($user, OwnerLineLink::SCOPE_PLATFORM),
+            'logs' => NotificationLog::query()->where('channel', 'line:platform')->latest()->limit(20)->get(),
+        ]);
+    }
+
+    public function updatePlatformLineSettings(Request $request): RedirectResponse
+    {
+        $validated = $request->validate([
+            'platform_line_channel_id' => ['nullable', 'string', 'max:100'],
+            'platform_line_basic_id' => ['nullable', 'string', 'max:100'],
+            'platform_line_channel_access_token' => ['nullable', 'string', 'max:500'],
+            'platform_line_channel_secret' => ['nullable', 'string', 'max:255'],
+        ]);
+
+        $setting = PlatformSetting::current();
+        $before = $setting->only([
+            'platform_line_channel_id',
+            'platform_line_basic_id',
+            'platform_line_webhook_url',
+        ]);
+        $after = [
+            'platform_line_channel_id' => $validated['platform_line_channel_id'] ?? null,
+            'platform_line_basic_id' => $validated['platform_line_basic_id'] ?? null,
+            'platform_line_webhook_url' => route('api.line.platform-webhook'),
+        ];
+
+        $setting->platform_line_channel_id = $validated['platform_line_channel_id'] ?? null;
+        $setting->platform_line_basic_id = $validated['platform_line_basic_id'] ?? null;
+        $setting->platform_line_webhook_url = route('api.line.platform-webhook');
+
+        if (filled($validated['platform_line_channel_access_token'] ?? null)) {
+            $setting->platform_line_channel_access_token = $validated['platform_line_channel_access_token'];
+        }
+
+        if (filled($validated['platform_line_channel_secret'] ?? null)) {
+            $setting->platform_line_channel_secret = $validated['platform_line_channel_secret'];
+        }
+
+        $setting->save();
+
+        /** @var User|null $actor */
+        $actor = auth()->user();
+        SettingAuditLogger::log('platform_line_credentials', null, $actor, $before, $after);
+
+        return back()->with('success', 'Platform LINE settings updated.');
+    }
+
+    public function createPlatformLineLink(): RedirectResponse
+    {
+        /** @var User $user */
+        $user = auth()->user();
+        $link = app(OwnerLineLinkService::class)->createForUser($user, OwnerLineLink::SCOPE_PLATFORM);
+
+        return back()->with('platform_line_link', [
+            'token' => $link->link_token,
+            'expires_at' => $link->expired_at->format('d/m/Y H:i'),
+            'instruction' => 'เพิ่มเพื่อน Platform LINE OA แล้วพิมพ์ ADMIN:'.$link->link_token,
+            'add_friend_url' => PlatformSetting::current()->platform_line_basic_id
+                ? 'https://line.me/R/ti/p/'.(str_starts_with((string) PlatformSetting::current()->platform_line_basic_id, '@') ? PlatformSetting::current()->platform_line_basic_id : '@'.PlatformSetting::current()->platform_line_basic_id)
+                : null,
+        ]);
+    }
+
+    public function unlinkPlatformLine(): RedirectResponse
+    {
+        /** @var User $user */
+        $user = auth()->user();
+        app(OwnerLineLinkService::class)->unlink($user, OwnerLineLink::SCOPE_PLATFORM);
+
+        return back()->with('success', 'ยกเลิกการผูก Platform LINE แล้ว');
+    }
+
+    public function sendPlatformBroadcast(Request $request): RedirectResponse
+    {
+        $validated = $request->validate([
+            'message' => ['required', 'string', 'max:1000'],
+            'recipient_filter' => ['required', 'in:all,plan,status'],
+            'plan_id' => ['nullable', 'integer'],
+            'tenant_status' => ['nullable', 'in:active,suspended,trial'],
+        ]);
+
+        $setting = PlatformSetting::current();
+
+        if (! $setting->platform_line_owner_broadcast_enabled) {
+            return back()->with('error', 'Platform owner broadcast is disabled.');
+        }
+
+        $query = User::query()
+            ->with('tenant')
+            ->where('role', 'owner')
+            ->whereNotNull('platform_line_user_id_hash');
+
+        if (($validated['recipient_filter'] ?? 'all') === 'plan' && filled($validated['plan_id'] ?? null)) {
+            $query->whereHas('tenant', fn ($tenantQuery) => $tenantQuery->where('plan_id', (int) $validated['plan_id']));
+        }
+
+        if (($validated['recipient_filter'] ?? 'all') === 'status' && filled($validated['tenant_status'] ?? null)) {
+            $query->whereHas('tenant', fn ($tenantQuery) => $tenantQuery->where('status', (string) $validated['tenant_status']));
+        }
+
+        $owners = $query->get();
+        $dispatched = 0;
+
+        foreach ($owners->chunk(50) as $chunkIndex => $chunk) {
+            foreach ($chunk as $owner) {
+                SendPlatformLineMessageJob::dispatch(
+                    $owner->id,
+                    $owner->tenant_id,
+                    $owner->platform_line_user_id,
+                    'platform_owner_broadcast',
+                    $validated['message'],
+                    ['recipient_filter' => $validated['recipient_filter']]
+                )->delay(now()->addSeconds($chunkIndex * 2));
+                $dispatched++;
+            }
+        }
+
+        return back()->with('success', 'Queued '.$dispatched.' platform LINE broadcast messages.');
     }
 
     public function updateSlipOkSettings(Request $request): RedirectResponse

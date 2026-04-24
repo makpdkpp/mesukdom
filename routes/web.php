@@ -92,6 +92,11 @@ Route::middleware(['auth', 'verified', 'role:super_admin,support_admin'])->prefi
 
     Route::get('/notifications', [AdminPortalController::class, 'notifications'])->name('admin.notifications');
     Route::post('/notifications', [AdminPortalController::class, 'updateNotifications'])->name('admin.notifications.update');
+    Route::get('/platform-line', [AdminPortalController::class, 'platformLine'])->name('admin.platform-line');
+    Route::post('/platform-line/settings', [AdminPortalController::class, 'updatePlatformLineSettings'])->name('admin.platform-line.settings.update');
+    Route::post('/platform-line/link-token', [AdminPortalController::class, 'createPlatformLineLink'])->name('admin.platform-line.link-token');
+    Route::post('/platform-line/unlink', [AdminPortalController::class, 'unlinkPlatformLine'])->name('admin.platform-line.unlink');
+    Route::post('/platform-line/broadcast', [AdminPortalController::class, 'sendPlatformBroadcast'])->name('admin.platform-line.broadcast');
 
     Route::post('/maintenance/migrate', [AdminPortalController::class, 'migrate'])->name('admin.maintenance.migrate');
     Route::post('/maintenance/rollback', [AdminPortalController::class, 'rollback'])->name('admin.maintenance.rollback');

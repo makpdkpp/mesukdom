@@ -24,6 +24,7 @@ use App\Models\User;
 use App\Services\Line\LineService;
 use App\Services\PromptPayService;
 use App\Services\SlipVerificationService;
+use App\Support\SettingAuditLogger;
 use App\Support\TenantContext;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Database\QueryException;
@@ -802,6 +803,37 @@ class DashboardController extends Controller
 
         $tenant = app(TenantContext::class)->tenant();
         $webhookUrl = route('api.line.webhook');
+        $before = $tenant?->only([
+            'promptpay_number',
+            'line_channel_id',
+            'line_basic_id',
+            'line_webhook_url',
+            'support_contact_name',
+            'support_contact_phone',
+            'support_line_id',
+            'notify_owner_payment_received',
+            'notify_owner_utility_reminder_day',
+            'notify_owner_invoice_create_day',
+            'notify_owner_invoice_send_day',
+            'notify_owner_overdue_digest',
+            'notify_owner_channels',
+        ]) ?? [];
+
+        $after = [
+            'promptpay_number' => $validated['promptpay_number'] ?? null,
+            'line_channel_id' => $validated['line_channel_id'] ?? null,
+            'line_basic_id' => $validated['line_basic_id'] ?? null,
+            'line_webhook_url' => $webhookUrl,
+            'support_contact_name' => $validated['support_contact_name'] ?? null,
+            'support_contact_phone' => $validated['support_contact_phone'] ?? null,
+            'support_line_id' => $validated['support_line_id'] ?? null,
+            'notify_owner_payment_received' => $this->notifyOverrideToBool($validated['notify_owner_payment_received'] ?? null),
+            'notify_owner_utility_reminder_day' => $this->notifyOverrideToBool($validated['notify_owner_utility_reminder_day'] ?? null),
+            'notify_owner_invoice_create_day' => $this->notifyOverrideToBool($validated['notify_owner_invoice_create_day'] ?? null),
+            'notify_owner_invoice_send_day' => $this->notifyOverrideToBool($validated['notify_owner_invoice_send_day'] ?? null),
+            'notify_owner_overdue_digest' => $this->notifyOverrideToBool($validated['notify_owner_overdue_digest'] ?? null),
+            'notify_owner_channels' => $this->notifyChannelOverride($validated['notify_owner_channels'] ?? null),
+        ];
 
         $tenant?->update([
             'promptpay_number'          => $validated['promptpay_number'] ?? null,
@@ -829,6 +861,10 @@ class DashboardController extends Controller
             'notify_owner_overdue_digest' => $this->notifyOverrideToBool($validated['notify_owner_overdue_digest'] ?? null),
             'notify_owner_channels' => $this->notifyChannelOverride($validated['notify_owner_channels'] ?? null),
         ]);
+
+        /** @var User|null $actor */
+        $actor = auth()->user();
+        SettingAuditLogger::log('tenant_settings', $tenant?->id, $actor, $before, $after);
 
         return back()->with('status', 'Settings updated.');
     }

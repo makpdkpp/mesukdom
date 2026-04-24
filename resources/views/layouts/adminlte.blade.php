@@ -80,6 +80,7 @@
                         <li class="nav-item"><a href="{{ route('admin.packages') }}" class="nav-link {{ request()->routeIs('admin.packages*') ? 'active' : '' }}"><i class="nav-icon fas fa-boxes"></i><p>Package Management</p></a></li>
                         <li class="nav-item"><a href="{{ route('admin.platform') }}" class="nav-link {{ request()->routeIs('admin.platform') ? 'active' : '' }}"><i class="nav-icon fas fa-cogs"></i><p>Platform Admin</p></a></li>
                         <li class="nav-item"><a href="{{ route('admin.notifications') }}" class="nav-link {{ request()->routeIs('admin.notifications*') ? 'active' : '' }}"><i class="nav-icon fas fa-bell"></i><p>Notification Defaults</p></a></li>
+                        <li class="nav-item"><a href="{{ route('admin.platform-line') }}" class="nav-link {{ request()->routeIs('admin.platform-line*') ? 'active' : '' }}"><i class="nav-icon fab fa-line"></i><p>Platform LINE</p></a></li>
                     @else
                         <li class="nav-item"><a href="{{ route('app.dashboard') }}" class="nav-link {{ $isAppDashboardRoute ? 'active' : '' }}"><i class="nav-icon fas fa-chart-pie"></i><p>Dashboard</p></a></li>
                         <li class="nav-item"><a href="{{ route('app.room-status') }}" class="nav-link {{ $isAppRoomStatusRoute ? 'active' : '' }}"><i class="nav-icon fas fa-th-large"></i><p>Room Status</p></a></li>
