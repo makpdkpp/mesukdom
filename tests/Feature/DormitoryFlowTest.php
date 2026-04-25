@@ -808,6 +808,67 @@ class DormitoryFlowTest extends TestCase
         ]);
     }
 
+    public function test_contract_page_allows_manual_monthly_rent_override(): void
+    {
+        $tenant = Tenant::create([
+            'name' => 'Manual Rent Dorm',
+            'domain' => 'manual-rent.local',
+            'plan' => 'trial',
+            'status' => 'active',
+        ]);
+
+        $user = User::factory()->create([
+            'tenant_id' => $tenant->id,
+            'role' => 'owner',
+            'email_verified_at' => now(),
+        ]);
+
+        $room = Room::create([
+            'tenant_id' => $tenant->id,
+            'room_number' => 'MR-101',
+            'floor' => 1,
+            'room_type' => 'Standard',
+            'price' => 4200,
+            'status' => 'vacant',
+        ]);
+
+        $customer = Customer::create([
+            'tenant_id' => $tenant->id,
+            'room_id' => $room->id,
+            'name' => 'Manual Rent Resident',
+        ]);
+
+        $pageResponse = $this->actingAs($user)
+            ->withSession(['tenant_id' => $tenant->id])
+            ->get('/app/contracts');
+
+        $pageResponse->assertOk();
+        $pageResponse->assertSee('name="monthly_rent"', false);
+        $pageResponse->assertSeeText('ระบบคำนวณค่าเริ่มต้นจาก Room และช่วงวันที่ แต่คุณสามารถแก้ไขเองได้');
+        $pageResponse->assertDontSee('class="form-control contract-monthly-rent" value="" readonly', false);
+
+        $storeResponse = $this->actingAs($user)
+            ->withSession(['tenant_id' => $tenant->id])
+            ->post('/app/contracts', [
+                'customer_id' => $customer->id,
+                'room_id' => $room->id,
+                'start_date' => '2026-04-01',
+                'end_date' => '2026-12-31',
+                'deposit' => 5000,
+                'monthly_rent' => 3900,
+                'status' => 'active',
+            ]);
+
+        $storeResponse->assertRedirect();
+        $this->assertDatabaseHas('contracts', [
+            'tenant_id' => $tenant->id,
+            'customer_id' => $customer->id,
+            'room_id' => $room->id,
+            'monthly_rent' => 3900,
+            'status' => 'active',
+        ]);
+    }
+
     public function test_owner_cannot_update_contract_from_another_tenant(): void
     {
         $tenantA = Tenant::create([
@@ -2596,6 +2657,7 @@ class DormitoryFlowTest extends TestCase
             ->withSession(['tenant_id' => $tenant->id])
             ->post(route('app.billing.checkout'), [
                 'plan_id' => $plan->id,
+                'billing_option' => 'subscription_annual',
             ]);
 
         $response->assertRedirect('/app/billing');

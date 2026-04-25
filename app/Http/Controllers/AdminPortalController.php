@@ -8,37 +8,61 @@ use App\Jobs\SendPlatformLineMessageJob;
 use App\Models\NotificationLog;
 use App\Models\OwnerLineLink;
 use App\Models\Payment;
-use App\Models\PlatformCostSetting;
 use App\Models\Plan;
 use App\Models\PlatformSetting;
 use App\Models\SlipVerificationUsage;
 use App\Models\Tenant;
 use App\Models\User;
-use App\Services\Business\AdminBusinessMetrics;
 use App\Services\OwnerLineLinkService;
+use App\Services\StripePackagePricingService;
 use App\Support\ApiMonitorMetrics;
 use App\Support\SettingAuditLogger;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Redis;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
-use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
+use Stripe\Exception\ApiErrorException;
 use Throwable;
 
 final class AdminPortalController extends Controller
 {
-    public function dashboard(AdminBusinessMetrics $metrics): View
+    public function dashboard(): View
     {
-        return view('dashboard.admin-dashboard', $metrics->dashboardPayload());
-    }
+        $queueConnection = (string) config('queue.default', 'sync');
+        $hasJobsTable = Schema::hasTable('jobs');
+        $hasFailedJobsTable = Schema::hasTable('failed_jobs');
 
-    public function systemMonitor(): View
-    {
-        return view('dashboard.admin-system-monitor', $this->systemMonitorPayload());
+        $pendingJobs = $hasJobsTable ? (int) DB::table('jobs')->count() : null;
+        $failedJobsCount = $hasFailedJobsTable ? (int) DB::table('failed_jobs')->count() : 0;
+        $redisHealth = $this->redisHealthPayload();
+        $slipOkUsageTotal = SlipVerificationUsage::withoutGlobalScopes()
+            ->where('provider', 'slipok')
+            ->where('usage_month', now()->format('Y-m'))
+            ->count();
+
+        return view('dashboard.admin-dashboard', [
+            'tenantCount' => Tenant::count(),
+            'activeUsers' => User::count(),
+            'saasRevenue' => Tenant::query()
+                ->join('plans', 'tenants.plan_id', '=', 'plans.id')
+                ->where('tenants.status', 'active')
+                ->sum('plans.price_monthly'),
+            'slipOkUsageTotal' => $slipOkUsageTotal,
+            'serverStatus' => 'Online',
+            'queueConnection' => $queueConnection,
+            'pendingJobs' => $pendingJobs,
+            'failedJobsCount' => $failedJobsCount,
+            'redisHealth' => $redisHealth,
+            'apiUsageTotal' => $slipOkUsageTotal,
+            'notificationLogs' => NotificationLog::withoutGlobalScopes()->latest()->take(10)->get(),
+            'paymentLogs' => Payment::withoutGlobalScopes()->latest()->take(10)->get(),
+        ]);
     }
 
     public function profile(): View
@@ -53,56 +77,6 @@ final class AdminPortalController extends Controller
     public function apiMonitor(ApiMonitorMetrics $metrics): View
     {
         return view('dashboard.admin-api-monitor', $metrics->dashboardPayload());
-    }
-
-    public function costSettings(): View
-    {
-        return view('dashboard.admin-cost-settings', [
-            'costSettings' => PlatformCostSetting::query()->orderByDesc('is_active')->orderBy('provider')->orderByDesc('effective_from')->get(),
-            'providers' => PlatformCostSetting::PROVIDERS,
-            'costTypes' => PlatformCostSetting::COST_TYPES,
-        ]);
-    }
-
-    public function storeCostSetting(Request $request): RedirectResponse
-    {
-        $validated = $request->validate([
-            'provider' => ['required', Rule::in(PlatformCostSetting::PROVIDERS)],
-            'cost_type' => ['required', Rule::in(PlatformCostSetting::COST_TYPES)],
-            'unit_cost' => ['nullable', 'numeric', 'min:0'],
-            'percentage_rate' => ['nullable', 'numeric', 'min:0', 'max:100'],
-            'fixed_fee' => ['nullable', 'numeric', 'min:0'],
-            'included_quota' => ['nullable', 'integer', 'min:0'],
-            'overage_unit_cost' => ['nullable', 'numeric', 'min:0'],
-            'currency' => ['required', 'string', 'max:10'],
-            'effective_from' => ['required', 'date'],
-            'effective_to' => ['nullable', 'date', 'after_or_equal:effective_from'],
-            'is_active' => ['nullable'],
-            'notes' => ['nullable', 'string', 'max:2000'],
-        ]);
-
-        PlatformCostSetting::query()->create([
-            ...$validated,
-            'unit_cost' => $validated['unit_cost'] ?? 0,
-            'percentage_rate' => $validated['percentage_rate'] ?? 0,
-            'fixed_fee' => $validated['fixed_fee'] ?? 0,
-            'included_quota' => $validated['included_quota'] ?? 0,
-            'overage_unit_cost' => $validated['overage_unit_cost'] ?? 0,
-            'currency' => strtoupper((string) $validated['currency']),
-            'is_active' => $request->boolean('is_active', true),
-        ]);
-
-        return back()->with('status', 'Cost setting saved.');
-    }
-
-    public function deactivateCostSetting(PlatformCostSetting $costSetting): RedirectResponse
-    {
-        $costSetting->update([
-            'is_active' => false,
-            'effective_to' => $costSetting->effective_to ?? now()->toDateString(),
-        ]);
-
-        return back()->with('status', 'Cost setting deactivated.');
     }
 
     public function migrate(Request $request): RedirectResponse
@@ -270,33 +244,6 @@ final class AdminPortalController extends Controller
             'client' => $client,
             'connections' => $connections,
             'ok' => $overallOk,
-        ];
-    }
-
-    /**
-     * @return array<string, mixed>
-     */
-    private function systemMonitorPayload(): array
-    {
-        $queueConnection = (string) config('queue.default', 'sync');
-        $hasJobsTable = Schema::hasTable('jobs');
-        $hasFailedJobsTable = Schema::hasTable('failed_jobs');
-        $notificationLogs = NotificationLog::withoutGlobalScopes()->latest()->take(10)->get();
-        $paymentLogs = Payment::withoutGlobalScopes()->latest()->take(10)->get();
-        $apiUsageTotal = SlipVerificationUsage::withoutGlobalScopes()
-            ->where('provider', 'slipok')
-            ->where('usage_month', now()->format('Y-m'))
-            ->count();
-
-        return [
-            'serverStatus' => 'Online',
-            'queueConnection' => $queueConnection,
-            'pendingJobs' => $hasJobsTable ? (int) DB::table('jobs')->count() : null,
-            'failedJobsCount' => $hasFailedJobsTable ? (int) DB::table('failed_jobs')->count() : 0,
-            'redisHealth' => $this->redisHealthPayload(),
-            'apiUsageTotal' => $apiUsageTotal,
-            'notificationLogs' => $notificationLogs,
-            'paymentLogs' => $paymentLogs,
         ];
     }
 
@@ -572,41 +519,67 @@ final class AdminPortalController extends Controller
         return back()->with('success', 'Stripe settings updated.');
     }
 
-    public function storePackage(Request $request): RedirectResponse
+    public function storePackage(Request $request, StripePackagePricingService $stripePackagePricing): RedirectResponse
     {
-        $validated = $request->validate([
-            'name' => ['required', 'string', 'max:100'],
-            'slug' => ['nullable', 'string', 'max:100', 'regex:/^[a-z0-9-]+$/', 'unique:plans,slug'],
-            'price_monthly' => ['required', 'numeric', 'min:0'],
-            'description' => ['nullable', 'string', 'max:1000'],
-            'is_active' => ['nullable', 'boolean'],
-            'sort_order' => ['nullable', 'integer', 'min:0', 'max:9999'],
-            'stripe_price_id' => ['nullable', 'string', 'max:120', 'regex:/^price_[A-Za-z0-9_]+$/'],
-            'rooms_limit' => ['required', 'integer', 'min:0', 'max:10000'],
-            'recommended' => ['nullable', 'boolean'],
-            'slipok_enabled' => ['nullable', 'boolean'],
-            'slipok_monthly_limit' => ['required', 'integer', 'min:0', 'max:100000'],
-        ]);
+        $validated = $this->validatePackageRequest($request);
+        $customRoomPricing = $request->boolean('custom_room_pricing');
+        $priceMonthly = $customRoomPricing
+            ? $this->validatedRoomPriceMonthly($validated)
+            : (float) $validated['price_monthly'];
 
         $slug = $validated['slug'] ?? Str::slug($validated['name']);
         if ($slug === '') {
             $slug = 'plan-'.now()->timestamp;
         }
 
+        $stripePriceId = $validated['stripe_price_id'] ?? null;
+        $stripeProductId = null;
+        $platformSetting = PlatformSetting::current();
+
+        if (! $customRoomPricing && blank($stripePriceId) && ! $platformSetting->hasStripeCredentials()) {
+            return back()
+                ->withInput()
+                ->withErrors([
+                    'stripe_price_id' => 'Stripe is not ready for automatic price creation yet. Configure Stripe settings first or enter a Stripe Price ID manually.',
+                ]);
+        }
+
+        if (! $customRoomPricing && blank($stripePriceId) && $platformSetting->hasStripeCredentials()) {
+            try {
+                $stripeCatalog = $stripePackagePricing->createMonthlyCatalog(
+                    $platformSetting,
+                    (string) $validated['name'],
+                    $slug,
+                    $priceMonthly,
+                    $validated['description'] ?? null,
+                );
+                $stripePriceId = $stripeCatalog['price_id'];
+                $stripeProductId = $stripeCatalog['product_id'];
+            } catch (ApiErrorException $e) {
+                Log::warning('Stripe price auto-creation failed for package', [
+                    'package_name' => $validated['name'],
+                    'package_slug' => $slug,
+                    'error' => $e->getMessage(),
+                ]);
+
+                return back()
+                    ->withInput()
+                    ->withErrors([
+                        'stripe_price_id' => 'Unable to create Stripe Price automatically. Please verify Stripe settings or enter a Stripe Price ID manually.',
+                    ]);
+            }
+        }
+
         Plan::query()->create([
             'name' => $validated['name'],
             'slug' => $slug,
-            'price_monthly' => $validated['price_monthly'],
+            'price_monthly' => $priceMonthly,
             'description' => $validated['description'] ?? null,
             'is_active' => (bool) $request->boolean('is_active'),
             'sort_order' => (int) ($validated['sort_order'] ?? 0),
-            'stripe_price_id' => $validated['stripe_price_id'] ?? null,
-            'limits' => [
-                'rooms' => (int) $validated['rooms_limit'],
-                'recommended' => (bool) $request->boolean('recommended'),
-                'slipok_enabled' => (bool) $request->boolean('slipok_enabled'),
-                'slipok_monthly_limit' => (int) $validated['slipok_monthly_limit'],
-            ],
+            'stripe_price_id' => $customRoomPricing ? null : $stripePriceId,
+            'stripe_product_id' => $stripeProductId,
+            'limits' => $this->packageLimitsPayload($request, $validated),
         ]);
 
         return back()->with('success', 'Package created successfully.');
@@ -614,38 +587,62 @@ final class AdminPortalController extends Controller
 
     public function updatePackage(Request $request, Plan $plan): RedirectResponse
     {
-        $validated = $request->validate([
-            'name' => ['required', 'string', 'max:100'],
-            'slug' => ['required', 'string', 'max:100', 'regex:/^[a-z0-9-]+$/', 'unique:plans,slug,'.$plan->id],
-            'price_monthly' => ['required', 'numeric', 'min:0'],
-            'description' => ['nullable', 'string', 'max:1000'],
-            'is_active' => ['nullable', 'boolean'],
-            'sort_order' => ['nullable', 'integer', 'min:0', 'max:9999'],
-            'stripe_price_id' => ['nullable', 'string', 'max:120', 'regex:/^price_[A-Za-z0-9_]+$/'],
-            'rooms_limit' => ['required', 'integer', 'min:0', 'max:10000'],
-            'recommended' => ['nullable', 'boolean'],
-            'slipok_enabled' => ['nullable', 'boolean'],
-            'slipok_monthly_limit' => ['required', 'integer', 'min:0', 'max:100000'],
-        ]);
-
-        $limits = (array) ($plan->limits ?? []);
-        $limits['rooms'] = (int) $validated['rooms_limit'];
-        $limits['recommended'] = (bool) $request->boolean('recommended');
-        $limits['slipok_enabled'] = (bool) $request->boolean('slipok_enabled');
-        $limits['slipok_monthly_limit'] = (int) $validated['slipok_monthly_limit'];
+        $validated = $this->validatePackageRequest($request, $plan);
+        $customRoomPricing = $request->boolean('custom_room_pricing');
+        $priceMonthly = $customRoomPricing
+            ? $this->validatedRoomPriceMonthly($validated)
+            : (float) $validated['price_monthly'];
 
         $plan->update([
             'name' => $validated['name'],
             'slug' => $validated['slug'],
-            'price_monthly' => $validated['price_monthly'],
+            'price_monthly' => $priceMonthly,
             'description' => $validated['description'] ?? null,
             'is_active' => (bool) $request->boolean('is_active'),
             'sort_order' => (int) ($validated['sort_order'] ?? 0),
-            'stripe_price_id' => $validated['stripe_price_id'] ?? null,
-            'limits' => $limits,
+            'stripe_price_id' => $customRoomPricing ? null : ($validated['stripe_price_id'] ?? null),
+            'limits' => $this->packageLimitsPayload($request, $validated),
         ]);
 
         return back()->with('success', "Package '{$plan->name}' updated.");
+    }
+
+    public function destroyPackage(Plan $plan, StripePackagePricingService $stripePackagePricing): RedirectResponse
+    {
+        $name = $plan->name;
+        $platformSetting = PlatformSetting::current();
+
+        if (filled($plan->stripe_price_id) || filled($plan->stripe_product_id)) {
+            if (! $platformSetting->hasStripeCredentials()) {
+                return back()->withErrors([
+                    'stripe_price_id' => 'Stripe cleanup is unavailable because Stripe settings are not ready. Please configure Stripe first or archive the Stripe product manually before deleting this package.',
+                ]);
+            }
+
+            try {
+                $stripePackagePricing->archiveCatalog(
+                    $platformSetting,
+                    $plan->stripe_price_id ? (string) $plan->stripe_price_id : null,
+                    $plan->stripe_product_id ? (string) $plan->stripe_product_id : null,
+                );
+            } catch (ApiErrorException $e) {
+                Log::warning('Stripe catalog cleanup failed for package deletion', [
+                    'plan_id' => $plan->id,
+                    'plan_name' => $name,
+                    'stripe_price_id' => $plan->stripe_price_id,
+                    'stripe_product_id' => $plan->stripe_product_id,
+                    'error' => $e->getMessage(),
+                ]);
+
+                return back()->withErrors([
+                    'stripe_price_id' => 'Unable to archive the Stripe price/product for this package. The local package was not deleted.',
+                ]);
+            }
+        }
+
+        $plan->delete();
+
+        return back()->with('success', "Package '{$name}' deleted. Related Stripe catalog has been archived.");
     }
 
     public function updatePlanSlipOkSettings(Request $request, Plan $plan): RedirectResponse
@@ -662,6 +659,96 @@ final class AdminPortalController extends Controller
         $plan->update(['limits' => $limits]);
 
         return back()->with('success', "Updated SlipOK addon quota for {$plan->name}.");
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function validatePackageRequest(Request $request, ?Plan $plan = null): array
+    {
+        $validated = $request->validate([
+            'name' => ['required', 'string', 'max:100'],
+            'slug' => array_filter([
+                $plan ? 'required' : 'nullable',
+                'string',
+                'max:100',
+                'regex:/^[a-z0-9-]+$/',
+                'unique:plans,slug'.($plan ? ','.$plan->id : ''),
+            ]),
+            'price_monthly' => ['required', 'numeric', 'min:0'],
+            'description' => ['nullable', 'string', 'max:1000'],
+            'is_active' => ['nullable', 'boolean'],
+            'sort_order' => ['nullable', 'integer', 'min:0', 'max:9999'],
+            'stripe_price_id' => ['nullable', 'string', 'max:120', 'regex:/^price_[A-Za-z0-9_]+$/'],
+            'rooms_limit' => ['nullable', 'integer', 'min:0', 'max:10000'],
+            'recommended' => ['nullable', 'boolean'],
+            'slipok_enabled' => ['nullable', 'boolean'],
+            'slipok_monthly_limit' => ['nullable', 'integer', 'min:0', 'max:100000'],
+            'custom_room_pricing' => ['nullable', 'boolean'],
+            'room_price_monthly' => ['nullable', 'numeric', 'min:0'],
+            'slipok_addon_price_monthly' => ['nullable', 'numeric', 'min:0'],
+        ]);
+
+        if ($request->boolean('custom_room_pricing')) {
+            if (! array_key_exists('room_price_monthly', $validated) || ! is_numeric($validated['room_price_monthly'])) {
+                throw ValidationException::withMessages([
+                    'room_price_monthly' => 'Room price per month is required for custom room pricing packages.',
+                ]);
+            }
+
+            if ($request->boolean('slipok_enabled') && (! array_key_exists('slipok_addon_price_monthly', $validated) || ! is_numeric($validated['slipok_addon_price_monthly']))) {
+                throw ValidationException::withMessages([
+                    'slipok_addon_price_monthly' => 'SlipOK addon price per room is required when SlipOK addon is enabled for a custom package.',
+                ]);
+            }
+
+            return $validated;
+        }
+
+        if (! array_key_exists('rooms_limit', $validated) || ! is_numeric($validated['rooms_limit'])) {
+            throw ValidationException::withMessages([
+                'rooms_limit' => 'Room limit is required for fixed packages.',
+            ]);
+        }
+
+        if (! array_key_exists('slipok_monthly_limit', $validated) || ! is_numeric($validated['slipok_monthly_limit'])) {
+            throw ValidationException::withMessages([
+                'slipok_monthly_limit' => 'SlipOK monthly limit is required for fixed packages.',
+            ]);
+        }
+
+        return $validated;
+    }
+
+    /**
+     * @param array<string, mixed> $validated
+     */
+    private function validatedRoomPriceMonthly(array $validated): float
+    {
+        return max(0, (float) $validated['room_price_monthly']);
+    }
+
+    /**
+     * @param array<string, mixed> $validated
+     * @return array<string, mixed>
+     */
+    private function packageLimitsPayload(Request $request, array $validated): array
+    {
+        $customRoomPricing = $request->boolean('custom_room_pricing');
+        $slipOkEnabled = (bool) $request->boolean('slipok_enabled');
+
+        return [
+            'pricing_mode' => $customRoomPricing ? 'per_room' : 'fixed',
+            'rooms' => $customRoomPricing ? 0 : (int) ($validated['rooms_limit'] ?? 0),
+            'room_price_monthly' => $customRoomPricing ? $this->validatedRoomPriceMonthly($validated) : null,
+            'recommended' => (bool) $request->boolean('recommended'),
+            'slipok_enabled' => $slipOkEnabled,
+            'slipok_monthly_limit' => $customRoomPricing ? 0 : (int) ($validated['slipok_monthly_limit'] ?? 0),
+            'slipok_addon_price_monthly' => $customRoomPricing && $slipOkEnabled
+                ? max(0, (float) ($validated['slipok_addon_price_monthly'] ?? 0))
+                : 0,
+            'slipok_rights_per_room' => $customRoomPricing && $slipOkEnabled ? 3 : null,
+        ];
     }
 
     public function updateTenantPlan(Request $request, Tenant $tenant): RedirectResponse

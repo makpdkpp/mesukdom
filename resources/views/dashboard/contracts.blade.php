@@ -27,8 +27,8 @@
                     <div class="form-group"><label>Deposit</label><input name="deposit" type="number" step="0.01" class="form-control" value="{{ old('deposit', 5000) }}" required></div>
                     <div class="form-group">
                         <label>Monthly Rent</label>
-                        <input name="monthly_rent" type="number" step="0.01" class="form-control contract-monthly-rent" value="{{ old('monthly_rent') }}" readonly>
-                        <small class="form-text text-muted contract-rent-hint">ระบบจะคำนวณค่าเช่าให้อัตโนมัติจาก Room และช่วงวันที่</small>
+                        <input name="monthly_rent" type="number" step="0.01" class="form-control contract-monthly-rent" value="{{ old('monthly_rent') }}">
+                        <small class="form-text text-muted contract-rent-hint">ระบบคำนวณค่าเริ่มต้นจาก Room และช่วงวันที่ แต่คุณสามารถแก้ไขเองได้</small>
                     </div>
                     <div class="form-group">
                         <label>Status</label>
@@ -104,8 +104,8 @@
                                         </div>
                                         <div class="form-group col-md-2 mb-2">
                                             <label class="small">Rent</label>
-                                            <input name="monthly_rent" type="number" step="0.01" class="form-control form-control-sm contract-monthly-rent" value="{{ $contract->monthly_rent }}" readonly>
-                                            <small class="form-text text-muted contract-rent-hint">Auto</small>
+                                            <input name="monthly_rent" type="number" step="0.01" class="form-control form-control-sm contract-monthly-rent" value="{{ $contract->monthly_rent }}">
+                                            <small class="form-text text-muted contract-rent-hint">Auto default, editable</small>
                                         </div>
                                         <div class="form-group col-md-2 mb-2">
                                             <label class="small">Status</label>
@@ -208,16 +208,32 @@
             }
 
             const rent = calculateRent(customer?.room_price || 0, startDateInput?.value || '', endDateInput?.value || '');
-            rentInput.value = formatCurrency(rent);
+            const manualOverride = rentInput.dataset.manualOverride === 'true';
+
+            if (!manualOverride || rentInput.value === '') {
+                rentInput.value = formatCurrency(rent);
+            }
 
             if (rentHint) {
-                rentHint.textContent = startDateInput?.value && endDateInput?.value
-                    ? 'ระบบคำนวณจาก Room ของ Resident และช่วงวันที่ที่เลือก'
-                    : 'ระบบจะคำนวณค่าเช่าให้อัตโนมัติจาก Room และช่วงวันที่';
+                rentHint.textContent = manualOverride
+                    ? 'แก้ไขค่าเช่าเองได้ หรือเคลียร์ค่าเพื่อให้ระบบคำนวณใหม่'
+                    : (startDateInput?.value && endDateInput?.value
+                        ? 'ระบบคำนวณค่าเริ่มต้นจาก Room ของ Resident และช่วงวันที่ที่เลือก'
+                        : 'ระบบจะคำนวณค่าเช่าเริ่มต้นจาก Room และช่วงวันที่');
             }
         };
 
         document.querySelectorAll('.contract-form').forEach((form) => {
+            const rentInput = form.querySelector('.contract-monthly-rent');
+
+            if (rentInput) {
+                rentInput.dataset.manualOverride = rentInput.value !== '' ? 'true' : 'false';
+                rentInput.addEventListener('input', () => {
+                    rentInput.dataset.manualOverride = rentInput.value !== '' ? 'true' : 'false';
+                    syncContractForm(form);
+                });
+            }
+
             syncContractForm(form);
 
             const customerSelect = form.querySelector('.contract-customer-select');

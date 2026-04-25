@@ -9,6 +9,7 @@ use App\Models\SaasInvoice;
 use App\Models\SlipVerificationUsage;
 use App\Models\Tenant;
 use App\Models\User;
+use App\Services\StripePackagePricingService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -463,6 +464,172 @@ class AuthorizationTest extends TestCase
         $this->assertSame(300, $plan->slipOkMonthlyLimit());
         $this->assertSame(120, $plan->roomsLimit());
         $this->assertTrue($plan->isRecommended());
+    }
+
+    public function test_support_admin_can_auto_create_stripe_price_id_when_creating_package(): void
+    {
+        $admin = User::factory()->create([
+            'role' => 'support_admin',
+        ]);
+
+        PlatformSetting::current()->update([
+            'stripe_enabled' => true,
+            'stripe_mode' => 'test',
+            'stripe_publishable_key' => 'pk_test_123',
+            'stripe_secret_key' => 'sk_test_123',
+            'stripe_webhook_secret' => 'whsec_123',
+        ]);
+
+        $service = $this->mock(StripePackagePricingService::class);
+        $service->shouldReceive('createMonthlyCatalog')
+            ->once()
+            ->andReturn([
+                'price_id' => 'price_test_auto_created',
+                'product_id' => 'prod_test_auto_created',
+            ]);
+
+        $response = $this->actingAs($admin)->post('/admin/packages', [
+            'name' => 'Auto Stripe Growth',
+            'slug' => 'auto-stripe-growth',
+            'price_monthly' => 1499,
+            'description' => 'Auto stripe package',
+            'is_active' => 1,
+            'sort_order' => 2,
+            'rooms_limit' => 80,
+            'recommended' => 0,
+            'slipok_enabled' => 0,
+            'slipok_monthly_limit' => 0,
+        ]);
+
+        $response->assertRedirect();
+        $this->assertDatabaseHas('plans', [
+            'slug' => 'auto-stripe-growth',
+            'stripe_price_id' => 'price_test_auto_created',
+            'stripe_product_id' => 'prod_test_auto_created',
+        ]);
+    }
+
+    public function test_support_admin_can_create_custom_room_package_without_stripe_price_id(): void
+    {
+        $admin = User::factory()->create([
+            'role' => 'support_admin',
+        ]);
+
+        $response = $this->actingAs($admin)->post('/admin/packages', [
+            'name' => 'Custom Room Flex',
+            'slug' => 'custom-room-flex',
+            'price_monthly' => 89,
+            'custom_room_pricing' => 1,
+            'room_price_monthly' => 89,
+            'description' => 'Custom room package',
+            'is_active' => 1,
+            'sort_order' => 4,
+            'recommended' => 1,
+            'slipok_enabled' => 1,
+            'slipok_addon_price_monthly' => 25,
+        ]);
+
+        $response->assertRedirect();
+
+        $plan = Plan::query()->where('slug', 'custom-room-flex')->firstOrFail();
+
+        $this->assertTrue($plan->usesCustomRoomPricing());
+        $this->assertSame(89.0, $plan->roomPriceMonthly());
+        $this->assertTrue($plan->supportsSlipOk());
+        $this->assertSame(25.0, $plan->slipAddonPriceMonthly());
+        $this->assertSame(3, $plan->slipAddonRightsPerRoom());
+        $this->assertNull($plan->stripe_price_id);
+    }
+
+    public function test_support_admin_sees_clear_error_when_auto_create_stripe_price_is_unavailable(): void
+    {
+        $admin = User::factory()->create([
+            'role' => 'support_admin',
+        ]);
+
+        $response = $this->from('/admin/packages')->actingAs($admin)->post('/admin/packages', [
+            'name' => 'Needs Stripe Setup',
+            'slug' => 'needs-stripe-setup',
+            'price_monthly' => 999,
+            'description' => 'Needs Stripe',
+            'is_active' => 1,
+            'sort_order' => 2,
+            'rooms_limit' => 50,
+            'recommended' => 0,
+            'slipok_enabled' => 0,
+            'slipok_monthly_limit' => 0,
+        ]);
+
+        $response->assertRedirect('/admin/packages');
+        $response->assertSessionHasErrors(['stripe_price_id']);
+        $this->assertDatabaseMissing('plans', [
+            'slug' => 'needs-stripe-setup',
+        ]);
+    }
+
+    public function test_support_admin_can_delete_package_from_package_management(): void
+    {
+        $admin = User::factory()->create([
+            'role' => 'support_admin',
+        ]);
+
+        PlatformSetting::current()->update([
+            'stripe_enabled' => true,
+            'stripe_mode' => 'test',
+            'stripe_publishable_key' => 'pk_test_123',
+            'stripe_secret_key' => 'sk_test_123',
+            'stripe_webhook_secret' => 'whsec_123',
+        ]);
+
+        $plan = Plan::query()->create([
+            'name' => 'Delete Me',
+            'slug' => 'delete-me',
+            'price_monthly' => 799,
+            'stripe_price_id' => 'price_test_delete_me',
+            'stripe_product_id' => 'prod_test_delete_me',
+            'is_active' => true,
+            'sort_order' => 1,
+        ]);
+
+        $service = $this->mock(StripePackagePricingService::class);
+        $service->shouldReceive('archiveCatalog')
+            ->once()
+            ->andReturnNull();
+
+        $response = $this->from('/admin/packages')
+            ->actingAs($admin)
+            ->delete(route('admin.packages.destroy', $plan));
+
+        $response->assertRedirect('/admin/packages');
+        $this->assertDatabaseMissing('plans', [
+            'id' => $plan->id,
+        ]);
+    }
+
+    public function test_support_admin_cannot_delete_package_when_stripe_cleanup_is_unavailable(): void
+    {
+        $admin = User::factory()->create([
+            'role' => 'support_admin',
+        ]);
+
+        $plan = Plan::query()->create([
+            'name' => 'Delete Me Later',
+            'slug' => 'delete-me-later',
+            'price_monthly' => 799,
+            'stripe_price_id' => 'price_test_delete_me_later',
+            'is_active' => true,
+            'sort_order' => 1,
+        ]);
+
+        $response = $this->from('/admin/packages')
+            ->actingAs($admin)
+            ->delete(route('admin.packages.destroy', $plan));
+
+        $response->assertRedirect('/admin/packages');
+        $response->assertSessionHasErrors(['stripe_price_id']);
+        $this->assertDatabaseHas('plans', [
+            'id' => $plan->id,
+        ]);
     }
 
     public function test_support_admin_cannot_save_product_id_in_stripe_price_field(): void

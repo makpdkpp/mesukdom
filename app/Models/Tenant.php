@@ -37,8 +37,15 @@ class Tenant extends Model
         'domain',
         'stripe_customer_id',
         'stripe_subscription_id',
+        'stripe_invoice_last_synced_at',
+        'stripe_invoice_last_sync_count',
         'subscription_status',
         'subscription_current_period_end',
+        'billing_option',
+        'access_expires_at',
+        'subscribed_room_limit',
+        'subscribed_slipok_enabled',
+        'subscribed_slipok_monthly_limit',
         'promptpay_number',
         'line_channel_id',
         'line_basic_id',
@@ -73,7 +80,13 @@ class Tenant extends Model
     {
         return [
             'trial_ends_at' => 'date',
+            'stripe_invoice_last_synced_at' => 'datetime',
+            'stripe_invoice_last_sync_count' => 'integer',
             'subscription_current_period_end' => 'datetime',
+            'access_expires_at' => 'datetime',
+            'subscribed_room_limit' => 'integer',
+            'subscribed_slipok_enabled' => 'boolean',
+            'subscribed_slipok_monthly_limit' => 'integer',
             'default_water_fee' => 'decimal:2',
             'default_electricity_fee' => 'decimal:2',
             'utility_entry_reminder_day' => 'integer',
@@ -194,7 +207,7 @@ class Tenant extends Model
      */
     public function subscriptionPlan(): BelongsTo
     {
-        return $this->belongsTo(Plan::class);
+        return $this->belongsTo(Plan::class, 'plan_id');
     }
 
     public function resolvedPlan(): ?Plan
@@ -425,17 +438,61 @@ class Tenant extends Model
         return in_array($this->subscription_status, ['active', 'trialing'], true);
     }
 
+    public function effectiveRoomsLimit(): int
+    {
+        $plan = $this->resolvedPlan();
+
+        if (($plan?->usesCustomRoomPricing() ?? false) && $this->subscribed_room_limit !== null) {
+            return max(0, (int) $this->subscribed_room_limit);
+        }
+
+        return $plan?->roomsLimit() ?? 0;
+    }
+
+    public function slipOkAddonEnabled(): bool
+    {
+        $plan = $this->resolvedPlan();
+
+        if (($plan?->usesCustomRoomPricing() ?? false)) {
+            return (bool) $this->subscribed_slipok_enabled;
+        }
+
+        return $plan?->supportsSlipOk() ?? false;
+    }
+
+    public function effectiveSlipOkMonthlyLimit(): int
+    {
+        $plan = $this->resolvedPlan();
+
+        if (($plan?->usesCustomRoomPricing() ?? false)) {
+            if (! $this->slipOkAddonEnabled()) {
+                return 0;
+            }
+
+            return max(0, (int) ($this->subscribed_slipok_monthly_limit ?? 0));
+        }
+
+        return $plan?->slipOkMonthlyLimit() ?? 0;
+    }
+
+    public function hasActivePrepaidAccess(): bool
+    {
+        $expiresAt = $this->access_expires_at;
+
+        return $expiresAt instanceof Carbon && $expiresAt->isFuture();
+    }
+
     public function hasPortalAccess(): bool
     {
         if ($this->isSuspended()) {
             return false;
         }
 
-        if ($this->status === 'pending_checkout') {
+        if ($this->status === 'pending_checkout' && ! $this->hasActivePrepaidAccess()) {
             return false;
         }
 
-        if ($this->hasActiveSubscription()) {
+        if ($this->hasActiveSubscription() || $this->hasActivePrepaidAccess()) {
             return true;
         }
 
