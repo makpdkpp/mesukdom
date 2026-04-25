@@ -20,7 +20,9 @@ Route::redirect('/dashboard', '/app/dashboard')->middleware(['auth', 'verified']
 
 Route::middleware(['auth', 'verified', 'role:owner,staff', 'tenant.active'])->prefix('app')->group(function (): void {
     Route::get('/billing', [BillingController::class, 'index'])->name('app.billing');
+    Route::get('/billing/packages', [BillingController::class, 'packages'])->name('app.billing.packages');
     Route::post('/billing/checkout', [BillingController::class, 'checkout'])->name('app.billing.checkout');
+    Route::post('/billing/invoices/sync', [BillingController::class, 'syncInvoices'])->name('app.billing.invoices.sync');
     Route::get('/billing/success', [BillingController::class, 'success'])->name('app.billing.success');
     Route::get('/billing/cancel', [BillingController::class, 'cancel'])->name('app.billing.cancel');
     Route::post('/billing/portal', [BillingController::class, 'portal'])->name('app.billing.portal');
@@ -105,6 +107,7 @@ Route::middleware(['auth', 'verified', 'role:super_admin,support_admin'])->prefi
 
     Route::post('/packages', [AdminPortalController::class, 'storePackage'])->name('admin.packages.store');
     Route::patch('/packages/{plan}', [AdminPortalController::class, 'updatePackage'])->name('admin.packages.update');
+    Route::delete('/packages/{plan}', [AdminPortalController::class, 'destroyPackage'])->name('admin.packages.destroy');
 
     Route::post('/slipok/settings', [AdminPortalController::class, 'updateSlipOkSettings'])->name('admin.slipok.settings.update');
     Route::post('/stripe/settings', [AdminPortalController::class, 'updateStripeSettings'])->name('admin.stripe.settings.update');

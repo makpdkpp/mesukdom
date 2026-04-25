@@ -50,9 +50,7 @@ class DashboardController extends Controller
 
         $revenueTrend = $this->buildRevenueTrend();
         $tenant = app(TenantContext::class)->tenant();
-        $subscriptionPlan = $tenant?->plan_id
-            ? Plan::query()->find($tenant->plan_id)
-            : null;
+        $subscriptionPlan = $tenant?->resolvedPlan();
         $slipOkUsageThisMonth = $tenant
             ? SlipVerificationUsage::query()
                 ->where('tenant_id', $tenant->id)
@@ -60,8 +58,8 @@ class DashboardController extends Controller
                 ->where('usage_month', now()->format('Y-m'))
                 ->count()
             : 0;
-        $slipOkUsageLimit = $subscriptionPlan?->slipOkMonthlyLimit() ?? 0;
-        $slipOkEnabled = $subscriptionPlan?->supportsSlipOk() ?? false;
+        $slipOkUsageLimit = $tenant?->effectiveSlipOkMonthlyLimit() ?? 0;
+        $slipOkEnabled = $tenant?->slipOkAddonEnabled() ?? false;
         $slipOkRemaining = $slipOkEnabled
             ? ($slipOkUsageLimit > 0 ? max(0, $slipOkUsageLimit - $slipOkUsageThisMonth) : null)
             : 0;
@@ -244,10 +242,17 @@ class DashboardController extends Controller
     public function storeRoom(Request $request): RedirectResponse
     {
         $tenant = app(TenantContext::class)->tenant();
-        $plan = $tenant?->resolvedPlan();
-        $roomsLimit = $plan?->roomsLimit() ?? 0;
+        $subscriptionPlan = $tenant?->plan_id
+            ? Plan::query()->find($tenant->plan_id)
+            : null;
+        $roomsLimit = $subscriptionPlan?->usesCustomRoomPricing()
+            ? max(0, (int) ($tenant?->subscribed_room_limit ?? 0))
+            : ($subscriptionPlan?->roomsLimit() ?? 0);
+        $currentRoomCount = $tenant
+            ? Room::query()->withoutGlobalScopes()->where('tenant_id', $tenant->id)->count()
+            : Room::query()->count();
 
-        if ($roomsLimit > 0 && Room::query()->count() >= $roomsLimit) {
+        if ($roomsLimit > 0 && $currentRoomCount >= $roomsLimit) {
             return back()
                 ->withInput()
                 ->withErrors(['room_number' => 'Room limit reached for your current package. Please upgrade to add more rooms.']);
@@ -1457,9 +1462,13 @@ class DashboardController extends Controller
 
     protected function resolveInvoiceRoomFee(Contract $contract): float
     {
-        $roomPrice = (float) ($contract->room?->price ?? 0);
+        $contractRent = (float) $contract->monthly_rent;
 
-        return $roomPrice > 0 ? $roomPrice : (float) $contract->monthly_rent;
+        if ($contractRent > 0) {
+            return $contractRent;
+        }
+
+        return (float) ($contract->room?->price ?? 0);
     }
 
     protected function validatePayment(Request $request): array

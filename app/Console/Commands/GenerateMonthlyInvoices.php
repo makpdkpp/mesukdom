@@ -151,9 +151,13 @@ final class GenerateMonthlyInvoices extends Command
 
     private function resolveRoomFee(Contract $contract): float
     {
-        $roomPrice = (float) ($contract->room?->price ?? 0);
+        $contractRent = (float) $contract->monthly_rent;
 
-        return $roomPrice > 0 ? $roomPrice : (float) $contract->monthly_rent;
+        if ($contractRent > 0) {
+            return $contractRent;
+        }
+
+        return (float) ($contract->room?->price ?? 0);
     }
 
     private function resolveDueDate(Tenant $tenant, Carbon $month): Carbon
