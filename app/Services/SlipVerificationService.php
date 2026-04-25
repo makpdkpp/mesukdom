@@ -30,17 +30,19 @@ final class SlipVerificationService
             return $this->markPayment($payment, 'skipped', 'Slip verification skipped: tenant not found.');
         }
 
-        $plan = $tenant->plan_id ? Plan::query()->find($tenant->plan_id) : null;
+        $plan = $tenant->resolvedPlan();
 
         if (! $payment->slip_path || ! Storage::disk('local')->exists($payment->slip_path)) {
             return $this->markPayment($payment, 'skipped', 'Slip verification skipped: no slip file found.');
         }
 
-        if (! $plan || ! $plan->supportsSlipOk()) {
+        if (! $plan || ! $tenant->slipOkAddonEnabled()) {
             return $this->markPayment($payment, 'skipped', 'SlipOK addon is not included in the current package.');
         }
 
-        if ($plan->slipOkMonthlyLimit() > 0 && $this->monthlyUsage($tenant->id, $plan->id) >= $plan->slipOkMonthlyLimit()) {
+        $slipOkMonthlyLimit = $tenant->effectiveSlipOkMonthlyLimit();
+
+        if ($slipOkMonthlyLimit > 0 && $this->monthlyUsage($tenant->id, $plan->id) >= $slipOkMonthlyLimit) {
             return $this->markPayment($payment, 'skipped', 'SlipOK monthly quota has been reached for this package.');
         }
 

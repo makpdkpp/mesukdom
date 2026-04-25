@@ -94,7 +94,47 @@
 
                     <div class="mt-8 space-y-3">
                         @guest
-                            <a href="{{ route('register', ['plan' => $plan->id]) }}" class="inline-flex w-full items-center justify-center rounded-full {{ $loop->iteration === 2 ? 'bg-white text-slate-950 hover:bg-white/90' : 'bg-slate-950 text-white hover:bg-slate-800' }} px-5 py-3 text-sm font-bold transition">เลือกแพ็กเกจนี้</a>
+                            @if($plan->usesCustomRoomPricing())
+                                @php($defaultRoomCount = $plan->minimumRoomCount())
+                                @php($defaultAnnualTotal = $plan->computedBillingPriceFor('subscription_annual', $defaultRoomCount, false))
+                                <form method="GET" action="{{ route('register') }}" class="space-y-3 rounded-[1.5rem] border {{ $loop->iteration === 2 ? 'border-white/15 bg-white/5' : 'border-slate-200/80 bg-white/70' }} p-4" data-custom-pricing-form data-room-price="{{ $plan->roomPriceMonthly() }}" data-addon-price="{{ $plan->slipAddonPriceMonthly() }}" data-rights-per-room="{{ $plan->slipAddonRightsPerRoom() }}">
+                                    <input type="hidden" name="plan" value="{{ $plan->id }}">
+                                    <div class="rounded-2xl px-4 py-3 {{ $loop->iteration === 2 ? 'bg-white/10 text-white ring-1 ring-white/10' : 'bg-amber-50 text-slate-900 ring-1 ring-amber-200/80' }}">
+                                        <div class="text-xs font-bold uppercase tracking-[0.2em] {{ $loop->iteration === 2 ? 'text-amber-200' : 'text-amber-700' }}">Custom package</div>
+                                        <div class="mt-1 text-sm font-semibold">ลูกค้ากำหนดจำนวนห้องได้เอง</div>
+                                        <div class="mt-1 text-xs {{ $loop->iteration === 2 ? 'text-white/70' : 'text-slate-600' }}">ขั้นต่ำ {{ number_format($plan->minimumRoomCount()) }} ห้อง • ชำระหรือสมัครแบบรายปีเท่านั้น</div>
+                                    </div>
+                                    <div>
+                                        <label class="text-xs font-bold uppercase tracking-[0.2em] {{ $loop->iteration === 2 ? 'text-white/55' : 'text-slate-500' }}">Rooms</label>
+                                        <input type="number" min="{{ $plan->minimumRoomCount() }}" max="10000" name="room_count" value="{{ $defaultRoomCount }}" class="mt-2 w-full rounded-2xl border {{ $loop->iteration === 2 ? 'border-white/15 bg-white/10 text-white placeholder:text-white/35' : 'border-slate-200 bg-white text-slate-900' }} px-4 py-3 text-sm font-semibold" data-room-count-input>
+                                    </div>
+                                    @if($plan->supportsSlipOk())
+                                        <label class="flex items-center justify-between gap-4 rounded-2xl px-4 py-3 {{ $loop->iteration === 2 ? 'bg-white/10 text-white ring-1 ring-white/10' : 'bg-white/90 text-slate-700 ring-1 ring-slate-200/70' }}">
+                                            <span class="text-sm font-semibold">Enable SlipOK addon</span>
+                                            <input type="hidden" name="slipok_addon_enabled" value="0">
+                                            <input type="checkbox" name="slipok_addon_enabled" value="1" class="h-4 w-4 rounded border-slate-300 text-amber-500 focus:ring-amber-500" data-slipok-addon-input>
+                                        </label>
+                                    @endif
+                                    <div class="text-xs {{ $loop->iteration === 2 ? 'text-white/60' : 'text-slate-500' }}">
+                                        {{ number_format($plan->roomPriceMonthly(), 2) }} THB / room / month
+                                        @if($plan->supportsSlipOk())
+                                            • SlipOK {{ number_format($plan->slipAddonPriceMonthly(), 2) }} THB / room / month
+                                        @endif
+                                    </div>
+                                    <div class="rounded-2xl px-4 py-3 text-sm font-semibold {{ $loop->iteration === 2 ? 'bg-white/10 text-white ring-1 ring-white/10' : 'bg-white text-slate-800 ring-1 ring-slate-200/80' }}">
+                                        <div class="text-xs uppercase tracking-[0.18em] {{ $loop->iteration === 2 ? 'text-white/55' : 'text-slate-500' }}">Estimated annual total</div>
+                                        <div class="mt-2 text-lg font-bold" data-custom-price-total>
+                                            {{ number_format($defaultAnnualTotal, 2) }} THB / year
+                                        </div>
+                                        <div class="mt-1 text-xs {{ $loop->iteration === 2 ? 'text-white/65' : 'text-slate-500' }}" data-custom-price-summary>
+                                            {{ number_format($plan->roomPriceMonthly(), 2) }} THB x {{ $defaultRoomCount }} room(s) x 12 months
+                                        </div>
+                                    </div>
+                                    <button class="inline-flex w-full items-center justify-center rounded-full {{ $loop->iteration === 2 ? 'bg-white text-slate-950 hover:bg-white/90' : 'bg-slate-950 text-white hover:bg-slate-800' }} px-5 py-3 text-sm font-bold transition">เลือกแพ็กเกจและกำหนดจำนวนห้อง</button>
+                                </form>
+                            @else
+                                <a href="{{ route('register', ['plan' => $plan->id]) }}" class="inline-flex w-full items-center justify-center rounded-full {{ $loop->iteration === 2 ? 'bg-white text-slate-950 hover:bg-white/90' : 'bg-slate-950 text-white hover:bg-slate-800' }} px-5 py-3 text-sm font-bold transition">เลือกแพ็กเกจนี้</a>
+                            @endif
                             <a href="{{ route('login') }}" class="inline-flex w-full items-center justify-center rounded-full border {{ $loop->iteration === 2 ? 'border-white/20 bg-white/5 text-white hover:bg-white/10' : 'border-slate-300 bg-white/90 text-slate-700 hover:border-slate-950 hover:text-slate-950' }} px-5 py-3 text-sm font-bold transition">มีบัญชีอยู่แล้ว</a>
                         @else
                             <a href="{{ route('app.dashboard') }}" class="inline-flex w-full items-center justify-center rounded-full bg-slate-950 px-5 py-3 text-sm font-bold text-white transition hover:bg-slate-800">ไปที่ Dashboard</a>
@@ -129,4 +169,56 @@
             </div>
         </div>
     </section>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            document.querySelectorAll('[data-custom-pricing-form]').forEach(function (form) {
+                var roomCountInput = form.querySelector('[data-room-count-input]');
+                var addonInput = form.querySelector('[data-slipok-addon-input]');
+                var totalOutput = form.querySelector('[data-custom-price-total]');
+                var summaryOutput = form.querySelector('[data-custom-price-summary]');
+
+                if (!roomCountInput || !totalOutput || !summaryOutput) {
+                    return;
+                }
+
+                var roomPrice = Number(form.dataset.roomPrice || 0);
+                var addonPrice = Number(form.dataset.addonPrice || 0);
+
+                var formatCurrency = function (value) {
+                    return new Intl.NumberFormat('en-US', {
+                        minimumFractionDigits: 2,
+                        maximumFractionDigits: 2,
+                    }).format(value);
+                };
+
+                var updatePrice = function () {
+                    var minimumRoomCount = Number(roomCountInput.getAttribute('min') || 1);
+                    var roomCount = Math.max(minimumRoomCount, parseInt(roomCountInput.value || String(minimumRoomCount), 10) || minimumRoomCount);
+                    var addonEnabled = addonInput ? addonInput.checked : false;
+                    var roomTotal = roomPrice * roomCount * 12;
+                    var addonTotal = addonEnabled ? addonPrice * roomCount * 12 : 0;
+                    var total = roomTotal + addonTotal;
+                    var summary = formatCurrency(roomPrice) + ' THB x ' + roomCount + ' room(s) x 12 months';
+
+                    roomCountInput.value = roomCount;
+
+                    if (addonEnabled) {
+                        summary += ' + ' + formatCurrency(addonPrice) + ' THB x ' + roomCount + ' room(s) x 12 months';
+                    }
+
+                    totalOutput.textContent = formatCurrency(total) + ' THB / year';
+                    summaryOutput.textContent = summary;
+                };
+
+                roomCountInput.addEventListener('input', updatePrice);
+
+                if (addonInput) {
+                    addonInput.addEventListener('change', updatePrice);
+                }
+
+                updatePrice();
+            });
+        });
+    </script>
 </x-public-layout>

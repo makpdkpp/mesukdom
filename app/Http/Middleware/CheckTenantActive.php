@@ -27,7 +27,7 @@ class CheckTenantActive
             abort(403, 'Your account has been suspended. Please contact support.');
         }
 
-        if ($tenant && $tenant->status === 'pending_checkout' && ! $request->routeIs('app.billing*')) {
+        if ($tenant && $tenant->status === 'pending_checkout' && ! $tenant->hasPortalAccess() && ! $request->routeIs('app.billing*')) {
             return redirect()->route('app.billing')
                 ->with('warning', 'Please complete checkout to activate your package.');
         }

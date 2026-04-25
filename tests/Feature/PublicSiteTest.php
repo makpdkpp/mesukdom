@@ -41,4 +41,35 @@ class PublicSiteTest extends TestCase
         $response->assertSee('299');
         $response->assertSee('เลือกแพ็กเกจนี้');
     }
+
+    public function test_pricing_page_shows_live_total_block_for_custom_room_package(): void
+    {
+        Plan::query()->create([
+            'name' => 'Custom Flex',
+            'slug' => 'custom-flex',
+            'price_monthly' => 120,
+            'description' => 'คิดราคาตามจำนวนห้อง',
+            'limits' => [
+                'pricing_mode' => 'per_room',
+                'room_price_monthly' => 120,
+                'slipok_enabled' => true,
+                'slipok_addon_price_monthly' => 25,
+                'slipok_rights_per_room' => 3,
+            ],
+            'is_active' => true,
+            'sort_order' => 1,
+        ]);
+
+        $response = $this->get('/pricing');
+
+        $response->assertOk();
+        $response->assertSeeText('ลูกค้ากำหนดจำนวนห้องได้เอง');
+        $response->assertSeeText('ขั้นต่ำ 10 ห้อง');
+        $response->assertSeeText('Estimated annual total');
+        $response->assertSeeText('14,400.00 THB / year');
+        $response->assertSee('data-custom-pricing-form', false);
+        $response->assertSee('data-custom-price-total', false);
+        $response->assertSee('data-room-count-input', false);
+        $response->assertSee('min="10"', false);
+    }
 }

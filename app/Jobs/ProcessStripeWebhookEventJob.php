@@ -5,9 +5,9 @@ declare(strict_types=1);
 namespace App\Jobs;
 
 use App\Models\Plan;
-use App\Models\SaasInvoice;
 use App\Models\StripeWebhookEvent;
 use App\Models\Tenant;
+use App\Services\StripeInvoiceSyncService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -27,10 +27,10 @@ final class ProcessStripeWebhookEventJob implements ShouldQueue
         $this->onQueue($this->stringValue(config('queue.stripe.queue'), 'stripe'));
     }
 
-    public function handle(): void
+    public function handle(StripeInvoiceSyncService $stripeInvoiceSyncService): void
     {
         try {
-            DB::transaction(function (): void {
+            DB::transaction(function () use ($stripeInvoiceSyncService): void {
                 $eventRow = StripeWebhookEvent::query()
                     ->lockForUpdate()
                     ->find($this->eventRowId);
@@ -51,7 +51,7 @@ final class ProcessStripeWebhookEventJob implements ShouldQueue
                     'last_error' => null,
                 ]);
 
-                $this->applyEvent($type, $event);
+                $this->applyEvent($type, $event, $stripeInvoiceSyncService);
 
                 $eventRow->update([
                     'status' => 'processed',
@@ -73,7 +73,7 @@ final class ProcessStripeWebhookEventJob implements ShouldQueue
     /**
      * @param array<string, mixed> $event
      */
-    private function applyEvent(string $type, array $event): void
+    private function applyEvent(string $type, array $event, StripeInvoiceSyncService $stripeInvoiceSyncService): void
     {
         $object = $this->arrayValue(data_get($event, 'data.object', []));
 
@@ -172,7 +172,7 @@ final class ProcessStripeWebhookEventJob implements ShouldQueue
                 'subscription_status' => 'past_due',
             ]);
 
-            $this->upsertInvoiceArtifact($tenant, $object);
+            $stripeInvoiceSyncService->upsertInvoiceArtifact($tenant, $object);
 
             return;
         }
@@ -203,7 +203,7 @@ final class ProcessStripeWebhookEventJob implements ShouldQueue
 
             $tenant->update(['status' => 'active']);
 
-            $this->upsertInvoiceArtifact($tenant, $object);
+            $stripeInvoiceSyncService->upsertInvoiceArtifact($tenant, $object);
         }
 
         if (in_array($type, ['invoice.finalized', 'invoice.created', 'invoice.updated'], true)) {
@@ -213,52 +213,9 @@ final class ProcessStripeWebhookEventJob implements ShouldQueue
                 : null;
 
             if ($tenant) {
-                $this->upsertInvoiceArtifact($tenant, $object);
+                $stripeInvoiceSyncService->upsertInvoiceArtifact($tenant, $object);
             }
         }
-    }
-
-    /**
-     * @param array<string, mixed> $invoiceObject
-     */
-    private function upsertInvoiceArtifact(Tenant $tenant, array $invoiceObject): void
-    {
-        $stripeInvoiceId = data_get($invoiceObject, 'id');
-
-        if (! is_string($stripeInvoiceId) || $stripeInvoiceId === '') {
-            return;
-        }
-
-        $issuedAt = $this->intValue(data_get($invoiceObject, 'created'));
-        $paidAt = $this->intValue(data_get($invoiceObject, 'status_transitions.paid_at'));
-        $periodStart = $this->intValue(data_get($invoiceObject, 'period_start'));
-        $periodEnd = $this->intValue(data_get($invoiceObject, 'period_end'));
-        $amountDue = $this->intValue(data_get($invoiceObject, 'amount_due'));
-        $amountPaid = $this->intValue(data_get($invoiceObject, 'amount_paid'));
-        $amountRemaining = $this->intValue(data_get($invoiceObject, 'amount_remaining'));
-
-        SaasInvoice::query()->updateOrCreate(
-            ['stripe_invoice_id' => $stripeInvoiceId],
-            [
-                'tenant_id' => $tenant->id,
-                'plan_id' => $tenant->plan_id,
-                'stripe_customer_id' => is_string(data_get($invoiceObject, 'customer')) ? data_get($invoiceObject, 'customer') : null,
-                'stripe_subscription_id' => is_string(data_get($invoiceObject, 'subscription')) ? data_get($invoiceObject, 'subscription') : null,
-                'stripe_payment_intent_id' => is_string(data_get($invoiceObject, 'payment_intent')) ? data_get($invoiceObject, 'payment_intent') : null,
-                'status' => is_string(data_get($invoiceObject, 'status')) ? data_get($invoiceObject, 'status') : null,
-                'currency' => is_string(data_get($invoiceObject, 'currency')) ? data_get($invoiceObject, 'currency') : null,
-                'amount_due' => $amountDue,
-                'amount_paid' => $amountPaid,
-                'amount_remaining' => $amountRemaining,
-                'period_start' => $periodStart !== null ? now()->setTimestamp($periodStart) : null,
-                'period_end' => $periodEnd !== null ? now()->setTimestamp($periodEnd) : null,
-                'issued_at' => $issuedAt !== null ? now()->setTimestamp($issuedAt) : null,
-                'paid_at' => $paidAt !== null ? now()->setTimestamp($paidAt) : null,
-                'hosted_invoice_url' => is_string(data_get($invoiceObject, 'hosted_invoice_url')) ? data_get($invoiceObject, 'hosted_invoice_url') : null,
-                'invoice_pdf_url' => is_string(data_get($invoiceObject, 'invoice_pdf')) ? data_get($invoiceObject, 'invoice_pdf') : null,
-                'payload' => $invoiceObject,
-            ]
-        );
     }
 
     /**
