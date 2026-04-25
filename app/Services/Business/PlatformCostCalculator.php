@@ -94,7 +94,7 @@ final class PlatformCostCalculator
     private function providerLabel(string $provider): string
     {
         return match ($provider) {
-            PlatformCostSetting::PROVIDER_SLIPOK => 'SlipOK API',
+            PlatformCostSetting::PROVIDER_SLIPOK => 'Slip verification API',
             PlatformCostSetting::PROVIDER_STRIPE => 'Stripe Fees',
             PlatformCostSetting::PROVIDER_LINE => 'LINE Messaging',
             PlatformCostSetting::PROVIDER_EMAIL => 'Email Delivery',

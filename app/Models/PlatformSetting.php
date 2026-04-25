@@ -79,7 +79,7 @@ final class PlatformSetting extends Model
     {
         return self::query()->firstOrCreate([], [
             'slipok_enabled' => false,
-            'slipok_api_url' => 'https://connect.slip2go.com/api/verify-slip/qr-base64/info',
+            'slipok_api_url' => 'https://connect.slip2go.com/api/verify-slip/qr-code/info',
             'slipok_secret_header_name' => 'Authorization',
             'slipok_timeout_seconds' => 15,
             'stripe_enabled' => false,

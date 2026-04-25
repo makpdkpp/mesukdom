@@ -65,7 +65,7 @@
                     <th>Domain</th>
                     <th>Users</th>
                     <th>Plan</th>
-                    <th>SlipOK Usage</th>
+                    <th>Slip verification usage</th>
                     <th>Status</th>
                     <th>Deleted At</th>
                     <th>Actions</th>

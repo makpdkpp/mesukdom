@@ -186,14 +186,14 @@ class Plan extends Model
         }
 
         if ($this->usesCustomRoomPricing()) {
-            $display['SlipOK addon'] = $this->supportsSlipOk()
+            $display['Slip verification addon'] = $this->supportsSlipOk()
                 ? number_format($this->slipAddonPriceMonthly(), 2).' THB / room / month'
                 : 'Manual review only';
-            $display['SlipOK rights'] = $this->supportsSlipOk()
+            $display['Slip verification rights'] = $this->supportsSlipOk()
                 ? number_format($this->slipAddonRightsPerRoom()).' rights / room'
                 : 'No automatic rights';
         } else {
-            $display['SlipOK addon'] = $this->supportsSlipOk()
+            $display['Slip verification addon'] = $this->supportsSlipOk()
                 ? ($this->slipOkMonthlyLimit() > 0
                     ? number_format($this->slipOkMonthlyLimit()).' verifications / month'
                     : 'Enabled')

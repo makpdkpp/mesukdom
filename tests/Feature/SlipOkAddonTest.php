@@ -26,6 +26,30 @@ final class SlipOkAddonTest extends TestCase
 {
     use RefreshDatabase;
 
+    private const SLIPOK_QR_CODE_URL = 'https://connect.slip2go.com/api/verify-slip/qr-code/info';
+    private const DECODED_QR_CODE = '0038000600000101030060217A8941a0f8acdf4f285102TH91042688';
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        $this->bindSlipQrDecoder();
+    }
+
+    private function bindSlipQrDecoder(?string $decodedQrCode = self::DECODED_QR_CODE): void
+    {
+        $this->app->instance(SlipQrDecoder::class, new class($decodedQrCode) extends SlipQrDecoder {
+            public function __construct(
+                private readonly ?string $decodedQrCode,
+            ) {}
+
+            public function decodeFromFile(string $path): ?string
+            {
+                return $this->decodedQrCode;
+            }
+        });
+    }
+
     public function test_super_admin_can_manage_global_slipok_settings_plan_quota_and_tenant_plan(): void
     {
         $trial = Plan::query()->create([
@@ -63,7 +87,7 @@ final class SlipOkAddonTest extends TestCase
         $this->actingAs($admin)
             ->post(route('admin.slipok.settings.update'), [
                 'slipok_enabled' => '1',
-                'slipok_api_url' => 'https://connect.slip2go.com/api/verify-slip/qr-base64/info',
+                'slipok_api_url' => self::SLIPOK_QR_CODE_URL,
                 'slipok_api_secret' => 'super-secret-key',
                 'slipok_secret_header_name' => 'X-API-SECRET',
                 'slipok_timeout_seconds' => 12,
@@ -73,7 +97,7 @@ final class SlipOkAddonTest extends TestCase
         $setting = PlatformSetting::current();
 
         $this->assertTrue($setting->slipok_enabled);
-        $this->assertSame('https://connect.slip2go.com/api/verify-slip/qr-base64/info', $setting->slipok_api_url);
+        $this->assertSame(self::SLIPOK_QR_CODE_URL, $setting->slipok_api_url);
         $this->assertSame('super-secret-key', $setting->slipok_api_secret);
         $this->assertSame('Authorization', $setting->slipok_secret_header_name);
         $this->assertSame(12, $setting->slipok_timeout_seconds);
@@ -109,7 +133,7 @@ final class SlipOkAddonTest extends TestCase
     {
         Storage::fake('local');
         Http::fake([
-            'https://connect.slip2go.com/api/verify-slip/qr-base64/info' => Http::response([
+            self::SLIPOK_QR_CODE_URL => Http::response([
                 'code' => '200000',
                 'message' => 'Slip found.',
                 'data' => [
@@ -147,7 +171,7 @@ final class SlipOkAddonTest extends TestCase
 
         $setting = PlatformSetting::current();
         $setting->slipok_enabled = true;
-        $setting->slipok_api_url = 'https://connect.slip2go.com/api/verify-slip/qr-base64/info';
+        $setting->slipok_api_url = self::SLIPOK_QR_CODE_URL;
         $setting->slipok_api_secret = 'platform-secret';
         $setting->slipok_secret_header_name = 'Authorization';
         $setting->slipok_timeout_seconds = 10;
@@ -224,12 +248,12 @@ final class SlipOkAddonTest extends TestCase
 
         Http::assertSentCount(1);
         Http::assertSent(function ($request): bool {
-            $imageBase64 = data_get($request->data(), 'payload.imageBase64');
+            $qrCode = data_get($request->data(), 'payload.qrCode');
 
-            return $request->url() === 'https://connect.slip2go.com/api/verify-slip/qr-base64/info'
+            return $request->url() === self::SLIPOK_QR_CODE_URL
                 && $request->hasHeader('Authorization', 'Bearer platform-secret')
-                && is_string($imageBase64)
-                && str_starts_with($imageBase64, 'data:image/');
+                && $qrCode === self::DECODED_QR_CODE
+                && data_get($request->data(), 'payload.imageBase64') === null;
         });
     }
 
@@ -237,7 +261,7 @@ final class SlipOkAddonTest extends TestCase
     {
         Storage::fake('local');
         Http::fake([
-            'https://connect.slip2go.com/api/verify-slip/qr-base64/info' => Http::response([
+            self::SLIPOK_QR_CODE_URL => Http::response([
                 'code' => '200000',
                 'message' => 'Slip found.',
                 'data' => [
@@ -283,7 +307,7 @@ final class SlipOkAddonTest extends TestCase
 
         $setting = PlatformSetting::current();
         $setting->slipok_enabled = true;
-        $setting->slipok_api_url = 'https://connect.slip2go.com/api/verify-slip/qr-base64/info';
+        $setting->slipok_api_url = self::SLIPOK_QR_CODE_URL;
         $setting->slipok_api_secret = 'platform-secret';
         $setting->slipok_secret_header_name = 'Authorization';
         $setting->slipok_timeout_seconds = 10;
@@ -396,7 +420,7 @@ final class SlipOkAddonTest extends TestCase
     {
         Storage::fake('local');
         Http::fake([
-            'https://connect.slip2go.com/api/verify-slip/qr-base64/info' => Http::response([
+            self::SLIPOK_QR_CODE_URL => Http::response([
                 'code' => '200404',
                 'message' => 'Slip not found.',
             ], 200),
@@ -422,7 +446,7 @@ final class SlipOkAddonTest extends TestCase
 
         $setting = PlatformSetting::current();
         $setting->slipok_enabled = true;
-        $setting->slipok_api_url = 'https://connect.slip2go.com/api/verify-slip/qr-base64/info';
+        $setting->slipok_api_url = self::SLIPOK_QR_CODE_URL;
         $setting->slipok_api_secret = 'platform-secret';
         $setting->slipok_secret_header_name = 'Authorization';
         $setting->slipok_timeout_seconds = 10;
@@ -495,7 +519,7 @@ final class SlipOkAddonTest extends TestCase
     {
         Storage::fake('local');
         Http::fake([
-            'https://connect.slip2go.com/api/verify-slip/qr-base64/info' => Http::response([
+            self::SLIPOK_QR_CODE_URL => Http::response([
                 'code' => '200000',
                 'message' => 'Slip found.',
                 'data' => [
@@ -533,7 +557,7 @@ final class SlipOkAddonTest extends TestCase
 
         $setting = PlatformSetting::current();
         $setting->slipok_enabled = true;
-        $setting->slipok_api_url = 'https://connect.slip2go.com/api/verify-slip/qr-base64/info';
+        $setting->slipok_api_url = self::SLIPOK_QR_CODE_URL;
         $setting->slipok_api_secret = 'platform-secret';
         $setting->slipok_secret_header_name = 'Authorization';
         $setting->slipok_timeout_seconds = 10;
@@ -628,7 +652,7 @@ final class SlipOkAddonTest extends TestCase
 
         $setting = PlatformSetting::current();
         $setting->slipok_enabled = true;
-        $setting->slipok_api_url = 'https://connect.slip2go.com/api/verify-slip/qr-base64/info';
+        $setting->slipok_api_url = self::SLIPOK_QR_CODE_URL;
         $setting->slipok_api_secret = 'platform-secret';
         $setting->slipok_secret_header_name = 'Authorization';
         $setting->slipok_timeout_seconds = 10;
@@ -701,7 +725,7 @@ final class SlipOkAddonTest extends TestCase
     {
         Storage::fake('local');
         Http::fake([
-            'https://connect.slip2go.com/api/verify-slip/qr-base64/info' => Http::response([
+            self::SLIPOK_QR_CODE_URL => Http::response([
                 'code' => '200000',
                 'message' => 'Slip found.',
                 'data' => [
@@ -739,7 +763,7 @@ final class SlipOkAddonTest extends TestCase
 
         $setting = PlatformSetting::current();
         $setting->slipok_enabled = true;
-        $setting->slipok_api_url = 'https://connect.slip2go.com/api/verify-slip/qr-base64/info';
+        $setting->slipok_api_url = self::SLIPOK_QR_CODE_URL;
         $setting->slipok_api_secret = 'platform-secret';
         $setting->slipok_secret_header_name = 'Authorization';
         $setting->slipok_timeout_seconds = 10;
@@ -803,7 +827,7 @@ final class SlipOkAddonTest extends TestCase
     {
         Storage::fake('local');
         Http::fake([
-            'https://connect.slip2go.com/api/verify-slip/qr-base64/info' => Http::response([
+            self::SLIPOK_QR_CODE_URL => Http::response([
                 'code' => '200000',
                 'message' => 'Slip found.',
                 'data' => [
@@ -842,7 +866,7 @@ final class SlipOkAddonTest extends TestCase
 
         $setting = PlatformSetting::current();
         $setting->slipok_enabled = true;
-        $setting->slipok_api_url = 'https://connect.slip2go.com/api/verify-slip/qr-base64/info';
+    $setting->slipok_api_url = self::SLIPOK_QR_CODE_URL;
         $setting->slipok_api_secret = 'platform-secret';
         $setting->slipok_secret_header_name = 'Authorization';
         $setting->slipok_timeout_seconds = 10;

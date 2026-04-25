@@ -77,7 +77,7 @@
                         <input type="hidden" name="slipok_addon_enabled" value="0">
                         <label class="inline-flex items-center gap-3 text-sm font-medium text-slate-700">
                             <input id="slipok_addon_enabled" type="checkbox" name="slipok_addon_enabled" value="1" class="rounded border-slate-300 text-amber-500 shadow-sm focus:ring-amber-500" @checked((string) $prefilledSlipOkAddon === '1')>
-                            <span>Enable SlipOK addon</span>
+                            <span>Enable slip verification addon</span>
                         </label>
                     </div>
                 </div>

@@ -570,7 +570,7 @@ class RegistrationTest extends TestCase
         $response->assertSeeText('ลูกค้ากำหนดจำนวนห้องได้เอง');
         $response->assertSee('name="room_count"', false);
         $response->assertSee('min="10"', false);
-        $response->assertSeeText('เปิดใช้ SlipOK addon');
+        $response->assertSeeText('เปิดใช้ slip verification addon');
         $response->assertSeeText('ชำระหรือสมัครแบบรายปีเท่านั้น');
         $response->assertSeeText('สมาชิกรายปี');
         $response->assertSeeText('ชำระล่วงหน้ารายปี');

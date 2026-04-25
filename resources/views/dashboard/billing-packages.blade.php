@@ -108,7 +108,7 @@
                                     <div class="custom-control custom-checkbox border rounded px-4 py-3 mb-3 bg-white">
                                         <input type="hidden" name="slipok_addon_enabled" value="0">
                                         <input type="checkbox" class="custom-control-input" id="slipok_addon_{{ $plan->id }}" name="slipok_addon_enabled" value="1" @checked($defaultAddon) data-slipok-addon-input>
-                                        <label class="custom-control-label font-weight-semibold" for="slipok_addon_{{ $plan->id }}">เปิดใช้ SlipOK addon</label>
+                                        <label class="custom-control-label font-weight-semibold" for="slipok_addon_{{ $plan->id }}">เปิดใช้ slip verification addon</label>
                                     </div>
                                 @endif
                             @endif

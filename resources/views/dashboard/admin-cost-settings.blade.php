@@ -6,7 +6,7 @@
         [
             'title' => 'ต่อหน่วย',
             'summary' => 'คิดต้นทุนต่อครั้งหรือต่อหน่วยใช้งาน',
-            'examples' => 'เหมาะกับ SlipOK, LINE ต่อข้อความ, Email ต่อฉบับ',
+            'examples' => 'เหมาะกับ slip verification, LINE ต่อข้อความ, Email ต่อฉบับ',
             'formula' => 'จำนวนใช้งาน x Unit Cost',
         ],
         [
@@ -44,7 +44,7 @@
             'notes' => 'ค่า Hosting รายปี 1,200 บาท กระจายเป็นต้นทุนรายเดือน 100 บาท',
         ],
         [
-            'label' => 'SlipOK API 1 บาท/ครั้ง',
+            'label' => 'Slip verification API 1 บาท/ครั้ง',
             'hint' => 'คิดต้นทุนตรงตามจำนวนการตรวจสลิป',
             'provider' => 'slipok',
             'cost_type' => 'per_unit',
@@ -54,7 +54,7 @@
             'included_quota' => '0',
             'overage_unit_cost' => '0',
             'currency' => 'THB',
-            'notes' => 'ต้นทุน SlipOK API ที่ 1 บาทต่อการตรวจสลิป 1 ครั้ง',
+            'notes' => 'ต้นทุน slip verification API ที่ 1 บาทต่อการตรวจสลิป 1 ครั้ง',
         ],
         [
             'label' => 'Stripe 0.28 บาท/รายการ',
@@ -132,7 +132,7 @@
             <div class="card-header"><h3 class="card-title">ชุดค่าตั้งต้นแนะนำ</h3></div>
             <div class="card-body">
                 <p class="text-muted">กดใช้ preset เพื่อเติมค่าลงฟอร์มก่อนแก้ไข หรือกดบันทึกได้ทันทีด้วยค่าตั้งต้นชุดนั้น</p>
-                <div class="mb-2 small text-muted">มีชุดแนะนำสำหรับ Hosting, SlipOK, Stripe, LINE และ Email</div>
+                <div class="mb-2 small text-muted">มีชุดแนะนำสำหรับ Hosting, slip verification, Stripe, LINE และ Email</div>
                 @foreach($recommendedPresets as $preset)
                     <div class="border rounded p-3 mb-3">
                         <div class="d-flex justify-content-between align-items-start flex-wrap">

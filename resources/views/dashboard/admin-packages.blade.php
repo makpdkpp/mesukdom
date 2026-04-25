@@ -98,18 +98,18 @@
                     <div class="form-group form-check mt-4">
                         <input type="hidden" name="slipok_enabled" value="0">
                         <input type="checkbox" class="form-check-input" id="create_slipok_enabled" name="slipok_enabled" value="1" @checked(old('slipok_enabled') == '1')>
-                        <label class="form-check-label" for="create_slipok_enabled">SlipOK Addon</label>
+                        <label class="form-check-label" for="create_slipok_enabled">Slip verification addon</label>
                     </div>
                 </div>
                 <div class="col-md-2">
                     <div class="form-group">
-                        <label>SlipOK price / room</label>
+                        <label>Slip verification price / room</label>
                         <input type="number" step="0.01" min="0" name="slipok_addon_price_monthly" class="form-control" value="{{ old('slipok_addon_price_monthly', '0') }}">
                     </div>
                 </div>
                 <div class="col-md-2">
                     <div class="form-group">
-                        <label>SlipOK Limit</label>
+                        <label>Slip verification limit</label>
                         <input type="number" min="0" name="slipok_monthly_limit" class="form-control" value="{{ old('slipok_monthly_limit', '0') }}">
                         <small class="form-text text-muted">Use for fixed packages only.</small>
                     </div>
@@ -136,8 +136,8 @@
                 <th>Stripe Price ID</th>
                 <th>Room Limit</th>
                 <th>Recommended</th>
-                <th>SlipOK Addon</th>
-                <th>SlipOK Price</th>
+                <th>Slip verification addon</th>
+                <th>Slip verification price</th>
                 <th>Monthly Limit</th>
                 <th>Sort</th>
                 <th>Active</th>

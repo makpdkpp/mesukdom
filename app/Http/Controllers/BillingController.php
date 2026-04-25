@@ -663,7 +663,7 @@ final class BillingController extends Controller
                     $plan,
                     $plan->slipAddonPriceMonthly() * $multiplier,
                     $billingOption,
-                    $plan->name.' SlipOK Addon'
+                    $plan->name.' Slip verification addon'
                 ),
                 'quantity' => $roomCount,
             ];

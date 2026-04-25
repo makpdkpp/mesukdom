@@ -10,6 +10,9 @@ use Illuminate\Support\Facades\Http;
 
 final class SlipOkService
 {
+    private const ENDPOINT_MODE_QR_BASE64 = 'qr_base64';
+    private const ENDPOINT_MODE_QR_CODE = 'qr_code';
+
     /**
      * @return array{status:string,message:string,request:array<string,mixed>,response:array<string,mixed>}
      */
@@ -47,11 +50,9 @@ final class SlipOkService
             'payload' => [],
         ];
 
-        $url = strtolower((string) $setting->slipok_api_url);
-
-        if (str_contains($url, '/qr-base64/')) {
+        if ($this->endpointMode($setting) === self::ENDPOINT_MODE_QR_BASE64) {
             if ($qrBase64 === null || $qrBase64 === '') {
-                throw new \RuntimeException('SlipOK qr-base64 endpoint requires a base64 slip payload.');
+                throw new \RuntimeException('Slip verification qr-base64 endpoint requires a base64 slip payload.');
             }
 
             $payload['payload']['imageBase64'] = $qrBase64;
@@ -60,12 +61,17 @@ final class SlipOkService
         }
 
         if ($qrCode === null || $qrCode === '') {
-            throw new \RuntimeException('SlipOK qr-code endpoint requires a decoded QR string.');
+            throw new \RuntimeException('Slip verification qr-code endpoint requires a decoded QR string.');
         }
 
         $payload['payload']['qrCode'] = $qrCode;
 
         return $payload;
+    }
+
+    public function requiresDecodedQrCode(PlatformSetting $setting): bool
+    {
+        return $this->endpointMode($setting) === self::ENDPOINT_MODE_QR_CODE;
     }
 
     /**
@@ -137,14 +143,14 @@ final class SlipOkService
     private function messageFromResponse(bool $requestOk, array $responseBody): string
     {
         if (! $requestOk) {
-            return $this->stringValue(Arr::get($responseBody, 'message', 'SlipOK request failed.'), 'SlipOK request failed.');
+            return $this->stringValue(Arr::get($responseBody, 'message', 'Slip verification request failed.'), 'Slip verification request failed.');
         }
 
         return $this->stringValue(Arr::get(
             $responseBody,
             'message',
-            Arr::get($responseBody, 'statusMessage', 'SlipOK verification completed.')
-        ), 'SlipOK verification completed.');
+            Arr::get($responseBody, 'statusMessage', 'Slip verification completed.')
+        ), 'Slip verification completed.');
     }
 
     private function stringValue(mixed $value, string $default = ''): string
@@ -162,5 +168,20 @@ final class SlipOkService
         }
 
         return $secret;
+    }
+
+    private function endpointMode(PlatformSetting $setting): string
+    {
+        $url = strtolower((string) $setting->slipok_api_url);
+
+        if (str_contains($url, '/qr-base64/')) {
+            return self::ENDPOINT_MODE_QR_BASE64;
+        }
+
+        if (str_contains($url, '/qr-code/')) {
+            return self::ENDPOINT_MODE_QR_CODE;
+        }
+
+        return self::ENDPOINT_MODE_QR_CODE;
     }
 }

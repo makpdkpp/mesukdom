@@ -13,6 +13,7 @@ use App\Models\PlatformSetting;
 use App\Models\Room;
 use App\Models\Tenant;
 use App\Models\User;
+use App\Services\SlipQrDecoder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
@@ -22,12 +23,31 @@ final class PaymentSlipRecheckTest extends TestCase
 {
     use RefreshDatabase;
 
+    private const SLIPOK_QR_CODE_URL = 'https://connect.slip2go.com/api/verify-slip/qr-code/info';
+    private const DECODED_QR_CODE = '0038000600000101030060217A8941a0f8acdf4f285102TH91042688';
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        $this->app->instance(SlipQrDecoder::class, new class(self::DECODED_QR_CODE) extends SlipQrDecoder {
+            public function __construct(
+                private readonly ?string $decodedQrCode,
+            ) {}
+
+            public function decodeFromFile(string $path): ?string
+            {
+                return $this->decodedQrCode;
+            }
+        });
+    }
+
     public function test_owner_can_recheck_failed_slipok_payment_and_auto_approve_when_verified(): void
     {
         Storage::fake('local');
 
         Http::fake([
-            'https://connect.slip2go.com/api/verify-slip/qr-base64/info' => Http::response([
+            self::SLIPOK_QR_CODE_URL => Http::response([
                 'code' => '200000',
                 'message' => 'Slip found.',
                 'data' => [
@@ -60,6 +80,7 @@ final class PaymentSlipRecheckTest extends TestCase
             'plan_id' => $plan->id,
             'plan' => $plan->slug,
             'status' => 'active',
+            'subscription_status' => 'active',
             'promptpay_number' => '0812345678',
         ]);
 
@@ -71,7 +92,7 @@ final class PaymentSlipRecheckTest extends TestCase
 
         $setting = PlatformSetting::current();
         $setting->slipok_enabled = true;
-        $setting->slipok_api_url = 'https://connect.slip2go.com/api/verify-slip/qr-base64/info';
+        $setting->slipok_api_url = self::SLIPOK_QR_CODE_URL;
         $setting->slipok_api_secret = 'platform-secret';
         $setting->slipok_secret_header_name = 'Authorization';
         $setting->slipok_timeout_seconds = 10;
@@ -137,7 +158,7 @@ final class PaymentSlipRecheckTest extends TestCase
             ->patch(route('app.payments.recheck-slip', $payment->id));
 
         $response->assertRedirect();
-        $response->assertSessionHas('status', fn (string $message): bool => str_contains($message, 'SlipOK recheck completed'));
+        $response->assertSessionHas('status', fn (string $message): bool => str_contains($message, 'Slip verification recheck completed'));
 
         $payment->refresh();
         $invoice->refresh();
@@ -224,7 +245,7 @@ final class PaymentSlipRecheckTest extends TestCase
             ->patch(route('app.payments.recheck-slip', $payment->id));
 
         $response->assertRedirect();
-        $response->assertSessionHas('error', 'Only failed SlipOK payments can be rechecked.');
+        $response->assertSessionHas('error', 'Only failed slip-verification payments can be rechecked.');
 
         $payment->refresh();
         $this->assertSame('verified', $payment->verification_status);

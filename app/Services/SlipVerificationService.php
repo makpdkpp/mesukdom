@@ -37,29 +37,32 @@ final class SlipVerificationService
         }
 
         if (! $plan || ! $tenant->slipOkAddonEnabled()) {
-            return $this->markPayment($payment, 'skipped', 'SlipOK addon is not included in the current package.');
+            return $this->markPayment($payment, 'skipped', 'Automatic slip verification is not included in the current package.');
         }
 
         $slipOkMonthlyLimit = $tenant->effectiveSlipOkMonthlyLimit();
 
         if ($slipOkMonthlyLimit > 0 && $this->monthlyUsage($tenant->id, $plan->id) >= $slipOkMonthlyLimit) {
-            return $this->markPayment($payment, 'skipped', 'SlipOK monthly quota has been reached for this package.');
+            return $this->markPayment($payment, 'skipped', 'Automatic slip verification monthly quota has been reached for this package.');
         }
 
         $platformSetting = PlatformSetting::current();
 
         if (! $platformSetting->hasSlipOkCredentials()) {
-            return $this->markPayment($payment, 'skipped', 'SlipOK is not configured by Platform Admin.');
+            return $this->markPayment($payment, 'skipped', 'Slip verification is not configured by Platform Admin.');
         }
 
         $absolutePath = Storage::disk('local')->path($payment->slip_path);
-        $qrBase64 = $this->readBase64Slip($absolutePath);
-        $qrCode = $this->requiresDecodedQrCode($platformSetting)
+        $requiresDecodedQrCode = $this->slipOkService->requiresDecodedQrCode($platformSetting);
+        $qrCode = $requiresDecodedQrCode
             ? $this->qrDecoder->decodeFromFile($absolutePath)
             : null;
+        $qrBase64 = $requiresDecodedQrCode
+            ? null
+            : $this->readBase64Slip($absolutePath);
 
-        if ($this->requiresDecodedQrCode($platformSetting) && $qrCode === null) {
-            return $this->markPayment($payment, 'failed', 'SlipOK could not read a QR code from this file. Use image slips for automatic verification.');
+        if ($requiresDecodedQrCode && $qrCode === null) {
+            return $this->markPayment($payment, 'failed', 'Slip verification could not read a QR code from this file. Use image slips for automatic verification.');
         }
 
         $result = $this->slipOkService->verifySlip($platformSetting, $qrCode, $qrBase64);
@@ -104,20 +107,20 @@ final class SlipVerificationService
         $tenant = Tenant::withoutGlobalScopes()->find($payment->tenant_id);
 
         if (! $tenant instanceof Tenant) {
-            return ['failed', 'SlipOK verification failed: tenant not found for destination validation.'];
+            return ['failed', 'Slip verification failed: tenant not found for destination validation.'];
         }
 
         $invoice = Invoice::withoutGlobalScopes()->find($payment->invoice_id);
 
         if (! $invoice instanceof Invoice) {
-            return ['failed', 'SlipOK verification failed: invoice not found for amount validation.'];
+            return ['failed', 'Slip verification failed: invoice not found for amount validation.'];
         }
 
         $expectedAmount = round((float) $invoice->total_amount, 2);
         $receivedAmount = $this->extractAmountFromResponse($result['response']);
 
         if ($receivedAmount === null) {
-            return ['failed', 'SlipOK verification failed: amount was not found in provider response.'];
+            return ['failed', 'Slip verification failed: amount was not found in provider response.'];
         }
 
         if (abs($receivedAmount - $expectedAmount) > 0.009) {
@@ -159,12 +162,12 @@ final class SlipVerificationService
 
             if ($invoice instanceof Invoice) {
                 return sprintf(
-                    'SlipOK could not verify this slip. The uploaded image may be for a different transfer or the QR data could not be recognized. Expected invoice amount: %s THB.',
+                    'Slip verification could not verify this slip. The uploaded image may be for a different transfer or the QR data could not be recognized. Expected invoice amount: %s THB.',
                     number_format((float) $invoice->total_amount, 2, '.', '')
                 );
             }
 
-            return 'SlipOK could not verify this slip. The uploaded image may be for a different transfer or the QR data could not be recognized.';
+            return 'Slip verification could not verify this slip. The uploaded image may be for a different transfer or the QR data could not be recognized.';
         }
 
         return $message;
@@ -313,11 +316,6 @@ final class SlipVerificationService
         }
 
         return array_values(array_unique($references));
-    }
-
-    private function requiresDecodedQrCode(PlatformSetting $setting): bool
-    {
-        return ! str_contains(strtolower((string) $setting->slipok_api_url), '/qr-base64/');
     }
 
     private function readBase64Slip(string $path): ?string

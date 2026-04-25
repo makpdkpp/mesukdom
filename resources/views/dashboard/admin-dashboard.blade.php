@@ -117,7 +117,7 @@
         <div class="card card-outline card-info h-100">
             <div class="card-header"><h3 class="card-title">Usage Signals</h3></div>
             <div class="card-body">
-                <div class="d-flex justify-content-between border-bottom py-2"><span>SlipOK Calls This Month</span><strong>{{ number_format($slipOkUsageTotal) }}</strong></div>
+                <div class="d-flex justify-content-between border-bottom py-2"><span>Slip verification calls this month</span><strong>{{ number_format($slipOkUsageTotal) }}</strong></div>
                 <div class="d-flex justify-content-between border-bottom py-2"><span>Stripe Paid Invoices</span><strong>{{ number_format($stripeTransactionCount) }}</strong></div>
                 <div class="d-flex justify-content-between py-2"><span>Active Tenants</span><strong>{{ number_format($activeTenants) }}</strong></div>
             </div>
@@ -173,7 +173,7 @@
             <div class="card-header"><h3 class="card-title">High-Cost Tenants</h3></div>
             <div class="card-body table-responsive p-0">
                 <table class="table table-hover mb-0">
-                    <thead><tr><th>Tenant</th><th class="text-right">SlipOK</th><th class="text-right">Cost</th></tr></thead>
+                    <thead><tr><th>Tenant</th><th class="text-right">Slip verification</th><th class="text-right">Cost</th></tr></thead>
                     <tbody>
                     @forelse($highCostTenants as $tenantCost)
                         <tr>
@@ -182,7 +182,7 @@
                             <td class="text-right">{{ number_format((float) $tenantCost['cost'], 2) }}</td>
                         </tr>
                     @empty
-                        <tr><td colspan="3" class="text-center text-muted">No SlipOK usage this month</td></tr>
+                        <tr><td colspan="3" class="text-center text-muted">No slip verification usage this month</td></tr>
                     @endforelse
                     </tbody>
                 </table>

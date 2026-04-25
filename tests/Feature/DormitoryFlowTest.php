@@ -55,7 +55,7 @@ class DormitoryFlowTest extends TestCase
 
         $response->assertOk();
         $response->assertSee('Revenue Trend');
-        $response->assertSee('SlipOK Addon');
+        $response->assertSee('Slip verification addon');
 
         $roomStatusResponse = $this->actingAs($user)
             ->withSession(['tenant_id' => $tenant->id])
@@ -111,7 +111,7 @@ class DormitoryFlowTest extends TestCase
             ->get('/app/dashboard');
 
         $response->assertOk();
-        $response->assertSee('SlipOK Addon');
+        $response->assertSee('Slip verification addon');
         $response->assertSee('2', false);
         $response->assertSee('/ 10 verifications', false);
         $response->assertSee('Remaining this month:');

@@ -61,7 +61,7 @@ class CreateNewUser implements CreatesNewUsers
 
             if ($slipOkAddonEnabled && ! $plan->supportsSlipOk()) {
                 throw ValidationException::withMessages([
-                    'slipok_addon_enabled' => 'SlipOK addon is not available for the selected package.',
+                    'slipok_addon_enabled' => 'Slip verification addon is not available for the selected package.',
                 ]);
             }
 

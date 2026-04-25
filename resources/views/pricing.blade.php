@@ -110,7 +110,7 @@
                                     </div>
                                     @if($plan->supportsSlipOk())
                                         <label class="flex items-center justify-between gap-4 rounded-2xl px-4 py-3 {{ $loop->iteration === 2 ? 'bg-white/10 text-white ring-1 ring-white/10' : 'bg-white/90 text-slate-700 ring-1 ring-slate-200/70' }}">
-                                            <span class="text-sm font-semibold">Enable SlipOK addon</span>
+                                            <span class="text-sm font-semibold">Enable slip verification addon</span>
                                             <input type="hidden" name="slipok_addon_enabled" value="0">
                                             <input type="checkbox" name="slipok_addon_enabled" value="1" class="h-4 w-4 rounded border-slate-300 text-amber-500 focus:ring-amber-500" data-slipok-addon-input>
                                         </label>
@@ -118,7 +118,7 @@
                                     <div class="text-xs {{ $loop->iteration === 2 ? 'text-white/60' : 'text-slate-500' }}">
                                         {{ number_format($plan->roomPriceMonthly(), 2) }} THB / room / month
                                         @if($plan->supportsSlipOk())
-                                            • SlipOK {{ number_format($plan->slipAddonPriceMonthly(), 2) }} THB / room / month
+                                            • Slip verification {{ number_format($plan->slipAddonPriceMonthly(), 2) }} THB / room / month
                                         @endif
                                     </div>
                                     <div class="rounded-2xl px-4 py-3 text-sm font-semibold {{ $loop->iteration === 2 ? 'bg-white/10 text-white ring-1 ring-white/10' : 'bg-white text-slate-800 ring-1 ring-slate-200/80' }}">

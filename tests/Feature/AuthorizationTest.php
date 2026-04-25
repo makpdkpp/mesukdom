@@ -164,7 +164,7 @@ class AuthorizationTest extends TestCase
         $dashboardResponse->assertSeeText('Total Tenants');
         $dashboardResponse->assertSeeText('Active Users');
         $dashboardResponse->assertSeeText('Collected Revenue');
-        $dashboardResponse->assertSeeText('SlipOK Calls This Month');
+        $dashboardResponse->assertSeeText('Slip verification calls this month');
         $dashboardResponse->assertSeeText('Net Revenue');
         $dashboardResponse->assertSeeText('Gross Margin');
         $dashboardResponse->assertSeeText('Cost Breakdown');
@@ -173,12 +173,12 @@ class AuthorizationTest extends TestCase
         $platformResponse = $this->actingAs($admin)->get('/admin/platform');
 
         $platformResponse->assertOk();
-        $platformResponse->assertSeeText('Global SlipOK Settings');
+        $platformResponse->assertSeeText('Global Slip Verification Settings');
         $platformResponse->assertSeeText('Stripe Subscription Settings');
         $platformResponse->assertDontSeeText('Total Tenants');
         $platformResponse->assertDontSeeText('Active Users');
         $platformResponse->assertDontSeeText('Collected Revenue');
-        $platformResponse->assertDontSeeText('SlipOK Calls This Month');
+        $platformResponse->assertDontSeeText('Slip verification calls this month');
     }
 
     public function test_admin_business_dashboard_uses_cost_settings_for_margin(): void
@@ -266,7 +266,7 @@ class AuthorizationTest extends TestCase
         $response->assertSeeText('45.4%');
         $response->assertSeeText('Total Costs');
         $response->assertSeeText('546.00');
-        $response->assertSeeText('SlipOK Calls This Month');
+        $response->assertSeeText('Slip verification calls this month');
         $response->assertSeeText('3');
         $response->assertSeeText('High-Cost Tenants');
         $response->assertSeeText('Margin Tenant');
@@ -314,7 +314,7 @@ class AuthorizationTest extends TestCase
         $response->assertSeeText('ค่าใช้จ่ายรายปีต้องแปลงเป็นรายเดือนก่อนบันทึกเสมอ');
         $response->assertSeeText('ชุดค่าตั้งต้นแนะนำ');
         $response->assertSeeText('Hosting รายปี 1,200 บาท');
-        $response->assertSeeText('SlipOK API 1 บาท/ครั้ง');
+        $response->assertSeeText('Slip verification API 1 บาท/ครั้ง');
         $response->assertSeeText('Stripe 0.28 บาท/รายการ');
         $response->assertSeeText('ใช้ค่าชุดนี้');
         $response->assertSeeText('บันทึก preset นี้ทันที');

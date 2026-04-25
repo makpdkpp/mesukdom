@@ -658,7 +658,7 @@ class DashboardController extends Controller
         $message = 'Payment recorded successfully.';
 
         if ($verificationOutcome !== null) {
-            $message .= ' SlipOK: '.$verificationOutcome['message'];
+            $message .= ' Slip verification: '.$verificationOutcome['message'];
         }
 
         if ($autoApproved) {
@@ -696,13 +696,13 @@ class DashboardController extends Controller
         }
 
         if ($payment->verification_status !== 'failed') {
-            return back()->with('error', 'Only failed SlipOK payments can be rechecked.');
+            return back()->with('error', 'Only failed slip-verification payments can be rechecked.');
         }
 
         $verificationOutcome = $slipVerificationService->verifyPayment($payment);
         $autoApproved = $this->autoApprovePaymentIfSlipVerified($payment);
 
-        $message = 'SlipOK recheck completed: '.$verificationOutcome['message'];
+        $message = 'Slip verification recheck completed: '.$verificationOutcome['message'];
 
         if ($autoApproved) {
             $message .= ' Auto-approved and invoice marked as paid.';
@@ -1024,7 +1024,7 @@ class DashboardController extends Controller
         $verificationOutcome = $slipVerificationService->verifyPayment($payment);
         $autoApproved = $this->autoApprovePaymentIfSlipVerified($payment);
 
-        $message = 'Slip uploaded successfully. SlipOK: '.$verificationOutcome['message'];
+        $message = 'Slip uploaded successfully. Slip verification: '.$verificationOutcome['message'];
 
         if ($autoApproved) {
             $message .= ' Payment auto-approved and invoice marked as paid.';

@@ -93,7 +93,7 @@ final class PlatformCostSetting extends Model
     public function providerLabel(): string
     {
         return match ($this->provider) {
-            self::PROVIDER_SLIPOK => 'SlipOK API',
+            self::PROVIDER_SLIPOK => 'Slip verification API',
             self::PROVIDER_STRIPE => 'Stripe Fees',
             self::PROVIDER_LINE => 'LINE Messaging',
             self::PROVIDER_EMAIL => 'Email Delivery',

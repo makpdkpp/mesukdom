@@ -61,11 +61,11 @@
                     </div>
                     @if($checkoutPlan->supportsSlipOk())
                         <div class="col-md-3">
-                            <label class="form-label d-block">SlipOK Addon</label>
+                            <label class="form-label d-block">Slip verification addon</label>
                             <div class="form-check mt-2">
                                 <input type="hidden" name="slipok_addon_enabled" value="0">
                                 <input type="checkbox" class="form-check-input" id="pending_slipok_addon_enabled" name="slipok_addon_enabled" value="1" @checked($selectedSlipOkAddon) data-slipok-addon-input>
-                                <label class="form-check-label" for="pending_slipok_addon_enabled">Enable SlipOK addon</label>
+                                <label class="form-check-label" for="pending_slipok_addon_enabled">Enable slip verification addon</label>
                             </div>
                         </div>
                     @endif
@@ -73,7 +73,7 @@
                         <div class="small text-muted" data-custom-price-summary>
                             {{ number_format($checkoutPlan->roomPriceMonthly(), 2) }} THB x {{ $selectedRoomCount }} room(s) x 12 months
                             @if($checkoutPlan->supportsSlipOk())
-                                + {{ number_format($checkoutPlan->slipAddonPriceMonthly(), 2) }} THB x {{ $selectedRoomCount }} room(s) x 12 months for SlipOK
+                                + {{ number_format($checkoutPlan->slipAddonPriceMonthly(), 2) }} THB x {{ $selectedRoomCount }} room(s) x 12 months for slip verification
                             @endif
                             = {{ number_format($checkoutPlan->computedBillingPriceFor('subscription_annual', $selectedRoomCount, $selectedSlipOkAddon), 2) }} THB / year
                         </div>

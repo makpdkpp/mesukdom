@@ -9,10 +9,12 @@ use App\Models\NotificationLog;
 use App\Models\OwnerLineLink;
 use App\Models\Payment;
 use App\Models\Plan;
+use App\Models\PlatformCostSetting;
 use App\Models\PlatformSetting;
 use App\Models\SlipVerificationUsage;
 use App\Models\Tenant;
 use App\Models\User;
+use App\Services\Business\AdminBusinessMetrics;
 use App\Services\OwnerLineLinkService;
 use App\Services\StripePackagePricingService;
 use App\Support\ApiMonitorMetrics;
@@ -25,6 +27,7 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Redis;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
+use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
 use Stripe\Exception\ApiErrorException;
@@ -32,37 +35,9 @@ use Throwable;
 
 final class AdminPortalController extends Controller
 {
-    public function dashboard(): View
+    public function dashboard(AdminBusinessMetrics $metrics): View
     {
-        $queueConnection = (string) config('queue.default', 'sync');
-        $hasJobsTable = Schema::hasTable('jobs');
-        $hasFailedJobsTable = Schema::hasTable('failed_jobs');
-
-        $pendingJobs = $hasJobsTable ? (int) DB::table('jobs')->count() : null;
-        $failedJobsCount = $hasFailedJobsTable ? (int) DB::table('failed_jobs')->count() : 0;
-        $redisHealth = $this->redisHealthPayload();
-        $slipOkUsageTotal = SlipVerificationUsage::withoutGlobalScopes()
-            ->where('provider', 'slipok')
-            ->where('usage_month', now()->format('Y-m'))
-            ->count();
-
-        return view('dashboard.admin-dashboard', [
-            'tenantCount' => Tenant::count(),
-            'activeUsers' => User::count(),
-            'saasRevenue' => Tenant::query()
-                ->join('plans', 'tenants.plan_id', '=', 'plans.id')
-                ->where('tenants.status', 'active')
-                ->sum('plans.price_monthly'),
-            'slipOkUsageTotal' => $slipOkUsageTotal,
-            'serverStatus' => 'Online',
-            'queueConnection' => $queueConnection,
-            'pendingJobs' => $pendingJobs,
-            'failedJobsCount' => $failedJobsCount,
-            'redisHealth' => $redisHealth,
-            'apiUsageTotal' => $slipOkUsageTotal,
-            'notificationLogs' => NotificationLog::withoutGlobalScopes()->latest()->take(10)->get(),
-            'paymentLogs' => Payment::withoutGlobalScopes()->latest()->take(10)->get(),
-        ]);
+        return view('dashboard.admin-dashboard', $metrics->dashboardPayload());
     }
 
     public function profile(): View
@@ -77,6 +52,61 @@ final class AdminPortalController extends Controller
     public function apiMonitor(ApiMonitorMetrics $metrics): View
     {
         return view('dashboard.admin-api-monitor', $metrics->dashboardPayload());
+    }
+
+    public function systemMonitor(): View
+    {
+        return view('dashboard.admin-system-monitor', $this->systemMonitorPayload());
+    }
+
+    public function costSettings(): View
+    {
+        return view('dashboard.admin-cost-settings', [
+            'costSettings' => PlatformCostSetting::query()->orderByDesc('is_active')->orderBy('provider')->orderByDesc('effective_from')->get(),
+            'providers' => PlatformCostSetting::PROVIDERS,
+            'costTypes' => PlatformCostSetting::COST_TYPES,
+        ]);
+    }
+
+    public function storeCostSetting(Request $request): RedirectResponse
+    {
+        $validated = $request->validate([
+            'provider' => ['required', Rule::in(PlatformCostSetting::PROVIDERS)],
+            'cost_type' => ['required', Rule::in(PlatformCostSetting::COST_TYPES)],
+            'unit_cost' => ['nullable', 'numeric', 'min:0'],
+            'percentage_rate' => ['nullable', 'numeric', 'min:0', 'max:100'],
+            'fixed_fee' => ['nullable', 'numeric', 'min:0'],
+            'included_quota' => ['nullable', 'integer', 'min:0'],
+            'overage_unit_cost' => ['nullable', 'numeric', 'min:0'],
+            'currency' => ['required', 'string', 'max:10'],
+            'effective_from' => ['required', 'date'],
+            'effective_to' => ['nullable', 'date', 'after_or_equal:effective_from'],
+            'is_active' => ['nullable'],
+            'notes' => ['nullable', 'string', 'max:2000'],
+        ]);
+
+        PlatformCostSetting::query()->create([
+            ...$validated,
+            'unit_cost' => $validated['unit_cost'] ?? 0,
+            'percentage_rate' => $validated['percentage_rate'] ?? 0,
+            'fixed_fee' => $validated['fixed_fee'] ?? 0,
+            'included_quota' => $validated['included_quota'] ?? 0,
+            'overage_unit_cost' => $validated['overage_unit_cost'] ?? 0,
+            'currency' => strtoupper((string) $validated['currency']),
+            'is_active' => $request->boolean('is_active', true),
+        ]);
+
+        return back()->with('status', 'Cost setting saved.');
+    }
+
+    public function deactivateCostSetting(PlatformCostSetting $costSetting): RedirectResponse
+    {
+        $costSetting->update([
+            'is_active' => false,
+            'effective_to' => $costSetting->effective_to ?? now()->toDateString(),
+        ]);
+
+        return back()->with('status', 'Cost setting deactivated.');
     }
 
     public function migrate(Request $request): RedirectResponse
@@ -244,6 +274,33 @@ final class AdminPortalController extends Controller
             'client' => $client,
             'connections' => $connections,
             'ok' => $overallOk,
+        ];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function systemMonitorPayload(): array
+    {
+        $queueConnection = (string) config('queue.default', 'sync');
+        $hasJobsTable = Schema::hasTable('jobs');
+        $hasFailedJobsTable = Schema::hasTable('failed_jobs');
+        $notificationLogs = NotificationLog::withoutGlobalScopes()->latest()->take(10)->get();
+        $paymentLogs = Payment::withoutGlobalScopes()->latest()->take(10)->get();
+        $apiUsageTotal = SlipVerificationUsage::withoutGlobalScopes()
+            ->where('provider', 'slipok')
+            ->where('usage_month', now()->format('Y-m'))
+            ->count();
+
+        return [
+            'serverStatus' => 'Online',
+            'queueConnection' => $queueConnection,
+            'pendingJobs' => $hasJobsTable ? (int) DB::table('jobs')->count() : null,
+            'failedJobsCount' => $hasFailedJobsTable ? (int) DB::table('failed_jobs')->count() : 0,
+            'redisHealth' => $this->redisHealthPayload(),
+            'apiUsageTotal' => $apiUsageTotal,
+            'notificationLogs' => $notificationLogs,
+            'paymentLogs' => $paymentLogs,
         ];
     }
 
@@ -485,7 +542,7 @@ final class AdminPortalController extends Controller
         $setting->slipok_timeout_seconds = (int) $validated['slipok_timeout_seconds'];
         $setting->save();
 
-        return back()->with('success', 'Platform SlipOK settings updated.');
+        return back()->with('success', 'Platform slip verification settings updated.');
     }
 
     public function updateStripeSettings(Request $request): RedirectResponse
@@ -658,7 +715,7 @@ final class AdminPortalController extends Controller
 
         $plan->update(['limits' => $limits]);
 
-        return back()->with('success', "Updated SlipOK addon quota for {$plan->name}.");
+        return back()->with('success', "Updated slip verification addon quota for {$plan->name}.");
     }
 
     /**
@@ -698,7 +755,7 @@ final class AdminPortalController extends Controller
 
             if ($request->boolean('slipok_enabled') && (! array_key_exists('slipok_addon_price_monthly', $validated) || ! is_numeric($validated['slipok_addon_price_monthly']))) {
                 throw ValidationException::withMessages([
-                    'slipok_addon_price_monthly' => 'SlipOK addon price per room is required when SlipOK addon is enabled for a custom package.',
+                    'slipok_addon_price_monthly' => 'Slip verification addon price per room is required when slip verification addon is enabled for a custom package.',
                 ]);
             }
 
@@ -713,7 +770,7 @@ final class AdminPortalController extends Controller
 
         if (! array_key_exists('slipok_monthly_limit', $validated) || ! is_numeric($validated['slipok_monthly_limit'])) {
             throw ValidationException::withMessages([
-                'slipok_monthly_limit' => 'SlipOK monthly limit is required for fixed packages.',
+                'slipok_monthly_limit' => 'Slip verification monthly limit is required for fixed packages.',
             ]);
         }
 

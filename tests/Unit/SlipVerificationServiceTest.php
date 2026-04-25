@@ -98,9 +98,9 @@ class SlipVerificationServiceTest extends TestCase
         $payment->refresh();
 
         $this->assertSame('skipped', $result['status']);
-        $this->assertSame('SlipOK monthly quota has been reached for this package.', $result['message']);
+        $this->assertSame('Automatic slip verification monthly quota has been reached for this package.', $result['message']);
         $this->assertSame('skipped', $payment->verification_status);
-        $this->assertSame('SlipOK monthly quota has been reached for this package.', $payment->verification_note);
+        $this->assertSame('Automatic slip verification monthly quota has been reached for this package.', $payment->verification_note);
     }
 
     public function test_custom_package_slip_verification_respects_tenant_addon_toggle(): void
@@ -158,8 +158,8 @@ class SlipVerificationServiceTest extends TestCase
         $payment->refresh();
 
         $this->assertSame('skipped', $result['status']);
-        $this->assertSame('SlipOK addon is not included in the current package.', $result['message']);
+        $this->assertSame('Automatic slip verification is not included in the current package.', $result['message']);
         $this->assertSame('skipped', $payment->verification_status);
-        $this->assertSame('SlipOK addon is not included in the current package.', $payment->verification_note);
+        $this->assertSame('Automatic slip verification is not included in the current package.', $payment->verification_note);
     }
 }

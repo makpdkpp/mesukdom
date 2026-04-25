@@ -11,18 +11,18 @@
 <div class="row">
     <div class="col-lg-5">
         <div class="card card-primary">
-            <div class="card-header"><h3 class="card-title">Global SlipOK Settings</h3></div>
+            <div class="card-header"><h3 class="card-title">Global Slip Verification Settings</h3></div>
             <form method="POST" action="{{ route('admin.slipok.settings.update') }}">
                 @csrf
                 <div class="card-body">
                     <div class="form-group form-check">
                         <input type="hidden" name="slipok_enabled" value="0">
                         <input type="checkbox" class="form-check-input" id="slipok_enabled" name="slipok_enabled" value="1" @checked($platformSetting->slipok_enabled)>
-                        <label class="form-check-label" for="slipok_enabled">Enable SlipOK globally</label>
+                        <label class="form-check-label" for="slipok_enabled">Enable slip verification globally</label>
                     </div>
                     <div class="form-group">
                         <label>API URL</label>
-                        <input name="slipok_api_url" class="form-control" value="{{ old('slipok_api_url', $platformSetting->slipok_api_url) }}" placeholder="https://connect.slip2go.com/api/verify-slip/qr-base64/info">
+                        <input name="slipok_api_url" class="form-control" value="{{ old('slipok_api_url', $platformSetting->slipok_api_url) }}" placeholder="https://connect.slip2go.com/api/verify-slip/qr-code/info">
                     </div>
                     <div class="form-group">
                         <label>Secret Header Name</label>
@@ -114,7 +114,7 @@
             </form>
         </div>
         <div class="alert alert-light border">
-            Package creation/update/edit and SlipOK Addon limits moved to
+            Package creation/update/edit and slip verification addon limits moved to
             <a href="{{ route('admin.packages') }}"><strong>Package Management</strong></a>.
         </div>
         <div class="alert alert-light border mb-0">

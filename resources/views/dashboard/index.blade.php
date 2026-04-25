@@ -66,7 +66,7 @@
     </div>
     <div class="col-md-4">
         <div class="card card-outline {{ $slipOkEnabled ? 'card-info' : 'card-secondary' }}">
-            <div class="card-header"><h3 class="card-title">SlipOK Addon</h3></div>
+            <div class="card-header"><h3 class="card-title">Slip verification addon</h3></div>
             <div class="card-body">
                 @if($slipOkEnabled)
                     <div class="d-flex align-items-start justify-content-between mb-3">
@@ -101,7 +101,7 @@
                         </div>
                         <span class="badge badge-secondary">Manual review</span>
                     </div>
-                    <p class="text-muted mb-0">แพ็กเกจปัจจุบันยังไม่รวม SlipOK addon จึงใช้การตรวจสลิปแบบ manual review อยู่</p>
+                    <p class="text-muted mb-0">แพ็กเกจปัจจุบันยังไม่รวม slip verification addon จึงใช้การตรวจสลิปแบบ manual review อยู่</p>
                 @endif
             </div>
         </div>

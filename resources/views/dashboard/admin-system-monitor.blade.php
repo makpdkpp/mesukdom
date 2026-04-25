@@ -89,7 +89,7 @@
                 <div class="border rounded p-3 h-100">
                     <div class="text-muted text-uppercase small">API Usage</div>
                     <div class="h5 mb-1">{{ $apiUsageTotal }}</div>
-                    <div class="small text-muted">SlipOK calls this month</div>
+                    <div class="small text-muted">Slip verification calls this month</div>
                 </div>
             </div>
             <div class="col-md-4 mb-3">

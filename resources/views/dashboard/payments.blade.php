@@ -65,7 +65,7 @@
             </div>
             <div class="card-body table-responsive p-0">
                 <table class="table table-hover text-nowrap">
-                    <thead><tr><th>Invoice</th><th>Resident</th><th>Amount</th><th>Method</th><th>Status</th><th>SlipOK</th><th>Paid On</th><th class="text-right">Actions</th></tr></thead>
+                    <thead><tr><th>Invoice</th><th>Resident</th><th>Amount</th><th>Method</th><th>Status</th><th>Slip verification</th><th>Paid On</th><th class="text-right">Actions</th></tr></thead>
                     <tbody>
                     @forelse($payments as $payment)
                         <tr>
@@ -96,7 +96,7 @@
                                 @if($payment->status === 'pending' && $payment->method === 'slip' && $payment->verification_status === 'failed' && $payment->slip_path)
                                     <form method="POST" action="{{ route('app.payments.recheck-slip', $payment->id) }}" class="d-inline">
                                         @csrf @method('PATCH')
-                                        <button class="btn btn-xs btn-warning" onclick="return confirm('Recheck this slip with SlipOK?')">Recheck SlipOK</button>
+                                        <button class="btn btn-xs btn-warning" onclick="return confirm('Recheck this slip with slip verification?')">Recheck slip verification</button>
                                     </form>
                                 @endif
                                 @if($payment->status === 'pending')
