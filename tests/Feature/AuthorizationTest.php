@@ -3,7 +3,10 @@
 namespace Tests\Feature;
 
 use App\Models\Plan;
+use App\Models\PlatformCostSetting;
 use App\Models\PlatformSetting;
+use App\Models\SaasInvoice;
+use App\Models\SlipVerificationUsage;
 use App\Models\Tenant;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -59,7 +62,27 @@ class AuthorizationTest extends TestCase
         $response->assertSeeText('Total Tenants');
     }
 
-    public function test_saas_revenue_on_admin_dashboard_comes_from_active_subscriptions(): void
+    public function test_admin_dashboard_security_policy_allows_adminlte_cdn_assets(): void
+    {
+        $admin = User::factory()->create([
+            'role' => 'super_admin',
+        ]);
+
+        $response = $this->actingAs($admin)->get('/admin');
+
+        $response->assertOk();
+        $response->assertSee('https://cdn.jsdelivr.net/npm/admin-lte@3.2/dist/css/adminlte.min.css', false);
+        $response->assertSee('https://cdn.jsdelivr.net/npm/admin-lte@3.2/dist/js/adminlte.min.js', false);
+
+        $csp = (string) $response->headers->get('Content-Security-Policy');
+
+        $this->assertStringContainsString('script-src', $csp);
+        $this->assertStringContainsString('style-src', $csp);
+        $this->assertStringContainsString('font-src', $csp);
+        $this->assertStringContainsString('https://cdn.jsdelivr.net', $csp);
+    }
+
+    public function test_collected_revenue_on_admin_dashboard_comes_from_paid_saas_invoices(): void
     {
         $admin = User::factory()->create([
             'role' => 'support_admin',
@@ -94,8 +117,10 @@ class AuthorizationTest extends TestCase
         $response = $this->actingAs($admin)->get('/admin');
 
         $response->assertOk();
-        $response->assertSeeText('SaaS Revenue');
-        $response->assertSeeText('1,500');
+        $response->assertSeeText('Collected Revenue');
+        $response->assertSeeText('0');
+        $response->assertSeeText('Projected MRR');
+        $response->assertSeeText('1,500.00');
     }
 
     public function test_support_admin_sidebar_shows_admin_menu_items(): void
@@ -108,20 +133,22 @@ class AuthorizationTest extends TestCase
 
         $response->assertOk();
         $response->assertSeeText('Dashboard Admin');
+        $response->assertSeeText('System Monitor');
         $response->assertSeeText('API Monitor');
         $response->assertSeeText('Tenant');
         $response->assertSeeText('Package Management');
+        $response->assertSeeText('Cost Settings');
         $response->assertSeeText('Platform Admin');
         $response->assertSeeText('USER MENU');
         $response->assertSeeText('Profile');
         $response->assertSeeText('Change Password');
-        $response->assertDontSeeText('Rooms');
-        $response->assertDontSeeText('Residents');
-        $response->assertDontSeeText('Contracts');
-        $response->assertDontSeeText('Invoices');
-        $response->assertDontSeeText('Payments');
-        $response->assertDontSeeText('Broadcasts');
-        $response->assertDontSeeText('Settings');
+        $response->assertDontSee('/app/rooms', false);
+        $response->assertDontSee('/app/customers', false);
+        $response->assertDontSee('/app/contracts', false);
+        $response->assertDontSee('/app/invoices', false);
+        $response->assertDontSee('/app/payments', false);
+        $response->assertDontSee('/app/broadcasts', false);
+        $response->assertDontSee('/app/settings', false);
     }
 
     public function test_kpi_cards_are_only_visible_on_admin_dashboard(): void
@@ -135,8 +162,12 @@ class AuthorizationTest extends TestCase
         $dashboardResponse->assertOk();
         $dashboardResponse->assertSeeText('Total Tenants');
         $dashboardResponse->assertSeeText('Active Users');
-        $dashboardResponse->assertSeeText('SaaS Revenue');
+        $dashboardResponse->assertSeeText('Collected Revenue');
         $dashboardResponse->assertSeeText('SlipOK Calls This Month');
+        $dashboardResponse->assertSeeText('Net Revenue');
+        $dashboardResponse->assertSeeText('Gross Margin');
+        $dashboardResponse->assertSeeText('Cost Breakdown');
+        $dashboardResponse->assertSeeText('Collected Revenue by Plan');
 
         $platformResponse = $this->actingAs($admin)->get('/admin/platform');
 
@@ -145,8 +176,166 @@ class AuthorizationTest extends TestCase
         $platformResponse->assertSeeText('Stripe Subscription Settings');
         $platformResponse->assertDontSeeText('Total Tenants');
         $platformResponse->assertDontSeeText('Active Users');
-        $platformResponse->assertDontSeeText('SaaS Revenue');
+        $platformResponse->assertDontSeeText('Collected Revenue');
         $platformResponse->assertDontSeeText('SlipOK Calls This Month');
+    }
+
+    public function test_admin_business_dashboard_uses_cost_settings_for_margin(): void
+    {
+        $admin = User::factory()->create([
+            'role' => 'support_admin',
+        ]);
+
+        $plan = Plan::query()->create([
+            'name' => 'Pro',
+            'slug' => 'pro',
+            'price_monthly' => 1500,
+            'description' => 'Pro package',
+            'limits' => [],
+            'is_active' => true,
+            'sort_order' => 1,
+        ]);
+
+        $tenant = Tenant::query()->create([
+            'name' => 'Margin Tenant',
+            'domain' => 'margin.local',
+            'plan_id' => $plan->id,
+            'plan' => $plan->slug,
+            'status' => 'active',
+        ]);
+
+        SaasInvoice::query()->create([
+            'tenant_id' => $tenant->id,
+            'plan_id' => $plan->id,
+            'stripe_invoice_id' => 'in_margin_001',
+            'status' => 'paid',
+            'currency' => 'thb',
+            'amount_due' => 100000,
+            'amount_paid' => 100000,
+            'amount_remaining' => 0,
+            'paid_at' => now(),
+        ]);
+
+        foreach (range(1, 3) as $index) {
+            SlipVerificationUsage::query()->create([
+                'tenant_id' => $tenant->id,
+                'plan_id' => $plan->id,
+                'provider' => 'slipok',
+                'usage_month' => now()->format('Y-m'),
+                'status' => 'verified',
+            ]);
+        }
+
+        PlatformCostSetting::query()->create([
+            'provider' => 'slipok',
+            'cost_type' => 'per_unit',
+            'unit_cost' => 2,
+            'currency' => 'THB',
+            'effective_from' => now()->startOfMonth(),
+            'is_active' => true,
+        ]);
+
+        PlatformCostSetting::query()->create([
+            'provider' => 'stripe',
+            'cost_type' => 'percentage',
+            'percentage_rate' => 3,
+            'fixed_fee' => 10,
+            'currency' => 'THB',
+            'effective_from' => now()->startOfMonth(),
+            'is_active' => true,
+        ]);
+
+        PlatformCostSetting::query()->create([
+            'provider' => 'hosting',
+            'cost_type' => 'fixed_monthly',
+            'fixed_fee' => 500,
+            'currency' => 'THB',
+            'effective_from' => now()->startOfMonth(),
+            'is_active' => true,
+        ]);
+
+        $response = $this->actingAs($admin)->get('/admin');
+
+        $response->assertOk();
+        $response->assertSeeText('Collected Revenue');
+        $response->assertSeeText('1,000');
+        $response->assertSeeText('Net Revenue');
+        $response->assertSeeText('454');
+        $response->assertSeeText('Gross Margin');
+        $response->assertSeeText('45.4%');
+        $response->assertSeeText('Total Costs');
+        $response->assertSeeText('546.00');
+        $response->assertSeeText('SlipOK Calls This Month');
+        $response->assertSeeText('3');
+        $response->assertSeeText('High-Cost Tenants');
+        $response->assertSeeText('Margin Tenant');
+    }
+
+    public function test_support_admin_can_create_cost_setting(): void
+    {
+        $admin = User::factory()->create([
+            'role' => 'support_admin',
+        ]);
+
+        $response = $this->actingAs($admin)->post('/admin/cost-settings', [
+            'provider' => 'slipok',
+            'cost_type' => 'per_unit',
+            'unit_cost' => 1.25,
+            'percentage_rate' => 0,
+            'fixed_fee' => 0,
+            'included_quota' => 100,
+            'overage_unit_cost' => 1.5,
+            'currency' => 'THB',
+            'effective_from' => now()->toDateString(),
+            'is_active' => 1,
+            'notes' => 'SlipOK test cost',
+        ]);
+
+        $response->assertRedirect();
+        $this->assertDatabaseHas('platform_cost_settings', [
+            'provider' => 'slipok',
+            'cost_type' => 'per_unit',
+            'currency' => 'THB',
+            'included_quota' => 100,
+        ]);
+    }
+
+    public function test_support_admin_can_access_cost_settings_guidance_and_presets(): void
+    {
+        $admin = User::factory()->create([
+            'role' => 'support_admin',
+        ]);
+
+        $response = $this->actingAs($admin)->get('/admin/cost-settings');
+
+        $response->assertOk();
+        $response->assertSeeText('วิธีบันทึกต้นทุน');
+        $response->assertSeeText('ค่าใช้จ่ายรายปีต้องแปลงเป็นรายเดือนก่อนบันทึกเสมอ');
+        $response->assertSeeText('ชุดค่าตั้งต้นแนะนำ');
+        $response->assertSeeText('Hosting รายปี 1,200 บาท');
+        $response->assertSeeText('SlipOK API 1 บาท/ครั้ง');
+        $response->assertSeeText('Stripe 0.28 บาท/รายการ');
+        $response->assertSeeText('ใช้ค่าชุดนี้');
+        $response->assertSeeText('บันทึก preset นี้ทันที');
+    }
+
+    public function test_owner_cannot_access_cost_settings(): void
+    {
+        $tenant = Tenant::query()->create([
+            'name' => 'Owner Cost Dorm',
+            'domain' => 'owner-cost.local',
+            'plan' => 'trial',
+            'status' => 'active',
+        ]);
+
+        $owner = User::factory()->create([
+            'tenant_id' => $tenant->id,
+            'role' => 'owner',
+        ]);
+
+        $response = $this->actingAs($owner)->get('/admin/cost-settings');
+
+        $response->assertForbidden();
     }
 
     public function test_support_admin_can_access_package_management_page(): void
@@ -327,21 +516,34 @@ class AuthorizationTest extends TestCase
         $this->assertSame('whsec_123', $setting->stripe_webhook_secret);
     }
 
-    public function test_admin_dashboard_shows_required_system_monitoring_sections(): void
+    public function test_support_admin_can_access_system_monitor_page(): void
     {
         $admin = User::factory()->create([
             'role' => 'support_admin',
         ]);
 
-        $response = $this->actingAs($admin)->get('/admin');
+        $dashboardResponse = $this->actingAs($admin)->get('/admin');
+
+        $dashboardResponse->assertOk();
+        $dashboardResponse->assertDontSeeText('Server Status');
+        $dashboardResponse->assertDontSeeText('Queue Status');
+        $dashboardResponse->assertDontSeeText('Notification Logs');
+        $dashboardResponse->assertDontSeeText('Payment Logs');
+        $dashboardResponse->assertDontSeeText('Channel');
+        $dashboardResponse->assertDontSeeText('Receipt');
+
+        $response = $this->actingAs($admin)->get('/admin/system-monitor');
 
         $response->assertOk();
+        $response->assertSeeText('System Monitor');
         $response->assertSeeText('Server Status');
         $response->assertSeeText('Queue Status');
         $response->assertSeeText('Failed Jobs');
         $response->assertSeeText('API Usage');
         $response->assertSeeText('Notification Logs');
         $response->assertSeeText('Payment Logs');
+        $response->assertSeeText('Channel');
+        $response->assertSeeText('Receipt');
     }
 
     public function test_support_admin_can_access_api_monitor_page(): void

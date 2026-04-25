@@ -169,8 +169,9 @@
 
             <nav class="hidden items-center gap-6 text-sm font-semibold text-slate-600 md:flex">
                 <a href="{{ route('landing') }}#features" class="transition hover:text-slate-950">ฟีเจอร์</a>
-                <a href="{{ route('landing') }}#pricing" class="transition hover:text-slate-950">ราคา</a>
-                <a href="{{ route('pricing') }}" class="transition hover:text-slate-950">แพ็กเกจ</a>
+                <a href="{{ route('landing') }}#fit" class="transition hover:text-slate-950">เหมาะกับใคร</a>
+                <a href="{{ route('landing') }}#pricing" class="transition hover:text-slate-950">แพ็กเกจและราคา</a>
+                <a href="{{ route('landing') }}#faq" class="transition hover:text-slate-950">FAQ</a>
             </nav>
 
             <div class="flex items-center gap-3">
@@ -200,9 +201,10 @@
                 <p class="mt-2 max-w-2xl text-sm leading-7 text-slate-600">ระบบบริหารจัดการหอพักและอพาร์ตเมนต์ครบวงจร จัดการห้อง ผู้เช่า บิล สัญญา และแจ้งซ่อมในที่เดียว</p>
             </div>
             <div class="flex flex-wrap gap-4 text-sm font-semibold text-slate-600">
-                <a href="{{ route('pricing') }}" class="transition hover:text-slate-950">แพ็กเกจ</a>
                 <a href="{{ route('landing') }}#features" class="transition hover:text-slate-950">ฟีเจอร์</a>
-                <a href="{{ route('landing') }}#pricing" class="transition hover:text-slate-950">ราคา</a>
+                <a href="{{ route('landing') }}#fit" class="transition hover:text-slate-950">เหมาะกับใคร</a>
+                <a href="{{ route('landing') }}#pricing" class="transition hover:text-slate-950">แพ็กเกจและราคา</a>
+                <a href="{{ route('landing') }}#faq" class="transition hover:text-slate-950">FAQ</a>
                 @guest
                     @if($authModals)
                         <button type="button" data-open-auth-modal="signup" class="transition hover:text-slate-950">สมัครใช้งาน</button>

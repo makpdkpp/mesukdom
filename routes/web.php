@@ -85,12 +85,16 @@ Route::middleware(['auth', 'verified', 'role:owner,staff', 'tenant.active', 'ten
 
 Route::middleware(['auth', 'verified', 'role:super_admin,support_admin'])->prefix('admin')->group(function (): void {
     Route::get('/', [AdminPortalController::class, 'dashboard'])->name('admin.dashboard');
+    Route::get('/system-monitor', [AdminPortalController::class, 'systemMonitor'])->name('admin.system-monitor');
     Route::get('/api-monitor', [AdminPortalController::class, 'apiMonitor'])->name('admin.api-monitor');
     Route::get('/profile', [AdminPortalController::class, 'profile'])->name('admin.profile');
     Route::get('/dbmigration', [AdminPortalController::class, 'dbMigration'])->name('admin.dbmigration');
     Route::get('/tenants', [AdminPortalController::class, 'tenants'])->name('admin.tenants');
     Route::get('/platform', [AdminPortalController::class, 'index'])->name('admin.platform');
     Route::get('/packages', [AdminPortalController::class, 'packages'])->name('admin.packages');
+    Route::get('/cost-settings', [AdminPortalController::class, 'costSettings'])->name('admin.cost-settings');
+    Route::post('/cost-settings', [AdminPortalController::class, 'storeCostSetting'])->name('admin.cost-settings.store');
+    Route::patch('/cost-settings/{costSetting}/deactivate', [AdminPortalController::class, 'deactivateCostSetting'])->name('admin.cost-settings.deactivate');
 
     Route::get('/notifications', [AdminPortalController::class, 'notifications'])->name('admin.notifications');
     Route::post('/notifications', [AdminPortalController::class, 'updateNotifications'])->name('admin.notifications.update');

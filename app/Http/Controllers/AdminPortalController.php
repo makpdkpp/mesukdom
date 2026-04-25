@@ -8,11 +8,13 @@ use App\Jobs\SendPlatformLineMessageJob;
 use App\Models\NotificationLog;
 use App\Models\OwnerLineLink;
 use App\Models\Payment;
+use App\Models\PlatformCostSetting;
 use App\Models\Plan;
 use App\Models\PlatformSetting;
 use App\Models\SlipVerificationUsage;
 use App\Models\Tenant;
 use App\Models\User;
+use App\Services\Business\AdminBusinessMetrics;
 use App\Services\OwnerLineLinkService;
 use App\Support\ApiMonitorMetrics;
 use App\Support\SettingAuditLogger;
@@ -23,42 +25,20 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Redis;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
+use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 use Throwable;
 
 final class AdminPortalController extends Controller
 {
-    public function dashboard(): View
+    public function dashboard(AdminBusinessMetrics $metrics): View
     {
-        $queueConnection = (string) config('queue.default', 'sync');
-        $hasJobsTable = Schema::hasTable('jobs');
-        $hasFailedJobsTable = Schema::hasTable('failed_jobs');
+        return view('dashboard.admin-dashboard', $metrics->dashboardPayload());
+    }
 
-        $pendingJobs = $hasJobsTable ? (int) DB::table('jobs')->count() : null;
-        $failedJobsCount = $hasFailedJobsTable ? (int) DB::table('failed_jobs')->count() : 0;
-        $redisHealth = $this->redisHealthPayload();
-        $slipOkUsageTotal = SlipVerificationUsage::withoutGlobalScopes()
-            ->where('provider', 'slipok')
-            ->where('usage_month', now()->format('Y-m'))
-            ->count();
-
-        return view('dashboard.admin-dashboard', [
-            'tenantCount' => Tenant::count(),
-            'activeUsers' => User::count(),
-            'saasRevenue' => Tenant::query()
-                ->join('plans', 'tenants.plan_id', '=', 'plans.id')
-                ->where('tenants.status', 'active')
-                ->sum('plans.price_monthly'),
-            'slipOkUsageTotal' => $slipOkUsageTotal,
-            'serverStatus' => 'Online',
-            'queueConnection' => $queueConnection,
-            'pendingJobs' => $pendingJobs,
-            'failedJobsCount' => $failedJobsCount,
-            'redisHealth' => $redisHealth,
-            'apiUsageTotal' => $slipOkUsageTotal,
-            'notificationLogs' => NotificationLog::withoutGlobalScopes()->latest()->take(10)->get(),
-            'paymentLogs' => Payment::withoutGlobalScopes()->latest()->take(10)->get(),
-        ]);
+    public function systemMonitor(): View
+    {
+        return view('dashboard.admin-system-monitor', $this->systemMonitorPayload());
     }
 
     public function profile(): View
@@ -73,6 +53,56 @@ final class AdminPortalController extends Controller
     public function apiMonitor(ApiMonitorMetrics $metrics): View
     {
         return view('dashboard.admin-api-monitor', $metrics->dashboardPayload());
+    }
+
+    public function costSettings(): View
+    {
+        return view('dashboard.admin-cost-settings', [
+            'costSettings' => PlatformCostSetting::query()->orderByDesc('is_active')->orderBy('provider')->orderByDesc('effective_from')->get(),
+            'providers' => PlatformCostSetting::PROVIDERS,
+            'costTypes' => PlatformCostSetting::COST_TYPES,
+        ]);
+    }
+
+    public function storeCostSetting(Request $request): RedirectResponse
+    {
+        $validated = $request->validate([
+            'provider' => ['required', Rule::in(PlatformCostSetting::PROVIDERS)],
+            'cost_type' => ['required', Rule::in(PlatformCostSetting::COST_TYPES)],
+            'unit_cost' => ['nullable', 'numeric', 'min:0'],
+            'percentage_rate' => ['nullable', 'numeric', 'min:0', 'max:100'],
+            'fixed_fee' => ['nullable', 'numeric', 'min:0'],
+            'included_quota' => ['nullable', 'integer', 'min:0'],
+            'overage_unit_cost' => ['nullable', 'numeric', 'min:0'],
+            'currency' => ['required', 'string', 'max:10'],
+            'effective_from' => ['required', 'date'],
+            'effective_to' => ['nullable', 'date', 'after_or_equal:effective_from'],
+            'is_active' => ['nullable'],
+            'notes' => ['nullable', 'string', 'max:2000'],
+        ]);
+
+        PlatformCostSetting::query()->create([
+            ...$validated,
+            'unit_cost' => $validated['unit_cost'] ?? 0,
+            'percentage_rate' => $validated['percentage_rate'] ?? 0,
+            'fixed_fee' => $validated['fixed_fee'] ?? 0,
+            'included_quota' => $validated['included_quota'] ?? 0,
+            'overage_unit_cost' => $validated['overage_unit_cost'] ?? 0,
+            'currency' => strtoupper((string) $validated['currency']),
+            'is_active' => $request->boolean('is_active', true),
+        ]);
+
+        return back()->with('status', 'Cost setting saved.');
+    }
+
+    public function deactivateCostSetting(PlatformCostSetting $costSetting): RedirectResponse
+    {
+        $costSetting->update([
+            'is_active' => false,
+            'effective_to' => $costSetting->effective_to ?? now()->toDateString(),
+        ]);
+
+        return back()->with('status', 'Cost setting deactivated.');
     }
 
     public function migrate(Request $request): RedirectResponse
@@ -240,6 +270,33 @@ final class AdminPortalController extends Controller
             'client' => $client,
             'connections' => $connections,
             'ok' => $overallOk,
+        ];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function systemMonitorPayload(): array
+    {
+        $queueConnection = (string) config('queue.default', 'sync');
+        $hasJobsTable = Schema::hasTable('jobs');
+        $hasFailedJobsTable = Schema::hasTable('failed_jobs');
+        $notificationLogs = NotificationLog::withoutGlobalScopes()->latest()->take(10)->get();
+        $paymentLogs = Payment::withoutGlobalScopes()->latest()->take(10)->get();
+        $apiUsageTotal = SlipVerificationUsage::withoutGlobalScopes()
+            ->where('provider', 'slipok')
+            ->where('usage_month', now()->format('Y-m'))
+            ->count();
+
+        return [
+            'serverStatus' => 'Online',
+            'queueConnection' => $queueConnection,
+            'pendingJobs' => $hasJobsTable ? (int) DB::table('jobs')->count() : null,
+            'failedJobsCount' => $hasFailedJobsTable ? (int) DB::table('failed_jobs')->count() : 0,
+            'redisHealth' => $this->redisHealthPayload(),
+            'apiUsageTotal' => $apiUsageTotal,
+            'notificationLogs' => $notificationLogs,
+            'paymentLogs' => $paymentLogs,
         ];
     }
 

@@ -76,10 +76,12 @@
                 <ul class="nav nav-pills nav-sidebar flex-column" data-widget="treeview">
                     @if($isAdminRoute)
                         <li class="nav-item"><a href="{{ route('admin.dashboard') }}" class="nav-link {{ request()->routeIs('admin.dashboard') ? 'active' : '' }}"><i class="nav-icon fas fa-chart-line"></i><p>Dashboard Admin</p></a></li>
+                        <li class="nav-item"><a href="{{ route('admin.system-monitor') }}" class="nav-link {{ request()->routeIs('admin.system-monitor') ? 'active' : '' }}"><i class="nav-icon fas fa-server"></i><p>System Monitor</p></a></li>
                         <li class="nav-item"><a href="{{ route('admin.api-monitor') }}" class="nav-link {{ request()->routeIs('admin.api-monitor') ? 'active' : '' }}"><i class="nav-icon fas fa-wave-square"></i><p>API Monitor</p></a></li>
                         <li class="nav-item"><a href="{{ route('admin.dbmigration') }}" class="nav-link {{ request()->routeIs('admin.dbmigration') ? 'active' : '' }}"><i class="nav-icon fas fa-database"></i><p>DBmigration</p></a></li>
                         <li class="nav-item"><a href="{{ route('admin.tenants') }}" class="nav-link {{ request()->routeIs('admin.tenants*') ? 'active' : '' }}"><i class="nav-icon fas fa-building"></i><p>Tenant</p></a></li>
                         <li class="nav-item"><a href="{{ route('admin.packages') }}" class="nav-link {{ request()->routeIs('admin.packages*') ? 'active' : '' }}"><i class="nav-icon fas fa-boxes"></i><p>Package Management</p></a></li>
+                        <li class="nav-item"><a href="{{ route('admin.cost-settings') }}" class="nav-link {{ request()->routeIs('admin.cost-settings*') ? 'active' : '' }}"><i class="nav-icon fas fa-calculator"></i><p>Cost Settings</p></a></li>
                         <li class="nav-item"><a href="{{ route('admin.platform') }}" class="nav-link {{ request()->routeIs('admin.platform') ? 'active' : '' }}"><i class="nav-icon fas fa-cogs"></i><p>Platform Admin</p></a></li>
                         <li class="nav-item"><a href="{{ route('admin.notifications') }}" class="nav-link {{ request()->routeIs('admin.notifications*') ? 'active' : '' }}"><i class="nav-icon fas fa-bell"></i><p>Notification Defaults</p></a></li>
                         <li class="nav-item"><a href="{{ route('admin.platform-line') }}" class="nav-link {{ request()->routeIs('admin.platform-line*') ? 'active' : '' }}"><i class="nav-icon fab fa-line"></i><p>Platform LINE</p></a></li>

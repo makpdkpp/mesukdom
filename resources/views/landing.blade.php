@@ -7,22 +7,21 @@
     {{-- ══════════════════════════════════════════════════
         HERO
     ══════════════════════════════════════════════════ --}}
-    <section class="relative overflow-hidden px-4 pb-20 pt-16 sm:px-6 lg:px-8 lg:pb-28 lg:pt-24">
+    <section class="relative overflow-hidden px-4 pb-16 pt-14 sm:px-6 lg:px-8 lg:pb-24 lg:pt-20">
         <div class="mx-auto max-w-7xl">
             <div class="grid items-center gap-12 lg:grid-cols-2 lg:gap-16">
-                {{-- Text --}}
                 <div class="reveal-soft" style="--enter-delay:.05s">
                     <p class="inline-block rounded-full bg-amber-100 px-4 py-1.5 text-sm font-semibold text-amber-700">
                         ทดลองใช้ฟรี — ไม่ต้องผูกบัตร
                     </p>
 
                     <h1 class="mt-6 text-4xl font-extrabold leading-tight tracking-tight text-slate-900 sm:text-5xl lg:text-6xl">
-                        ระบบบริหารจัดการ<br class="hidden sm:block">
-                        <span class="text-amber-600">หอพักและอพาร์ตเมนต์</span>
+                        จัดการหอพัก ออกบิล ส่ง LINE<br class="hidden lg:block">
+                        <span class="text-amber-600">ครบในระบบเดียว</span>
                     </h1>
 
                     <p class="mt-6 max-w-xl text-lg leading-relaxed text-slate-600">
-                        MesukDorm ช่วยให้คุณจัดการห้องพัก ผู้เช่า สัญญา บิลค่าเช่า และแจ้งซ่อม ได้ครบจบในที่เดียว พร้อมส่งบิลผ่าน LINE อัตโนมัติ
+                        MesukDorm ช่วยเจ้าของหอพักและอพาร์ตเมนต์จัดการห้อง ผู้เช่า สัญญา ค่าน้ำค่าไฟ ใบแจ้งหนี้ การชำระเงิน และงานแจ้งซ่อม โดยไม่ต้องพึ่ง Excel หลายไฟล์หรือไล่แชททีละห้อง
                     </p>
 
                     <div class="mt-8 flex flex-wrap items-center gap-4">
@@ -32,9 +31,9 @@
                                 <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
                                 เริ่มใช้งานฟรี
                             </button>
-                            <a href="#features"
+                            <a href="#pricing"
                                 class="inline-flex items-center gap-2 rounded-xl border border-slate-300 bg-white px-7 py-3.5 text-base font-bold text-slate-700 transition hover:border-slate-400 hover:text-slate-900">
-                                ดูฟีเจอร์ทั้งหมด
+                                ดูแพ็กเกจและราคา
                                 <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg>
                             </a>
                         @else
@@ -46,7 +45,6 @@
                         @endguest
                     </div>
 
-                    {{-- Trust badges --}}
                     <div class="mt-10 flex flex-wrap items-center gap-x-6 gap-y-3 text-sm text-slate-500">
                         <span class="flex items-center gap-2">
                             <svg class="h-5 w-5 text-teal-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg>
@@ -63,17 +61,14 @@
                     </div>
                 </div>
 
-                {{-- Hero visual: Dashboard preview mockup --}}
                 <div class="reveal-up relative" style="--enter-delay:.18s">
                     <div class="relative rounded-2xl border border-slate-200/80 bg-white p-4 shadow-2xl shadow-slate-900/10 sm:p-6">
-                        {{-- Fake browser bar --}}
                         <div class="mb-4 flex items-center gap-2">
                             <span class="h-3 w-3 rounded-full bg-red-400"></span>
                             <span class="h-3 w-3 rounded-full bg-amber-400"></span>
                             <span class="h-3 w-3 rounded-full bg-green-400"></span>
                             <span class="ml-3 flex-1 rounded-md bg-slate-100 px-3 py-1 text-xs text-slate-400">mesukdorm.com/app/dashboard</span>
                         </div>
-                        {{-- Dashboard mockup --}}
                         <div class="space-y-3">
                             <div class="grid grid-cols-3 gap-3">
                                 <div class="rounded-xl bg-amber-50 p-4 text-center">
@@ -89,20 +84,31 @@
                                     <p class="mt-1 text-xs text-slate-500">อัตราเข้าพัก</p>
                                 </div>
                             </div>
-                            {{-- Fake room grid --}}
-                            <div class="rounded-xl border border-slate-100 bg-slate-50 p-3">
-                                <p class="mb-2 text-xs font-semibold text-slate-400">ผังห้องพัก</p>
-                                <div class="grid grid-cols-6 gap-1.5 sm:grid-cols-8">
-                                    @for($i = 0; $i < 16; $i++)
-                                        <div class="aspect-square rounded-md {{ $i < round(16 * $publicStats['occupancy_rate'] / 100) ? 'bg-teal-400' : 'bg-slate-200' }}"></div>
-                                    @endfor
+                            <div class="grid gap-3 lg:grid-cols-[0.95fr,1.05fr]">
+                                <div class="rounded-xl border border-slate-100 bg-slate-50 p-3">
+                                    <p class="mb-2 text-xs font-semibold text-slate-400">ผังห้องพัก</p>
+                                    <div class="grid grid-cols-6 gap-1.5">
+                                        @for($i = 0; $i < 18; $i++)
+                                            <div class="aspect-square rounded-md {{ $i < round(18 * $publicStats['occupancy_rate'] / 100) ? 'bg-teal-400' : 'bg-slate-200' }}"></div>
+                                        @endfor
+                                    </div>
+                                    <div class="mt-2 flex items-center gap-4 text-[10px] text-slate-400">
+                                        <span class="flex items-center gap-1"><span class="inline-block h-2 w-2 rounded-sm bg-teal-400"></span> มีผู้เช่า</span>
+                                        <span class="flex items-center gap-1"><span class="inline-block h-2 w-2 rounded-sm bg-slate-200"></span> ว่าง</span>
+                                    </div>
                                 </div>
-                                <div class="mt-2 flex items-center gap-4 text-[10px] text-slate-400">
-                                    <span class="flex items-center gap-1"><span class="inline-block h-2 w-2 rounded-sm bg-teal-400"></span> มีผู้เช่า</span>
-                                    <span class="flex items-center gap-1"><span class="inline-block h-2 w-2 rounded-sm bg-slate-200"></span> ว่าง</span>
+                                <div class="rounded-xl border border-slate-100 bg-slate-50 p-3">
+                                    <div class="flex items-center justify-between">
+                                        <p class="text-xs font-semibold text-slate-400">งานเดือนนี้</p>
+                                        <span class="rounded-full bg-amber-100 px-2 py-1 text-[10px] font-bold text-amber-700">Auto billing</span>
+                                    </div>
+                                    <div class="mt-3 space-y-2 text-xs">
+                                        <div class="flex items-center justify-between rounded-lg bg-white px-3 py-2"><span>บิลรอชำระ</span><strong class="text-amber-600">{{ number_format($publicStats['pending_payments']) }}</strong></div>
+                                        <div class="flex items-center justify-between rounded-lg bg-white px-3 py-2"><span>บิลเกินกำหนด</span><strong class="text-rose-600">{{ number_format($publicStats['overdue_invoices']) }}</strong></div>
+                                        <div class="flex items-center justify-between rounded-lg bg-white px-3 py-2"><span>แจ้งซ่อมเปิดอยู่</span><strong class="text-teal-600">{{ number_format($publicStats['open_repairs']) }}</strong></div>
+                                    </div>
                                 </div>
                             </div>
-                            {{-- Fake chart bar --}}
                             <div class="rounded-xl border border-slate-100 bg-slate-50 p-3">
                                 <p class="mb-2 text-xs font-semibold text-slate-400">รายได้รายเดือน</p>
                                 <div class="flex items-end gap-1.5" style="height:60px">
@@ -116,7 +122,6 @@
                             </div>
                         </div>
                     </div>
-                    {{-- Decorative dots --}}
                     <div class="absolute -right-4 -top-4 -z-10 h-24 w-24 rounded-full bg-amber-200/40 blur-2xl"></div>
                     <div class="absolute -bottom-4 -left-4 -z-10 h-32 w-32 rounded-full bg-teal-200/40 blur-2xl"></div>
                 </div>
@@ -142,102 +147,101 @@
                 <p class="mt-1 text-sm text-slate-500">อัตราเข้าพักเฉลี่ย</p>
             </div>
             <div>
-                <p class="text-3xl font-extrabold text-slate-900">฿{{ number_format((float) $publicStats['monthly_revenue'], 0) }}</p>
-                <p class="mt-1 text-sm text-slate-500">รายได้เดือนนี้</p>
+                <p class="text-3xl font-extrabold text-slate-900">{{ number_format($publicStats['open_repairs']) }}</p>
+                <p class="mt-1 text-sm text-slate-500">งานแจ้งซ่อมเปิดอยู่</p>
             </div>
         </div>
     </section>
 
     {{-- ══════════════════════════════════════════════════
-        FEATURES (8 items)
+        BEFORE / AFTER
+    ══════════════════════════════════════════════════ --}}
+    <section class="px-4 py-20 sm:px-6 lg:px-8 lg:py-28">
+        <div class="mx-auto max-w-7xl">
+            <div class="mx-auto max-w-3xl text-center">
+                <p class="text-sm font-semibold uppercase tracking-widest text-teal-600">แก้ปัญหางานประจำทุกเดือน</p>
+                <h2 class="mt-3 text-3xl font-extrabold tracking-tight text-slate-900 sm:text-4xl">จากงานเอกสารกระจัดกระจาย สู่ระบบเดียวที่มองเห็นทั้งหอ</h2>
+                <p class="mt-4 text-lg text-slate-600">หน้าเดียวช่วยให้เจ้าของหอรู้ว่าห้องไหนว่าง ใครค้างชำระ บิลไหนส่งแล้ว และงานซ่อมไหนยังไม่ปิด</p>
+            </div>
+
+            <div class="mt-14 grid gap-6 lg:grid-cols-2">
+                <div class="rounded-2xl border border-rose-100 bg-white p-7 shadow-sm">
+                    <p class="text-sm font-bold uppercase tracking-widest text-rose-600">ก่อนใช้ระบบ</p>
+                    <ul class="mt-6 space-y-4 text-sm leading-relaxed text-slate-700">
+                        @foreach(['จดค่าน้ำค่าไฟในสมุดหรือ Excel หลายไฟล์', 'ออกบิลทีละห้องและส่งแชทซ้ำทุกเดือน', 'ตามยอดค้างผ่าน LINE ส่วนตัวจนข้อมูลปนกัน', 'ค้นหาสัญญา เอกสาร และประวัติผู้เช่าย้อนหลังยาก', 'ไม่เห็นภาพรวมห้องว่าง รายได้ และงานแจ้งซ่อมทันที'] as $item)
+                            <li class="flex gap-3"><span class="mt-1 h-2 w-2 flex-shrink-0 rounded-full bg-rose-400"></span><span>{{ $item }}</span></li>
+                        @endforeach
+                    </ul>
+                </div>
+                <div class="rounded-2xl border border-teal-100 bg-teal-50/60 p-7 shadow-sm">
+                    <p class="text-sm font-bold uppercase tracking-widest text-teal-700">หลังใช้ MesukDorm</p>
+                    <ul class="mt-6 space-y-4 text-sm leading-relaxed text-slate-700">
+                        @foreach(['บันทึกมิเตอร์และคำนวณยอดรายเดือนอัตโนมัติ', 'สร้างใบแจ้งหนี้และส่งผ่าน LINE OA ได้ในไม่กี่คลิก', 'ติดตามยอดชำระ ยอดค้าง และบิลเกินกำหนดจาก dashboard', 'เก็บข้อมูลผู้เช่า สัญญา และเอกสารไว้ในระบบเดียว', 'ดูรายได้ ห้องว่าง และงานซ่อมที่ต้องจัดการได้ทันที'] as $item)
+                            <li class="flex gap-3"><svg class="mt-0.5 h-5 w-5 flex-shrink-0 text-teal-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg><span>{{ $item }}</span></li>
+                        @endforeach
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    {{-- ══════════════════════════════════════════════════
+        FEATURES
     ══════════════════════════════════════════════════ --}}
     <section id="features" class="px-4 py-20 sm:px-6 lg:px-8 lg:py-28">
         <div class="mx-auto max-w-7xl">
             <div class="mx-auto max-w-2xl text-center">
-                <p class="text-sm font-semibold uppercase tracking-widest text-amber-600">ฟีเจอร์ครบวงจร</p>
-                <h2 class="mt-3 text-3xl font-extrabold tracking-tight text-slate-900 sm:text-4xl">ครบทุกเรื่องที่เจ้าของหอพักต้องใช้</h2>
-                <p class="mt-4 text-lg text-slate-600">จัดการทุกอย่างในที่เดียว ตั้งแต่ห้องพัก สัญญา บิล ไปจนถึงแจ้งซ่อมและแจ้งเตือนผ่าน LINE</p>
+                <p class="text-sm font-semibold uppercase tracking-widest text-amber-600">Workflow ครบวงจร</p>
+                <h2 class="mt-3 text-3xl font-extrabold tracking-tight text-slate-900 sm:text-4xl">จัดกลุ่มตามงานจริงของเจ้าของหอ</h2>
+                <p class="mt-4 text-lg text-slate-600">ไม่ใช่แค่รายการฟีเจอร์ แต่เป็น flow ตั้งแต่รับผู้เช่า ออกบิล รับชำระ ไปจนถึงสื่อสารและดูภาพรวม</p>
             </div>
 
-            <div class="mt-16 grid gap-x-8 gap-y-12 sm:grid-cols-2 lg:grid-cols-4">
-                {{-- Feature 01 --}}
-                <div class="reveal-up group" style="--enter-delay:.05s">
-                    <div class="flex h-14 w-14 items-center justify-center rounded-2xl bg-amber-100 text-amber-600 transition group-hover:bg-amber-500 group-hover:text-white">
-                        <svg class="h-7 w-7" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 21h19.5m-18-18v18m10.5-18v18m6-13.5V21M6.75 6.75h.75m-.75 3h.75m-.75 3h.75m3-6h.75m-.75 3h.75m-.75 3h.75M6.75 21v-3.375c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21M3 3h12m-.75 4.5H21m-3.75 3H21"/></svg>
-                    </div>
-                    <p class="mt-5 text-xs font-bold text-amber-600">01</p>
-                    <h3 class="mt-2 text-lg font-bold text-slate-900">จัดการห้องพักและผังห้อง</h3>
-                    <p class="mt-2 text-sm leading-relaxed text-slate-600">กำหนดจำนวนชั้น ห้อง และสถานะการเช่า ดูผังห้องแบบภาพรวมได้ทันที</p>
-                </div>
+            <div class="mt-16 grid gap-6 lg:grid-cols-4">
+                @foreach([
+                    ['title' => 'จัดการห้องและผู้เช่า', 'body' => 'ผังห้อง สถานะห้อง ข้อมูลผู้เช่า สัญญาเช่า และเอกสารสำคัญรวมไว้ในที่เดียว', 'items' => ['ผังห้องและสถานะว่าง/มีผู้เช่า', 'ข้อมูลผู้เช่าและวันเข้าออก', 'สัญญาเช่าและค่ามัดจำ', 'เอกสารและประวัติย้อนหลัง']],
+                    ['title' => 'ออกบิลและรับชำระ', 'body' => 'ลดเวลางานปลายเดือนด้วยการคำนวณบิล ค่าน้ำค่าไฟ QR และสถานะชำระเงิน', 'items' => ['บันทึกมิเตอร์น้ำไฟ', 'ใบแจ้งหนี้รายเดือน', 'PromptPay QR Code', 'ติดตามยอดชำระและยอดค้าง']],
+                    ['title' => 'สื่อสารกับผู้เช่า', 'body' => 'ส่งบิล แจ้งเตือน และจัดการเรื่องซ่อมผ่าน workflow ที่ค้นหาย้อนหลังได้', 'items' => ['ส่งบิลผ่าน LINE OA', 'แจ้งเตือนยอดค้าง', 'Broadcast ข่าวสาร', 'รับแจ้งซ่อมและติดตามสถานะ']],
+                    ['title' => 'ภาพรวมสำหรับเจ้าของ', 'body' => 'เห็นตัวเลขสำคัญของหอพักโดยไม่ต้องรวมข้อมูลเองจากหลายแหล่ง', 'items' => ['Dashboard รายได้', 'ห้องว่างและอัตราเข้าพัก', 'รายงานการชำระเงิน', 'รองรับหลายอาคาร/หลายหอ']],
+                ] as $index => $group)
+                    <article class="reveal-up rounded-2xl border border-slate-200 bg-white p-6 shadow-sm" style="--enter-delay:{{ 0.05 + $index * 0.08 }}s">
+                        <div class="flex h-12 w-12 items-center justify-center rounded-2xl {{ $index % 2 === 0 ? 'bg-amber-100 text-amber-600' : 'bg-teal-100 text-teal-600' }} text-lg font-extrabold">{{ $index + 1 }}</div>
+                        <h3 class="mt-5 text-xl font-bold text-slate-900">{{ $group['title'] }}</h3>
+                        <p class="mt-3 text-sm leading-relaxed text-slate-600">{{ $group['body'] }}</p>
+                        <ul class="mt-5 space-y-3 text-sm text-slate-700">
+                            @foreach($group['items'] as $item)
+                                <li class="flex gap-2"><svg class="mt-0.5 h-4 w-4 flex-shrink-0 text-teal-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg><span>{{ $item }}</span></li>
+                            @endforeach
+                        </ul>
+                    </article>
+                @endforeach
+            </div>
+        </div>
+    </section>
 
-                {{-- Feature 02 --}}
-                <div class="reveal-up group" style="--enter-delay:.1s">
-                    <div class="flex h-14 w-14 items-center justify-center rounded-2xl bg-teal-100 text-teal-600 transition group-hover:bg-teal-500 group-hover:text-white">
-                        <svg class="h-7 w-7" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19.128a9.38 9.38 0 002.625.372 9.337 9.337 0 004.121-.952 4.125 4.125 0 00-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 018.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0111.964-3.07M12 6.375a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zm8.25 2.25a2.625 2.625 0 11-5.25 0 2.625 2.625 0 015.25 0z"/></svg>
-                    </div>
-                    <p class="mt-5 text-xs font-bold text-teal-600">02</p>
-                    <h3 class="mt-2 text-lg font-bold text-slate-900">จัดเก็บข้อมูลผู้เช่า</h3>
-                    <p class="mt-2 text-sm leading-relaxed text-slate-600">บันทึกข้อมูลผู้เช่าอย่างครบถ้วน เบอร์โทร สัญญา วันเข้า-ออก ค้นหาง่ายในที่เดียว</p>
+    {{-- ══════════════════════════════════════════════════
+        FIT
+    ══════════════════════════════════════════════════ --}}
+    <section id="fit" class="bg-white/70 px-4 py-20 sm:px-6 lg:px-8 lg:py-28">
+        <div class="mx-auto max-w-7xl">
+            <div class="grid gap-10 lg:grid-cols-[0.85fr,1.15fr] lg:items-start">
+                <div>
+                    <p class="text-sm font-semibold uppercase tracking-widest text-teal-600">เหมาะกับใคร</p>
+                    <h2 class="mt-3 text-3xl font-extrabold tracking-tight text-slate-900 sm:text-4xl">เจ้าของหอที่อยากลดงานซ้ำทุกเดือน</h2>
+                    <p class="mt-4 text-lg leading-relaxed text-slate-600">เริ่มได้ตั้งแต่หอพักขนาดเล็กไปจนถึงอพาร์ตเมนต์หลายอาคาร โดยเลือกแพ็กเกจตามจำนวนห้องและ workflow ที่ต้องใช้จริง</p>
                 </div>
-
-                {{-- Feature 03 --}}
-                <div class="reveal-up group" style="--enter-delay:.15s">
-                    <div class="flex h-14 w-14 items-center justify-center rounded-2xl bg-amber-100 text-amber-600 transition group-hover:bg-amber-500 group-hover:text-white">
-                        <svg class="h-7 w-7" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z"/></svg>
-                    </div>
-                    <p class="mt-5 text-xs font-bold text-amber-600">03</p>
-                    <h3 class="mt-2 text-lg font-bold text-slate-900">ทำสัญญาเช่าออนไลน์</h3>
-                    <p class="mt-2 text-sm leading-relaxed text-slate-600">สร้างสัญญาเช่า กำหนดวันเริ่ม-สิ้นสุด ค่ามัดจำ เก็บประวัติสัญญาทุกฉบับในระบบ</p>
-                </div>
-
-                {{-- Feature 04 --}}
-                <div class="reveal-up group" style="--enter-delay:.2s">
-                    <div class="flex h-14 w-14 items-center justify-center rounded-2xl bg-teal-100 text-teal-600 transition group-hover:bg-teal-500 group-hover:text-white">
-                        <svg class="h-7 w-7" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 13.5l10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75z"/></svg>
-                    </div>
-                    <p class="mt-5 text-xs font-bold text-teal-600">04</p>
-                    <h3 class="mt-2 text-lg font-bold text-slate-900">บันทึกค่าน้ำ-ค่าไฟ</h3>
-                    <p class="mt-2 text-sm leading-relaxed text-slate-600">จดมิเตอร์ค่าน้ำ ค่าไฟผ่านระบบ คำนวณยอดอัตโนมัติ ลดความผิดพลาดจากการคิดเอง</p>
-                </div>
-
-                {{-- Feature 05 --}}
-                <div class="reveal-up group" style="--enter-delay:.25s">
-                    <div class="flex h-14 w-14 items-center justify-center rounded-2xl bg-amber-100 text-amber-600 transition group-hover:bg-amber-500 group-hover:text-white">
-                        <svg class="h-7 w-7" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M9 14.25l6-6m4.5-3.493V21.75l-3.75-1.5-3.75 1.5-3.75-1.5-3.75 1.5V4.757c0-1.108.806-2.057 1.907-2.185a48.507 48.507 0 0111.186 0c1.1.128 1.907 1.077 1.907 2.185zM9.75 9h.008v.008H9.75V9zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm4.125 4.5h.008v.008h-.008V13.5zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z"/></svg>
-                    </div>
-                    <p class="mt-5 text-xs font-bold text-amber-600">05</p>
-                    <h3 class="mt-2 text-lg font-bold text-slate-900">สร้างใบแจ้งหนี้อัตโนมัติ</h3>
-                    <p class="mt-2 text-sm leading-relaxed text-slate-600">สรุปยอดค่าเช่า ค่าน้ำ ค่าไฟ และค่าบริการเป็นบิลรายเดือน ส่งถึงผู้เช่าได้ทันที</p>
-                </div>
-
-                {{-- Feature 06 --}}
-                <div class="reveal-up group" style="--enter-delay:.3s">
-                    <div class="flex h-14 w-14 items-center justify-center rounded-2xl bg-teal-100 text-teal-600 transition group-hover:bg-teal-500 group-hover:text-white">
-                        <svg class="h-7 w-7" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 4.875c0-.621.504-1.125 1.125-1.125h4.5c.621 0 1.125.504 1.125 1.125v4.5c0 .621-.504 1.125-1.125 1.125h-4.5A1.125 1.125 0 013.75 9.375v-4.5zM3.75 14.625c0-.621.504-1.125 1.125-1.125h4.5c.621 0 1.125.504 1.125 1.125v4.5c0 .621-.504 1.125-1.125 1.125h-4.5a1.125 1.125 0 01-1.125-1.125v-4.5zM13.5 4.875c0-.621.504-1.125 1.125-1.125h4.5c.621 0 1.125.504 1.125 1.125v4.5c0 .621-.504 1.125-1.125 1.125h-4.5A1.125 1.125 0 0113.5 9.375v-4.5z"/><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 14.625v2.25m0 2.25h2.25m2.25 0h-2.25m0 0v-2.25m0 0h-2.25"/></svg>
-                    </div>
-                    <p class="mt-5 text-xs font-bold text-teal-600">06</p>
-                    <h3 class="mt-2 text-lg font-bold text-slate-900">สแกนจ่ายผ่าน QR Code</h3>
-                    <p class="mt-2 text-sm leading-relaxed text-slate-600">รองรับ PromptPay QR Code ผู้เช่าสแกนจ่ายได้ทันที ตรวจสอบสถานะการชำระแบบเรียลไทม์</p>
-                </div>
-
-                {{-- Feature 07 --}}
-                <div class="reveal-up group" style="--enter-delay:.35s">
-                    <div class="flex h-14 w-14 items-center justify-center rounded-2xl bg-amber-100 text-amber-600 transition group-hover:bg-amber-500 group-hover:text-white">
-                        <svg class="h-7 w-7" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M11.42 15.17l-5.1-3.4a1.5 1.5 0 01-.42-2.08l.72-1.08a1.5 1.5 0 012.08-.42l5.1 3.4m-2.38 3.58l5.1 3.4a1.5 1.5 0 002.08-.42l.72-1.08a1.5 1.5 0 00-.42-2.08l-5.1-3.4m-2.38 3.58l2.38-3.58"/></svg>
-                    </div>
-                    <p class="mt-5 text-xs font-bold text-amber-600">07</p>
-                    <h3 class="mt-2 text-lg font-bold text-slate-900">บันทึกแจ้งซ่อม</h3>
-                    <p class="mt-2 text-sm leading-relaxed text-slate-600">รับแจ้งซ่อมจากผู้เช่า ติดตามสถานะงาน เก็บประวัติการซ่อมของแต่ละห้องอย่างเป็นระบบ</p>
-                </div>
-
-                {{-- Feature 08 --}}
-                <div class="reveal-up group" style="--enter-delay:.4s">
-                    <div class="flex h-14 w-14 items-center justify-center rounded-2xl bg-teal-100 text-teal-600 transition group-hover:bg-teal-500 group-hover:text-white">
-                        <svg class="h-7 w-7" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M8.625 12a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H8.25m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H12m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0h-.375M21 12c0 4.556-4.03 8.25-9 8.25a9.764 9.764 0 01-2.555-.337A5.972 5.972 0 015.41 20.97a5.969 5.969 0 01-.474-.065 4.48 4.48 0 00.978-2.025c.09-.457-.133-.901-.467-1.226C3.93 16.178 3 14.189 3 12c0-4.556 4.03-8.25 9-8.25s9 3.694 9 8.25z"/></svg>
-                    </div>
-                    <p class="mt-5 text-xs font-bold text-teal-600">08</p>
-                    <h3 class="mt-2 text-lg font-bold text-slate-900">ส่งบิลผ่าน LINE อัตโนมัติ</h3>
-                    <p class="mt-2 text-sm leading-relaxed text-slate-600">เชื่อม LINE OA ส่งบิลค่าเช่า แจ้งเตือนค่าค้าง และ broadcast ข่าวสารถึงผู้เช่าได้ในคลิกเดียว</p>
+                <div class="grid gap-5 sm:grid-cols-2">
+                    @foreach([
+                        ['title' => 'หอพัก 10-30 ห้อง', 'body' => 'เริ่มจัดระบบห้อง ผู้เช่า และบิลให้เป็นระเบียบ โดยไม่ต้องใช้โปรแกรมซับซ้อน'],
+                        ['title' => 'อพาร์ตเมนต์ 30-100 ห้อง', 'body' => 'ลดเวลาการออกบิล ติดตามยอดค้าง และดูภาพรวมรายได้ทุกเดือน'],
+                        ['title' => 'หลายอาคารหรือหลายสาขา', 'body' => 'แยกข้อมูลตามโครงการ เห็นสถานะห้องและงานค้างจากที่เดียว'],
+                        ['title' => 'ทีมที่ยังใช้ Excel / LINE / สมุดจด', 'body' => 'ย้ายงานประจำเข้าระบบ ลดการตกหล่นและค้นหาข้อมูลย้อนหลังได้ง่ายขึ้น'],
+                    ] as $index => $fit)
+                        <article class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+                            <p class="text-xs font-bold uppercase tracking-widest text-amber-600">Use case {{ $index + 1 }}</p>
+                            <h3 class="mt-3 text-lg font-bold text-slate-900">{{ $fit['title'] }}</h3>
+                            <p class="mt-3 text-sm leading-relaxed text-slate-600">{{ $fit['body'] }}</p>
+                        </article>
+                    @endforeach
                 </div>
             </div>
         </div>
@@ -257,19 +261,21 @@
                 <div class="reveal-up relative rounded-2xl border border-slate-200 bg-white p-8 text-center" style="--enter-delay:.05s">
                     <div class="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-amber-500 text-2xl font-extrabold text-white shadow-lg shadow-amber-500/25">1</div>
                     <h3 class="mt-6 text-xl font-bold text-slate-900">สมัครบัญชี</h3>
-                    <p class="mt-3 text-sm leading-relaxed text-slate-600">กรอกชื่อหอพัก เลือกแพ็กเกจ สร้างบัญชีเสร็จใน 1 นาที ทดลองใช้ฟรีไม่มีค่าใช้จ่าย</p>
+                    <p class="mt-3 text-sm leading-relaxed text-slate-600">กรอกชื่อหอพัก เลือกแพ็กเกจ และเริ่มทดลองใช้ฟรีโดยไม่ต้องผูกบัตร</p>
                 </div>
                 <div class="reveal-up relative rounded-2xl border border-slate-200 bg-white p-8 text-center" style="--enter-delay:.15s">
                     <div class="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-amber-500 text-2xl font-extrabold text-white shadow-lg shadow-amber-500/25">2</div>
                     <h3 class="mt-6 text-xl font-bold text-slate-900">ตั้งค่าหอพัก</h3>
-                    <p class="mt-3 text-sm leading-relaxed text-slate-600">เพิ่มห้องพัก ตั้งราคาค่าเช่า นำเข้าข้อมูลผู้เช่าเดิม พร้อมใช้งานจริงได้เลย</p>
+                    <p class="mt-3 text-sm leading-relaxed text-slate-600">เพิ่มอาคาร ชั้น ห้อง ค่าเช่า ค่าน้ำค่าไฟ และเตรียมนำเข้าข้อมูลผู้เช่าเดิม</p>
                 </div>
                 <div class="reveal-up relative rounded-2xl border border-slate-200 bg-white p-8 text-center" style="--enter-delay:.25s">
                     <div class="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-amber-500 text-2xl font-extrabold text-white shadow-lg shadow-amber-500/25">3</div>
                     <h3 class="mt-6 text-xl font-bold text-slate-900">เริ่มบริหาร</h3>
-                    <p class="mt-3 text-sm leading-relaxed text-slate-600">ออกบิล ส่ง LINE แจ้งเตือน รับแจ้งซ่อม ติดตามรายได้ ทุกอย่างจัดการจากหน้าจอเดียว</p>
+                    <p class="mt-3 text-sm leading-relaxed text-slate-600">สร้างใบแจ้งหนี้ ส่ง LINE ติดตามยอดชำระ และดูภาพรวมจาก dashboard</p>
                 </div>
             </div>
+
+            <p class="mx-auto mt-8 max-w-2xl rounded-2xl border border-amber-200 bg-amber-50 px-5 py-4 text-center text-sm leading-relaxed text-amber-800">ต้องการย้ายข้อมูลเดิมจาก Excel? เตรียมไฟล์ห้องและผู้เช่าไว้ แล้วใช้เป็นจุดตั้งต้นสำหรับการตั้งค่าระบบได้</p>
         </div>
     </section>
 
@@ -297,8 +303,8 @@
         <div class="mx-auto max-w-7xl">
             <div class="mx-auto max-w-2xl text-center">
                 <p class="text-sm font-semibold uppercase tracking-widest text-amber-600">แพ็กเกจและราคา</p>
-                <h2 class="mt-3 text-3xl font-extrabold tracking-tight text-slate-900 sm:text-4xl">เลือกแพ็กเกจที่เหมาะกับหอพักของคุณ</h2>
-                <p class="mt-4 text-lg text-slate-600">ทุกแพ็กเกจรวมฟีเจอร์หลักครบ — จัดการห้อง บิล สัญญา และ LINE แจ้งเตือน</p>
+                <h2 class="mt-3 text-3xl font-extrabold tracking-tight text-slate-900 sm:text-4xl">เลือกตามจำนวนห้องและรูปแบบการใช้งาน</h2>
+                <p class="mt-4 text-lg text-slate-600">ทุกแพ็กเกจมีฟีเจอร์หลักสำหรับจัดการห้อง ผู้เช่า บิล และการแจ้งเตือน เลือกตามขนาดหอและบริการเสริมที่ต้องใช้</p>
             </div>
 
             <div class="mt-14 grid gap-6 lg:grid-cols-3">
@@ -341,12 +347,16 @@
 
                         <p class="mt-5">
                             <span class="text-4xl font-extrabold text-slate-900">{{ number_format((float) $plan->price_monthly, 0) }}</span>
-                            <span class="ml-1 text-base text-slate-500">บาท/เดือน</span>
+                            <span class="ml-1 text-base text-slate-500">บาท/ห้อง/เดือน</span>
                         </p>
 
                         @if($plan->description)
                             <p class="mt-4 text-sm leading-relaxed text-slate-600">{{ $plan->description }}</p>
                         @endif
+
+                        <p class="mt-4 rounded-xl bg-slate-50 px-4 py-3 text-xs font-semibold leading-relaxed text-slate-600">
+                            เหมาะสำหรับ {{ $loop->first ? 'หอพักเริ่มต้นหรือทีมที่เพิ่งย้ายจาก Excel' : ($isFeaturedPlan ? 'หอพักที่ต้องการใช้ billing และ LINE เป็น workflow หลัก' : 'อพาร์ตเมนต์ที่มีจำนวนห้องมากขึ้นและต้องการโควตาเพิ่ม') }}
+                        </p>
 
                         @php($limits = $plan->displayLimits())
                         <ul class="mt-6 flex-1 space-y-3">
@@ -384,6 +394,63 @@
                     </div>
                 @endforelse
             </div>
+
+            <div class="mt-10 text-center">
+                <a href="{{ route('pricing') }}" class="inline-flex items-center justify-center rounded-xl border border-slate-300 bg-white px-6 py-3 text-sm font-bold text-slate-700 transition hover:border-slate-900 hover:text-slate-900">ดูรายละเอียดแพ็กเกจทั้งหมด</a>
+            </div>
+        </div>
+    </section>
+
+    {{-- ══════════════════════════════════════════════════
+        TRUST
+    ══════════════════════════════════════════════════ --}}
+    <section class="px-4 py-20 sm:px-6 lg:px-8 lg:py-28">
+        <div class="mx-auto grid max-w-7xl gap-8 lg:grid-cols-[1.05fr,0.95fr] lg:items-center">
+            <div>
+                <p class="text-sm font-semibold uppercase tracking-widest text-teal-600">Trust & Support</p>
+                <h2 class="mt-3 text-3xl font-extrabold tracking-tight text-slate-900 sm:text-4xl">ออกแบบสำหรับข้อมูลหอพักที่ต้องปลอดภัยและตรวจสอบได้</h2>
+                <p class="mt-4 text-lg leading-relaxed text-slate-600">ข้อมูลผู้เช่า บิล และการชำระเงินเป็นหัวใจของธุรกิจหอพัก MesukDorm จึงจัดข้อมูลแยกตาม tenant และทำให้เจ้าของหอควบคุม workflow ได้จากระบบเดียว</p>
+            </div>
+            <div class="grid gap-4 sm:grid-cols-2">
+                @foreach(['ข้อมูลแต่ละหอพักแยกจากกัน', 'กำหนดสิทธิ์เจ้าของและพนักงานได้', 'เก็บประวัติบิล การชำระเงิน และสัญญา', 'ใช้งานผ่านเว็บ ไม่ต้องติดตั้งโปรแกรม', 'รองรับ LINE OA สำหรับแจ้งเตือนผู้เช่า', 'มี flow เริ่มต้นสำหรับตั้งค่าหอแรก'] as $item)
+                    <div class="rounded-2xl border border-slate-200 bg-white p-5 text-sm font-semibold leading-relaxed text-slate-700 shadow-sm">
+                        <svg class="mb-3 h-5 w-5 text-teal-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg>
+                        {{ $item }}
+                    </div>
+                @endforeach
+            </div>
+        </div>
+    </section>
+
+    {{-- ══════════════════════════════════════════════════
+        FAQ
+    ══════════════════════════════════════════════════ --}}
+    <section id="faq" class="bg-slate-50 px-4 py-20 sm:px-6 lg:px-8 lg:py-28">
+        <div class="mx-auto max-w-4xl">
+            <div class="text-center">
+                <p class="text-sm font-semibold uppercase tracking-widest text-amber-600">FAQ</p>
+                <h2 class="mt-3 text-3xl font-extrabold tracking-tight text-slate-900 sm:text-4xl">คำถามก่อนเริ่มใช้งาน</h2>
+            </div>
+            <div class="mt-12 divide-y divide-slate-200 rounded-2xl border border-slate-200 bg-white shadow-sm">
+                @foreach([
+                    ['q' => 'ทดลองใช้ฟรีกี่วัน?', 'a' => 'เริ่มใช้งานฟรีตามเงื่อนไขแพ็กเกจทดลอง โดยไม่ต้องผูกบัตรในขั้นตอนสมัคร'],
+                    ['q' => 'ต้องติดตั้งโปรแกรมไหม?', 'a' => 'ไม่ต้องติดตั้ง ใช้งานผ่านเว็บเบราว์เซอร์ได้เลยทั้งบนคอมพิวเตอร์และอุปกรณ์พกพา'],
+                    ['q' => 'ย้ายข้อมูลจาก Excel ได้ไหม?', 'a' => 'สามารถเตรียมข้อมูลห้อง ผู้เช่า และค่าเช่าปัจจุบันเป็นจุดตั้งต้นสำหรับการนำเข้าหรือตั้งค่าในระบบได้'],
+                    ['q' => 'ใช้ LINE ส่วนตัวได้ไหม?', 'a' => 'แนะนำให้ใช้ LINE Official Account เพื่อส่งบิล แจ้งเตือน และ broadcast ถึงผู้เช่าอย่างเป็นระบบ'],
+                    ['q' => 'เหมาะกับหอพักกี่ห้อง?', 'a' => 'เริ่มใช้ได้ตั้งแต่หอพักขนาดเล็ก และเลือกแพ็กเกจตามจำนวนห้องหรือโควตาที่ต้องการจัดการ'],
+                    ['q' => 'ข้อมูลผู้เช่าปลอดภัยไหม?', 'a' => 'ระบบแยกข้อมูลตาม tenant และจำกัดการเข้าถึงตามบัญชีผู้ใช้งาน เพื่อลดการปะปนของข้อมูลแต่ละหอ'],
+                    ['q' => 'มีค่า setup เพิ่มไหม?', 'a' => 'การเริ่มต้นด้วยตนเองไม่มีขั้นตอนซับซ้อน หากมีบริการ setup หรือ support เพิ่มเติมควรอ้างอิงเงื่อนไขแพ็กเกจที่เลือก'],
+                    ['q' => 'ถ้าเลิกใช้ จะเอาข้อมูลออกได้ไหม?', 'a' => 'ควรวางแผน export ข้อมูลสำคัญ เช่น ห้อง ผู้เช่า บิล และประวัติการชำระเงินก่อนปิดการใช้งาน'],
+                ] as $faq)
+                    <details class="group p-6">
+                        <summary class="flex cursor-pointer list-none items-center justify-between gap-4 text-left text-base font-bold text-slate-900">
+                            {{ $faq['q'] }}
+                            <span class="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-slate-100 text-slate-500 transition group-open:rotate-45">+</span>
+                        </summary>
+                        <p class="mt-3 text-sm leading-relaxed text-slate-600">{{ $faq['a'] }}</p>
+                    </details>
+                @endforeach
+            </div>
         </div>
     </section>
 
@@ -392,8 +459,8 @@
     ══════════════════════════════════════════════════ --}}
     <section class="px-4 py-20 sm:px-6 lg:px-8 lg:py-28">
         <div class="mx-auto max-w-3xl text-center">
-            <h2 class="text-3xl font-extrabold tracking-tight text-slate-900 sm:text-4xl">เริ่มบริหารหอพักอย่างมืออาชีพ<br>ตั้งแต่วันนี้</h2>
-            <p class="mx-auto mt-5 max-w-xl text-lg text-slate-600">ไม่ว่าจะหอพัก 10 ห้อง หรืออพาร์ตเมนต์ 200 ห้อง MesukDorm ช่วยให้คุณจัดการได้ครบจบในที่เดียว</p>
+            <h2 class="text-3xl font-extrabold tracking-tight text-slate-900 sm:text-4xl">เริ่มจัดการหอพักให้เป็นระบบตั้งแต่เดือนนี้</h2>
+            <p class="mx-auto mt-5 max-w-xl text-lg text-slate-600">ลดเวลาการออกบิล ติดตามยอดค้าง และเก็บข้อมูลผู้เช่าไว้ในที่เดียว พร้อมเริ่มทดลองใช้ฟรี</p>
 
             <div class="mt-8 flex flex-wrap items-center justify-center gap-4">
                 @guest
@@ -486,7 +553,7 @@
                         <select id="landing_register_plan_id" name="plan_id" class="mt-1.5 block w-full rounded-xl border border-slate-300 px-4 py-3 text-slate-900 shadow-sm outline-none transition focus:border-amber-500 focus:ring-1 focus:ring-amber-500" required>
                             @foreach(($plans ?? []) as $plan)
                                 <option value="{{ $plan->id }}" @selected((string) old('plan_id', request('plan')) === (string) $plan->id)>
-                                    {{ $plan->name }} ({{ number_format((float) $plan->price_monthly, 0) }} บาท/เดือน)
+                                    {{ $plan->name }} ({{ number_format((float) $plan->price_monthly, 0) }} บาท/ห้อง/เดือน)
                                 </option>
                             @endforeach
                         </select>
@@ -511,8 +578,8 @@
                             <input name="terms" id="landing_register_terms" type="checkbox" required class="mt-1 rounded border-slate-300 text-amber-500 focus:ring-amber-500" />
                             <span>
                                 {!! __('I agree to the :terms_of_service and :privacy_policy', [
-                                    'terms_of_service' => '<a target="_blank" href="'.route('terms.show').'" class="font-semibold text-amber-600 underline hover:text-amber-700">'.__('Terms of Service').'</a>',
-                                    'privacy_policy' => '<a target="_blank" href="'.route('policy.show').'" class="font-semibold text-amber-600 underline hover:text-amber-700">'.__('Privacy Policy').'</a>',
+                                    'terms_of_service' => '<a target="_blank" rel="noopener noreferrer" href="'.route('terms.show').'" class="font-semibold text-amber-600 underline hover:text-amber-700">'.__('Terms of Service').'</a>',
+                                    'privacy_policy' => '<a target="_blank" rel="noopener noreferrer" href="'.route('policy.show').'" class="font-semibold text-amber-600 underline hover:text-amber-700">'.__('Privacy Policy').'</a>',
                                 ]) !!}
                             </span>
                         </label>

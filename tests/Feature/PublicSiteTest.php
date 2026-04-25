@@ -16,10 +16,31 @@ class PublicSiteTest extends TestCase
 
         $response->assertOk();
         $response->assertSee('MesukDorm');
-        $response->assertSee('จัดการหอพักครบตั้งแต่ห้องว่างจนถึงบิลค้างชำระ');
+        $response->assertSee('จัดการหอพัก ออกบิล ส่ง LINE');
+        $response->assertSee('แพ็กเกจและราคา');
+        $response->assertSee('งานแจ้งซ่อมเปิดอยู่');
+        $response->assertDontSee('รายได้เดือนนี้');
         $response->assertSee(route('pricing'), false);
-        $response->assertSee(route('register'), false);
-        $response->assertSee(route('login'), false);
+    }
+
+    public function test_landing_page_sends_security_headers(): void
+    {
+        $response = $this->get('/');
+
+        $response->assertOk();
+        $response->assertHeader('X-Content-Type-Options', 'nosniff');
+        $response->assertHeader('X-Frame-Options', 'SAMEORIGIN');
+        $response->assertHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+        $response->assertHeader('Cross-Origin-Opener-Policy', 'same-origin');
+        $response->assertHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=(), payment=(), usb=(), fullscreen=(self)');
+        $response->assertHeader('Content-Security-Policy');
+
+        $csp = (string) $response->headers->get('Content-Security-Policy');
+
+        $this->assertStringContainsString("default-src 'self'", $csp);
+        $this->assertStringContainsString("frame-ancestors 'self'", $csp);
+        $this->assertStringContainsString("form-action 'self'", $csp);
+        $this->assertStringContainsString("object-src 'none'", $csp);
     }
 
     public function test_pricing_page_displays_active_plans(): void
